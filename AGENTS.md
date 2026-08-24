@@ -169,3 +169,10 @@ their requirements are defined.
 - Calendar queries are organization scoped, permission filtered, timezone aware, and limited to 366 days. Private events and internal/commercial fields never leak.
 - Documents are metadata with explicit version lineage and constrained same-organization typed links. Never introduce unrestricted generic relations.
 - Binary uploads and sensitive identity documents remain disabled until durable private storage and security controls are explicitly selected. Restricted access is backend enforced.
+
+## Notification invariants
+
+- Notification content is immutable and separate from AuditEvent; per-user read/archive state belongs to NotificationRecipient.
+- Recipient resolution requires active users and active organization memberships. Notifications never grant authorization.
+- Action URLs are server-generated internal paths; content must exclude secrets, commercial amounts, restricted URLs, and sensitive data.
+- In-app delivery is synchronous inside domain transactions. No Redis, Celery, WebSockets, scheduler, email, SMS, or push delivery exists.

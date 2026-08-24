@@ -2,6 +2,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 
 from audit.services import record_event
+from notifications.services import booking_team_users, create_notification
 from organizations.permissions import user_has_organization_permission
 
 from .models import (
@@ -145,6 +146,20 @@ def transition_booking(*, actor, booking, to_status, reason="", request=None):
         resource=locked,
         description=f"Changed booking {locked.reference} status from {previous} to {to_status}.",
         request=request,
+    )
+    create_notification(
+        organization=locked.organization,
+        notification_type="booking.status_changed",
+        category="bookings",
+        title="Booking status changed",
+        message=f"{locked.reference} is now {to_status}.",
+        users=booking_team_users(locked),
+        actor=actor,
+        priority="high"
+        if to_status in (Booking.Status.CONFIRMED, Booking.Status.CANCELLED)
+        else "normal",
+        source=locked,
+        action_url=f"/workspace/bookings/{locked.pk}",
     )
     return locked
 

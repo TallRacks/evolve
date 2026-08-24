@@ -3,6 +3,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from audit.services import record_event
+from notifications.services import create_notification
 from organizations.permissions import user_has_organization_permission
 
 from .models import (
@@ -267,12 +268,25 @@ def create_task(*, actor, rollout, data, request=None):
         "Created rollout task.",
         request,
     )
+    if obj.assigned_membership_id:
+        create_notification(
+            organization=rollout.organization,
+            notification_type="rollout.task_assigned",
+            category="marketing",
+            title="Rollout task assigned",
+            message=f"You were assigned: {obj.title}.",
+            users=[obj.assigned_membership.user],
+            actor=actor,
+            source=obj,
+            action_url=f"/workspace/rollouts/{rollout.pk}",
+        )
     return obj
 
 
 @transaction.atomic
 def update_task(*, actor, task, data, request=None):
     require(actor, task.rollout.organization, "rollout.task.manage")
+    previous_assignee = task.assigned_membership_id
     if "status" in data:
         raise ValidationError("Use Task lifecycle service.")
     mutate(task, data)
@@ -284,6 +298,18 @@ def update_task(*, actor, task, data, request=None):
         "Updated rollout task.",
         request,
     )
+    if task.assigned_membership_id and task.assigned_membership_id != previous_assignee:
+        create_notification(
+            organization=task.rollout.organization,
+            notification_type="rollout.task_assigned",
+            category="marketing",
+            title="Rollout task assigned",
+            message=f"You were assigned: {task.title}.",
+            users=[task.assigned_membership.user],
+            actor=actor,
+            source=task,
+            action_url=f"/workspace/rollouts/{task.rollout_id}",
+        )
     return task
 
 
@@ -337,6 +363,18 @@ def complete_task(*, actor, task, request=None):
         "Completed rollout task.",
         request,
     )
+    if obj.rollout.owner_membership_id:
+        create_notification(
+            organization=obj.rollout.organization,
+            notification_type="rollout.task_completed",
+            category="marketing",
+            title="Rollout task completed",
+            message=f"{obj.title} was completed.",
+            users=[obj.rollout.owner_membership.user],
+            actor=actor,
+            source=obj,
+            action_url=f"/workspace/rollouts/{obj.rollout_id}",
+        )
     return obj
 
 

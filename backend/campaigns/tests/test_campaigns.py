@@ -26,6 +26,7 @@ from campaigns.services import (
     transition_task,
 )
 from music.models import Release
+from notifications.models import NotificationRecipient
 from organizations.models import Membership, Organization
 from users.models import User
 from white_label.services import create_api_client_key
@@ -191,18 +192,27 @@ def test_milestone_order_and_active_owner(owner, rollout, org):
 
 
 def test_task_completion_reopen_overdue_and_assignment(owner, rollout, other):
+    manager = member(
+        rollout.organization, Membership.Role.MANAGER, "task-manager@example.invalid"
+    )
     task = create_task(
         actor=owner[0],
         rollout=rollout,
         data={
             "title": "Due",
-            "assigned_membership": owner[1],
+            "assigned_membership": manager[1],
             "due_date": timezone.localdate() - timedelta(days=1),
         },
     )
     assert task.is_overdue
-    task = complete_task(actor=owner[0], task=task)
-    assert task.completed_at and task.completed_by == owner[0] and not task.is_overdue
+    assert NotificationRecipient.objects.filter(
+        user=manager[0], notification__notification_type="rollout.task_assigned"
+    ).exists()
+    task = complete_task(actor=manager[0], task=task)
+    assert NotificationRecipient.objects.filter(
+        user=owner[0], notification__notification_type="rollout.task_completed"
+    ).exists()
+    assert task.completed_at and task.completed_by == manager[0] and not task.is_overdue
     task = transition_task(actor=owner[0], task=task, to_status=RolloutTask.Status.TODO)
     assert task.completed_at is None
     _, wrong = member(other, Membership.Role.MEMBER, "wrong-task@example.invalid")

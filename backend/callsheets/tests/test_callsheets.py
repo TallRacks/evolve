@@ -27,6 +27,7 @@ from callsheets.services import (
     refresh_from_booking,
 )
 from contacts.models import Contact
+from notifications.models import NotificationRecipient
 from organizations.models import Membership, Organization
 from users.models import User
 from venues.models import Venue
@@ -213,8 +214,13 @@ def test_postgresql_concurrent_versions_are_serialized(owner, booking):
     ) == [1, 2]
 
 
-def test_publish_supersedes_previous_atomically_and_audits(owner, call_sheet):
+def test_publish_supersedes_previous_atomically_and_audits(owner, member, call_sheet):
     sheet, first = call_sheet
+    BookingTeamAssignment.objects.create(
+        booking=sheet.booking,
+        membership=Membership.objects.get(user=member, organization=sheet.organization),
+        responsibility=BookingTeamAssignment.Responsibility.GENERAL,
+    )
     mark_ready(actor=owner, version=first)
     first = publish_call_sheet_version(actor=owner, version=first)
     second = create_call_sheet_version(actor=owner, call_sheet=sheet, source_version=first)
@@ -224,6 +230,11 @@ def test_publish_supersedes_previous_atomically_and_audits(owner, call_sheet):
     assert first.status == CallSheetVersion.Status.SUPERSEDED
     assert second.status == CallSheetVersion.Status.PUBLISHED
     assert sheet.versions.filter(status=CallSheetVersion.Status.PUBLISHED).count() == 1
+    assert set(
+        NotificationRecipient.objects.filter(user=member).values_list(
+            "notification__notification_type", flat=True
+        )
+    ) == {"callsheet.ready", "callsheet.published"}
     assert set(AuditEvent.objects.values_list("action", flat=True)) >= {
         "callsheet.ready",
         "callsheet.published",

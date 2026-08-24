@@ -2,6 +2,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 
 from audit.services import record_event
+from notifications.services import artist_team_users, create_notification
 from organizations.permissions import user_has_organization_permission
 
 from .models import MusicCredit, Release, ReleaseLink, ReleaseTrack, Track
@@ -87,6 +88,18 @@ def transition_release(*, actor, release, to_status, reason="", request=None):
         description=f"Changed release {locked.title} from {from_status} to {to_status}.",
         request=request,
     )
+    if to_status in (Release.Status.SCHEDULED, Release.Status.RELEASED):
+        create_notification(
+            organization=locked.organization,
+            notification_type=f"release.{to_status}",
+            category="music",
+            title=f"Release {to_status}",
+            message=f"{locked.title} is now {to_status}.",
+            users=artist_team_users(locked.primary_artist),
+            actor=actor,
+            source=locked,
+            action_url=f"/workspace/music/releases/{locked.pk}",
+        )
     return locked
 
 

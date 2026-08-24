@@ -6,7 +6,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.test import RequestFactory
 
-from artists.models import Artist, ArtistPortalLink
+from artists.models import Artist, ArtistPortalLink, ArtistTeamAssignment
 from audit.models import AuditEvent
 from contacts.models import Contact
 from music.admin import ReleaseAdmin
@@ -19,6 +19,7 @@ from music.services import (
     transition_release,
     update_release,
 )
+from notifications.models import NotificationRecipient
 from organizations.models import Membership, Organization
 from users.models import User
 from white_label.services import create_api_client_key
@@ -100,6 +101,13 @@ def test_release_create_uuid_slug_scope_and_audit(release):
 
 
 def test_release_lifecycle_and_generic_status_rejected(owner, release):
+    listener = user_for(
+        release.organization, Membership.Role.MEMBER, "music-listener@example.invalid"
+    )
+    ArtistTeamAssignment.objects.create(
+        artist=release.primary_artist,
+        membership=Membership.objects.get(user=listener, organization=release.organization),
+    )
     with pytest.raises(ValidationError):
         update_release(actor=owner, release=release, data={"status": Release.Status.RELEASED})
     with pytest.raises(ValidationError):
@@ -108,6 +116,11 @@ def test_release_lifecycle_and_generic_status_rejected(owner, release):
     release = transition_release(actor=owner, release=release, to_status=Release.Status.RELEASED)
     release = transition_release(actor=owner, release=release, to_status=Release.Status.ARCHIVED)
     assert release.status == Release.Status.ARCHIVED
+    assert set(
+        NotificationRecipient.objects.filter(user=listener).values_list(
+            "notification__notification_type", flat=True
+        )
+    ) == {"release.scheduled", "release.released"}
     assert AuditEvent.objects.filter(action="release.archived").exists()
 
 

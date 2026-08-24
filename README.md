@@ -118,3 +118,7 @@ Milestone 11 adds strategic Campaigns, planned channels, operational Rollouts, m
 ## Milestone 12: Calendar and Documents
 
 The unified calendar projects existing operational dates without duplicate rows. Standalone events and external-reference document metadata are available in workspace, platform, Artist portal, Django admin, and scoped developer APIs. Binary document upload remains disabled. See `docs/calendar.md` and `docs/documents.md`.
+
+## Milestone 13: In-app notifications
+
+Recipient-specific in-app notifications, preferences, inbox state, lifecycle integrations, and platform metadata oversight are implemented without external delivery infrastructure. See `docs/notifications.md`.

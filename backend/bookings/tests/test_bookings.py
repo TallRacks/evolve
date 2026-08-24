@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from artists.models import Artist
 from audit.models import AuditEvent
 from bookings.admin import BookingAdmin, BookingStatusHistoryAdmin
-from bookings.models import Booking, BookingStatusHistory
+from bookings.models import Booking, BookingStatusHistory, BookingTeamAssignment
 from bookings.services import (
     assign_contact,
     assign_team_member,
@@ -18,6 +18,7 @@ from bookings.services import (
     update_booking,
 )
 from contacts.models import Contact
+from notifications.models import NotificationRecipient
 from organizations.models import Membership, Organization
 from promoters.models import Promoter
 from users.models import User
@@ -136,7 +137,14 @@ def test_master_changes_do_not_rewrite_snapshot_but_explicit_change_does(
     assert booking.city_snapshot == "Durban"
 
 
-def test_status_transitions_are_explicit_audited_and_append_only(owner, booking):
+def test_status_transitions_are_explicit_audited_and_append_only(owner, member, booking):
+    membership = Membership.objects.get(user=member, organization=booking.organization)
+    assign_team_member(
+        actor=owner,
+        booking=booking,
+        membership=membership,
+        data={"responsibility": BookingTeamAssignment.Responsibility.MANAGER},
+    )
     transitioned = transition_booking(
         actor=owner, booking=booking, to_status=Booking.Status.HOLD, reason="Date requested"
     )
@@ -147,8 +155,14 @@ def test_status_transitions_are_explicit_audited_and_append_only(owner, booking)
         Booking.Status.HOLD,
         "Date requested",
     )
+    assert NotificationRecipient.objects.filter(
+        user=member, notification__notification_type="booking.status_changed"
+    ).exists()
+    assert "12000" not in NotificationRecipient.objects.get(user=member).notification.message
+    notification_count = NotificationRecipient.objects.count()
     with pytest.raises(ValidationError):
         transition_booking(actor=owner, booking=transitioned, to_status=Booking.Status.COMPLETED)
+    assert NotificationRecipient.objects.count() == notification_count
     history.reason = "Changed"
     with pytest.raises(ValidationError):
         history.save()

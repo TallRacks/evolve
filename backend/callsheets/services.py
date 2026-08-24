@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from audit.services import record_event
 from bookings.models import Booking
+from notifications.services import booking_team_users, create_notification
 from organizations.permissions import user_has_organization_permission
 
 from .models import (
@@ -368,6 +369,18 @@ def mark_ready(*, actor, version, request=None):
         description=f"Marked Call Sheet version {locked.version_number} ready.",
         request=request,
     )
+    create_notification(
+        organization=locked.call_sheet.organization,
+        notification_type="callsheet.ready",
+        category="call_sheets",
+        title="Call Sheet ready",
+        message=f"Call Sheet v{locked.version_number} is ready for {locked.event_name}.",
+        users=booking_team_users(locked.call_sheet.booking),
+        actor=actor,
+        priority="high",
+        source=locked,
+        action_url=f"/workspace/call-sheets/{locked.pk}",
+    )
     return locked
 
 
@@ -411,6 +424,18 @@ def publish_call_sheet_version(*, actor, version, request=None):
         resource=locked,
         description=f"Published Call Sheet version {locked.version_number}.",
         request=request,
+    )
+    create_notification(
+        organization=locked.call_sheet.organization,
+        notification_type="callsheet.published",
+        category="call_sheets",
+        title="Call Sheet published",
+        message=f"Call Sheet v{locked.version_number} was published for {locked.event_name}.",
+        users=booking_team_users(locked.call_sheet.booking),
+        actor=actor,
+        priority="high",
+        source=locked,
+        action_url=f"/workspace/call-sheets/{locked.pk}/view",
     )
     return locked
 

@@ -113,3 +113,7 @@ The `campaigns` Django app separates organization-owned Campaign strategy from R
 ## Calendar and documents
 
 Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. Binary upload, external calendar sync, and notification delivery remain deferred. See `docs/calendar.md` and `docs/documents.md`.
+
+## Notifications
+
+Milestone 13 adds immutable shared Notification content, unique per-user recipient state, category preferences, and synchronous domain-service integration. Personal inbox data is not exposed to API keys. External and scheduled delivery remain deferred.

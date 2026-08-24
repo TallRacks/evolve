@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "campaigns",
     "calendar_app",
     "documents",
+    "notifications",
     "contacts",
     "promoters",
     "venues",
@@ -327,6 +328,26 @@ UNFOLD = {
                         "title": "Document links",
                         "icon": "link",
                         "link": reverse_lazy("admin:documents_documentlink_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "Communication",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Notifications",
+                        "icon": "notifications",
+                        "link": reverse_lazy(
+                            "admin:notifications_notification_changelist"
+                        ),
+                    },
+                    {
+                        "title": "Preferences",
+                        "icon": "tune",
+                        "link": reverse_lazy(
+                            "admin:notifications_notificationpreference_changelist"
+                        ),
                     },
                 ],
             },
