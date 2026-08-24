@@ -1,0 +1,22 @@
+# Portal Architecture
+
+The authenticated shell uses a responsive sidebar, organization context, profile access, and
+logout. Navigation follows bootstrap permissions for usability, while Django independently
+authorizes every API request.
+
+## Routes
+
+- /dashboard: real organization or platform totals
+- /workspace: current organization overview
+- /workspace/team: member search, filters, roles, and active state
+- /workspace/invitations: invitation lifecycle and one-time token generation
+- /workspace/organization and /workspace/settings: core settings
+- /platform: platform totals
+- /platform/organizations/* and /platform/users/*: platform inventories and details
+- /platform/audit: read-only mutation history
+- /profile: safe name editing and membership display
+- /invite/[token]: authenticated invitation acceptance
+
+Shared request code adds same-origin cookies and Django CSRF headers to mutations. Forms use
+consistent validation notices, confirmations, disabled states, status badges, and empty
+states. Tables and navigation degrade to scrolling or slide-over layouts on narrow screens.

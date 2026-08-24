@@ -98,3 +98,7 @@ their requirements are defined.
   authentication tokens in localStorage or introduce a second authentication authority.
 - Frontend organization selection is transient UX state only. Every backend operation must
   authorize the supplied organization independently.
+- Important organization, membership, invitation, profile, and platform mutations write
+  immutable audit events without secrets or invitation tokens.
+- Deactivate memberships, organizations, and users instead of hard-deleting operational
+  identity records. Never remove the last active organization owner.

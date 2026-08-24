@@ -85,3 +85,7 @@ remains at `/admin/`.
 See [`docs/identity-and-access.md`](docs/identity-and-access.md),
 [`docs/authentication.md`](docs/authentication.md), and
 [`docs/permissions.md`](docs/permissions.md).
+
+Milestone 4 adds the responsive application shell, organization-scoped team and invitation
+management, organization settings, profile editing, platform organization/user views, and a
+read-only audit log. See docs/portal-architecture.md and docs/team-management.md.

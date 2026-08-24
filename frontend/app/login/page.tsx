@@ -15,7 +15,10 @@ export default function LoginPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!loading && session) router.replace(landingPath(session));
+    if (!loading && session) {
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.replace(next?.startsWith("/invite/") ? next : landingPath(session));
+    }
   }, [loading, router, session]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -24,7 +27,8 @@ export default function LoginPage() {
     setError("");
     try {
       const next = await login(email, password);
-      router.replace(landingPath(next));
+      const destination = new URLSearchParams(window.location.search).get("next");
+      router.replace(destination?.startsWith("/invite/") ? destination : landingPath(next));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to sign in.");
     } finally {

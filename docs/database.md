@@ -8,6 +8,10 @@ Identity data uses UUID primary keys. `Membership` has a database uniqueness con
 user and organization. Invitation token digests are unique and raw invitation tokens are not
 stored. Schema changes use reviewed Django migrations only.
 
+AuditEvent stores immutable mutation history with UUID identity, actor, optional organization,
+action, resource reference, description, request IP, and timestamp. Audit records never
+contain credentials, invitation tokens, or token digests.
+
 Production uses the external `evolve_postgres_data` volume without a published host port.
 Credentials remain in `/opt/evolve/secrets/evolve.env`. Backup, restore, retention, and
 production connection-pool policies remain operational decisions to finalize before broader

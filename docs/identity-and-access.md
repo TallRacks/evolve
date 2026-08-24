@@ -54,6 +54,18 @@ the token, expiry, revocation, replay, active organization, and normalized user 
 transaction. Creating a replacement invitation revokes any prior unexpired invitation for the
 same organization and email. Email delivery is not part of this milestone.
 
+The workspace shows a generated raw token once. Lists and audit events never expose the token
+digest or raw token. The invite route requires an authenticated user whose normalized email
+matches the invitation. Invalid, expired, revoked, accepted, or replayed tokens are rejected.
+If the invited email has no user account, acceptance cannot proceed; account provisioning
+remains an explicit future decision.
+
+## Team lifecycle
+
+Membership removal uses is_active=False; user records are never deleted. Owners and
+administrators may change roles and active state. Evolve blocks demotion or deactivation of
+the last active owner.
+
 ## Decisions Deferred
 
 - Whether memberships eventually support multiple roles

@@ -28,3 +28,11 @@ Frontend guards provide loading, redirect, and 403 user experience only. They co
 backend-derived bootstrap data but do not protect backend resources. Every future
 organization-owned endpoint must independently resolve an authorized organization and apply
 the relevant backend permission.
+
+Organization owners and administrators may manage organization settings, memberships, and
+invitations. Managers may view team and invitation information but cannot mutate access.
+Members and artists may view their organization; artist memberships additionally receive
+portal.artist. The final active owner cannot be demoted or deactivated.
+
+Platform endpoints use the reusable PlatformSuperuser DRF permission. They expose no
+staff-only shortcut: is_staff without is_superuser remains insufficient.

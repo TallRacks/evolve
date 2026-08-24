@@ -59,3 +59,13 @@ The App Router root installs a small client-side auth provider. It bootstraps fr
 requests. Client route guards improve navigation but do not replace Django permissions.
 Organization selection is tab-local presentation state; backend requests must reauthorize
 any supplied organization identifier.
+## Management portals
+
+The authenticated Next.js shell has a persistent desktop sidebar and a mobile slide-over.
+Workspace routes provide organization overview, team, invitations, and settings. Platform
+routes provide superuser-only organization, user, and audit views. The profile route provides
+safe self-service name editing. Django admin remains a separate Unfold operations console.
+
+Explicit DRF API views serve only the data and mutations required by these routes. They
+resolve organization identifiers through authorized querysets and record important mutations
+in the read-only AuditEvent log.

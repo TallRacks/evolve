@@ -4,24 +4,28 @@ from unfold.admin import ModelAdmin
 
 from core.admin import PlatformSuperuserAdminMixin
 
+from .admin_forms import OwnerSafeUserChangeForm
 from .models import User
 
 
 @admin.register(User)
 class UserAdmin(PlatformSuperuserAdminMixin, DjangoUserAdmin, ModelAdmin):
+    form = OwnerSafeUserChangeForm
     ordering = ("email",)
     list_display = ("email", "first_name", "last_name", "is_active", "is_staff", "is_superuser")
     list_filter = ("is_active", "is_staff", "is_superuser")
     search_fields = ("email", "first_name", "last_name")
+    date_hierarchy = "date_joined"
+    list_per_page = 50
     readonly_fields = ("id", "date_joined", "last_login", "created_at", "updated_at")
     fieldsets = (
-        (None, {"fields": ("id", "email", "password")}),
-        ("Personal information", {"fields": ("first_name", "last_name")}),
+        ("Identity", {"fields": ("id", "email", "first_name", "last_name")}),
+        ("Security", {"fields": ("password", "last_login")}),
         (
-            "Permissions",
+            "Access",
             {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")},
         ),
-        ("Dates", {"fields": ("last_login", "date_joined", "created_at", "updated_at")}),
+        ("Metadata", {"fields": ("date_joined", "created_at", "updated_at")}),
     )
     add_fieldsets = (
         (
@@ -32,3 +36,6 @@ class UserAdmin(PlatformSuperuserAdminMixin, DjangoUserAdmin, ModelAdmin):
             },
         ),
     )
+
+    def has_delete_permission(self, request, obj=None):
+        return False

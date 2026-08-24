@@ -37,7 +37,7 @@ The session cookie remains HttpOnly. Login is explicitly protected with Django
 
 - Password reset
 - Password change UI
-- Invitation acceptance UI
+- Account creation for invited emails that do not yet have an Evolve user
 - MFA, including TOTP, recovery codes, and possible passkeys
 - SSO
 - Device and session management

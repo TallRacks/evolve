@@ -4,7 +4,12 @@ from .models import Membership, Organization
 
 ROLE_PERMISSIONS = {
     Membership.Role.OWNER: {"*"},
-    Membership.Role.ADMIN: {"organization.view", "organization.manage", "membership.manage"},
+    Membership.Role.ADMIN: {
+        "organization.view",
+        "organization.manage",
+        "membership.view",
+        "membership.manage",
+    },
     Membership.Role.MANAGER: {"organization.view", "membership.view"},
     Membership.Role.MEMBER: {"organization.view"},
     Membership.Role.ARTIST: {"organization.view", "portal.artist"},
