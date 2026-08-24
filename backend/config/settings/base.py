@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     "users",
     "organizations",
     "artists",
+    "bookings",
     "contacts",
     "promoters",
     "venues",
@@ -199,6 +200,26 @@ UNFOLD = {
                         "title": "Artist portal links",
                         "icon": "link",
                         "link": reverse_lazy("admin:artists_artistportallink_changelist"),
+                    },
+                    {
+                        "title": "Bookings",
+                        "icon": "event_note",
+                        "link": reverse_lazy("admin:bookings_booking_changelist"),
+                    },
+                    {
+                        "title": "Booking team assignments",
+                        "icon": "groups",
+                        "link": reverse_lazy("admin:bookings_bookingteamassignment_changelist"),
+                    },
+                    {
+                        "title": "Booking contact assignments",
+                        "icon": "contact_page",
+                        "link": reverse_lazy("admin:bookings_bookingcontactassignment_changelist"),
+                    },
+                    {
+                        "title": "Booking status history",
+                        "icon": "history",
+                        "link": reverse_lazy("admin:bookings_bookingstatushistory_changelist"),
                     },
                     {
                         "title": "Promoters",

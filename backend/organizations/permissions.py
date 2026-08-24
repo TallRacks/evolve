@@ -21,6 +21,12 @@ ROLE_PERMISSIONS = {
         "venue.manage",
         "contact.view",
         "contact.manage",
+        "booking.view",
+        "booking.manage",
+        "booking.status.manage",
+        "booking.team.manage",
+        "booking.commercial.view",
+        "booking.commercial.manage",
     },
     Membership.Role.MANAGER: {
         "organization.view",
@@ -33,6 +39,10 @@ ROLE_PERMISSIONS = {
         "venue.manage",
         "contact.view",
         "contact.manage",
+        "booking.view",
+        "booking.manage",
+        "booking.status.manage",
+        "booking.team.manage",
     },
     Membership.Role.MEMBER: {
         "organization.view",
@@ -40,6 +50,7 @@ ROLE_PERMISSIONS = {
         "promoter.view",
         "venue.view",
         "contact.view",
+        "booking.view",
     },
     Membership.Role.ARTIST: {"organization.view", "portal.artist"},
 }

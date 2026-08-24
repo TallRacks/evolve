@@ -92,4 +92,8 @@ continues to theme the shared shell.
 
 ## Relationship domains
 
-Promoters, Venues, and Contacts are separate organization-owned Django domains. PromoterContact and VenueContact provide reusable same-organization relationships. Django services and model validation remain authoritative for mutation, scoping, lifecycle, and audit behavior. These are current master records; future Bookings may snapshot selected fields without replacing the master entities.
+Promoters, Venues, and Contacts are separate organization-owned Django domains. PromoterContact and VenueContact provide reusable same-organization relationships. Django services and model validation remain authoritative for mutation, scoping, lifecycle, and audit behavior.
+
+## Booking domain
+
+Bookings are organization-owned operational records linked to an artist and optional promoter and venue masters. Selected partner, location, and contact values are frozen into booking snapshots for historical accuracy. Django services own transition validation, commercial-field authorization, assignment validation, and audit recording. Next.js workspace and platform booking routes remain presentation only.

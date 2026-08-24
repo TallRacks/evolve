@@ -127,4 +127,13 @@ their requirements are defined.
 - PromoterContact and VenueContact must link records in the same organization. Active relationships require an active Contact.
 - Relationship responsibilities are descriptive and never confer organization permissions.
 - Promoter, Venue, Contact, and relationship mutations are backend-authorized, audited, and deactivation based.
-- Master records remain current; future Booking snapshots may preserve historical operational fields, but no Booking schema belongs in these domains.
+- Master records remain current. Booking snapshots preserve selected historical operational values without moving Booking schema into these domains.
+
+## Booking-domain invariants
+
+- Bookings use globally unique UUID-backed `EV-` references and always belong to one organization and artist.
+- Promoter, venue, contact, and membership links must belong to the booking organization. Booking assignments never confer authorization.
+- Status changes use the explicit transition service and append-only history; generic updates must not bypass the transition graph.
+- Promoter, venue, location, and assigned-contact snapshots are frozen historical values. Master-record edits never silently rewrite them.
+- Commercial terms require explicit `booking.commercial.view/manage` permissions and are excluded from generic lists and developer responses.
+- Important booking, status, team, and contact mutations are audited without commercial values or private credentials.

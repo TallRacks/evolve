@@ -61,3 +61,7 @@ never grants Artist access.
 ## Relationship management
 
 `promoter.view/manage`, `venue.view/manage`, and `contact.view/manage` use the centralized organization permission map. Owners and administrators receive full permissions, managers receive view/manage, and members receive view only. Artist-role memberships receive none. Platform superusers have explicit cross-organization access; `is_staff` alone never bypasses organization scoping.
+
+## Booking management
+
+`booking.view`, `booking.manage`, `booking.status.manage`, and `booking.team.manage` separate reading, operational editing, controlled transitions, and team assignments. Owners and administrators receive full booking and commercial access. Managers receive operational booking permissions but not `booking.commercial.view/manage`; members receive read-only booking access with commercial fields omitted. Artist memberships receive none until an explicit artist-booking policy is approved. Platform superusers retain cross-organization access; staff status alone grants nothing.

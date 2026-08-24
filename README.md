@@ -1,7 +1,7 @@
 # Evolve v2
 
-Private artist-management and operations platform. This repository currently contains
-the identity, organization management, white-label, and developer-platform foundations; product domains have not been implemented.
+Private artist-management and operations platform. The repository contains the identity,
+organization, white-label, artist, relationship, and booking foundations.
 
 ## Prerequisites
 
@@ -100,3 +100,7 @@ from User. See [`docs/artists.md`](docs/artists.md).
 ## Relationship management
 
 Milestone 7 adds organization-scoped Promoter, Venue, and reusable business Contact master records. Workspace routes live under `/workspace/promoters`, `/workspace/venues`, and `/workspace/contacts`; platform-superuser views use the corresponding `/platform` routes. See `docs/promoters.md`, `docs/venues.md`, and `docs/contacts.md`.
+
+## Booking management
+
+Milestone 8 adds organization-scoped booking workflow, explicit status transitions, frozen partner/contact snapshots, team and contact assignments, permission-gated commercial terms, platform administration, dashboard metrics, and a read-only `booking.read` integration endpoint. See [`docs/bookings.md`](docs/bookings.md).

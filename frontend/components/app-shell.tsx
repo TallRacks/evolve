@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Building2, ChevronDown, Code2, ContactRound, Globe2, LayoutDashboard, LogOut, MapPin, Menu, Palette,
+  BookOpen, Building2, ChevronDown, Code2, ContactRound, Globe2, LayoutDashboard, LogOut, MapPin, Menu, Palette,
   ShieldCheck, UserRound, UsersRound, X,
 } from "lucide-react";
 import Link from "next/link";
@@ -38,6 +38,7 @@ export function AppShell({ children, organizationScoped = false }: { children: R
     { href: "/workspace/promoters", label: "Promoters", icon: UsersRound, show: !!membership?.permissions.includes("promoter.view") },
     { href: "/workspace/venues", label: "Venues", icon: MapPin, show: !!membership?.permissions.includes("venue.view") },
     { href: "/workspace/contacts", label: "Contacts", icon: ContactRound, show: !!membership?.permissions.includes("contact.view") },
+    { href: "/workspace/bookings", label: "Bookings", icon: BookOpen, show: !!membership?.permissions.includes("booking.view") },
     { href: "/workspace/team", label: "Team", icon: UsersRound, show: !!membership?.permissions.includes("membership.view") },
     { href: "/workspace/invitations", label: "Invitations", icon: UsersRound, show: !!membership?.permissions.includes("membership.view") },
     { href: "/workspace/organization", label: "Organization", icon: Building2, show: !!membership },
@@ -50,6 +51,7 @@ export function AppShell({ children, organizationScoped = false }: { children: R
     { href: "/platform/promoters", label: "Promoters", icon: UsersRound, show: !!session?.user.is_superuser },
     { href: "/platform/venues", label: "Venues", icon: MapPin, show: !!session?.user.is_superuser },
     { href: "/platform/contacts", label: "Contacts", icon: ContactRound, show: !!session?.user.is_superuser },
+    { href: "/platform/bookings", label: "Bookings", icon: BookOpen, show: !!session?.user.is_superuser },
     { href: "/platform/users", label: "Users", icon: UsersRound, show: !!session?.user.is_superuser },
     { href: "/platform/branding", label: "White-label", icon: Palette, show: !!session?.user.is_superuser },
     { href: "/platform/domains", label: "Domains", icon: Globe2, show: !!session?.user.is_superuser },

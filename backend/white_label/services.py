@@ -31,6 +31,7 @@ ALLOWED_SCOPES = (
     "artist.read",
     "promoter.read",
     "venue.read",
+    "booking.read",
 )
 
 

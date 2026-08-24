@@ -40,3 +40,7 @@ than deleting them. These tables are introduced by `artists.0001_initial`.
 ## Relationship records
 
 `contacts_contact`, `promoters_promoter`, and `venues_venue` hold organization-owned UUID master records. Relationship tables connect promoter/contact and venue/contact records with same-organization validation, constrained responsibility, active state, and conditional primary-per-role uniqueness. Promoter and venue slugs are unique per organization. Schema creation uses the three normal `0001_initial` migrations.
+
+## Booking records
+
+`bookings_booking` stores organization-owned events with UUID identity, a globally unique public reference, artist and optional promoter/venue references, schedule, lifecycle, priority, operational notes, and permission-gated commercial terms. Selected promoter, venue, city, and country values are frozen snapshots. Status history is append-only. Team and contact assignments enforce same-organization relationships and conditional primary uniqueness; assigned contact identity fields are snapshotted. `bookings.0001_initial` creates the domain after its master-record dependencies.

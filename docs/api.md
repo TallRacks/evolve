@@ -27,3 +27,9 @@ write endpoints are deferred.
 Session APIs provide explicit organization-scoped list/create/detail/update routes for `/api/promoters/`, `/api/venues/`, and `/api/contacts/`. Promoter and venue contact relationships use nested `/contacts/` routes and deactivate links instead of deleting them. `search` and lifecycle filters support future selectors without a separate search service.
 
 Read-only integration endpoints `/api/developer/promoters/` and `/api/developer/venues/` require `promoter.read` and `venue.read` respectively. Responses are organization scoped and curated. Contact notes and relationship contact details are not exposed through developer endpoints.
+
+## Booking APIs
+
+Session endpoints provide organization-scoped booking list, create, detail, and update operations. Status transitions, status history, team assignments, and contact assignments use explicit nested endpoints. Generic booking updates cannot change status. Platform routes provide superuser cross-organization administration.
+
+`GET /api/developer/bookings/` requires `booking.read`. Its organization-scoped response is read-only and intentionally excludes commercial terms, internal notes, contact details, and audit data. No booking write scope exists.

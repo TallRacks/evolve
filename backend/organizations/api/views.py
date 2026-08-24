@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 from artists.models import Artist
 from audit.models import AuditEvent
 from audit.services import record_event
+from bookings.models import Booking
 from contacts.models import Contact
 from promoters.models import Promoter
 from users.models import User
@@ -62,6 +63,25 @@ def organization_queryset():
         promoter_count=Count("promoters", distinct=True),
         venue_count=Count("venues", distinct=True),
         contact_count=Count("contacts", distinct=True),
+        booking_count=Count("bookings", distinct=True),
+        upcoming_booking_count=Count(
+            "bookings",
+            filter=Q(bookings__event_date__gte=timezone.localdate()),
+            distinct=True,
+        ),
+        confirmed_booking_count=Count(
+            "bookings", filter=Q(bookings__status="confirmed"), distinct=True
+        ),
+        pending_booking_count=Count(
+            "bookings",
+            filter=Q(bookings__status__in=("enquiry", "hold", "pending")),
+            distinct=True,
+        ),
+        priority_booking_count=Count(
+            "bookings",
+            filter=Q(bookings__priority__in=("high", "urgent")),
+            distinct=True,
+        ),
     )
 
 
@@ -270,6 +290,10 @@ class PlatformOverviewView(APIView):
                 "promoters": Promoter.objects.count(),
                 "venues": Venue.objects.count(),
                 "contacts": Contact.objects.count(),
+                "bookings": Booking.objects.count(),
+                "upcoming_bookings": Booking.objects.filter(
+                    event_date__gte=timezone.localdate()
+                ).count(),
             }
         )
 

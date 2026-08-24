@@ -7,6 +7,7 @@ urlpatterns = [
     path("api/auth/", include("users.api.urls")),
     path("api/", include("organizations.api.urls")),
     path("api/", include("artists.api.urls")),
+    path("api/", include("bookings.api.urls")),
     path("api/", include("contacts.api.urls")),
     path("api/", include("promoters.api.urls")),
     path("api/", include("venues.api.urls")),
