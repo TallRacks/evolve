@@ -36,3 +36,15 @@ portal.artist. The final active owner cannot be demoted or deactivated.
 
 Platform endpoints use the reusable PlatformSuperuser DRF permission. They expose no
 staff-only shortcut: is_staff without is_superuser remains insufficient.
+
+## White-label and developer permissions
+
+The explicit organization permissions `branding.manage`, `domain.manage`, and `api.manage`
+are granted to owners and administrators by the current role templates. Reading effective
+branding still requires authorized organization access. Branding mutation, domain submission,
+and API-client/key management require their matching permission. Platform branding and domain
+operations require `is_superuser`; `is_staff` alone remains insufficient.
+
+API scopes (`profile.read`, `organization.read`, and `team.read`) constrain integration keys.
+They are not organization-role permissions and cannot expand the organization attached to the
+API client. Hostname selection and frontend navigation never confer authorization.

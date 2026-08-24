@@ -74,3 +74,11 @@ docker compose -f compose.production.yml exec backend \
 
 Enter the new password only at the protected terminal prompt. Do not place it in shell
 arguments, environment templates, documentation, or Git.
+
+## Custom-domain provisioning
+
+The application does not edit DNS or Caddy. The controlled process is: an organization submits
+a hostname, publishes the generated TXT challenge, a platform superuser approves verification
+and activation, an operator adds only the approved hostname to the host-side Caddy configuration,
+then validates and reloads Caddy so it can obtain TLS. Unknown, pending, and inactive hostnames
+must not be routed. Automated DNS lookup and Caddy provisioning are deferred.

@@ -9,6 +9,9 @@ ROLE_PERMISSIONS = {
         "organization.manage",
         "membership.view",
         "membership.manage",
+        "branding.manage",
+        "domain.manage",
+        "api.manage",
     },
     Membership.Role.MANAGER: {"organization.view", "membership.view"},
     Membership.Role.MEMBER: {"organization.view"},
@@ -19,7 +22,14 @@ ROLE_PERMISSIONS = {
 def permissions_for_role(role: str) -> list[str]:
     permissions = ROLE_PERMISSIONS.get(role, set())
     if "*" in permissions:
-        return ["organization.manage", "organization.view", "membership.manage", "membership.view"]
+        return sorted(
+            {
+                permission
+                for values in ROLE_PERMISSIONS.values()
+                for permission in values
+                if permission != "*"
+            }
+        )
     return sorted(permissions)
 
 

@@ -1,0 +1,1 @@
+import { PlatformBrandingDetailPage } from "@/components/white-label-pages"; export default async function Page({params}:{params:Promise<{id:string}>}){return <PlatformBrandingDetailPage id={(await params).id}/>}

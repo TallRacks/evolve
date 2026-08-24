@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import environ
+from django.urls import reverse_lazy
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 
@@ -24,6 +25,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "users",
     "organizations",
+    "white_label",
     "audit",
     "core",
 ]
@@ -103,4 +105,89 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
     ],
+}
+
+UNFOLD = {
+    "SITE_TITLE": "Evolve administration",
+    "SITE_HEADER": "Evolve",
+    "SIDEBAR": {
+        "show_search": True,
+        "show_all_applications": False,
+        "navigation": [
+            {
+                "title": "Overview",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Dashboard",
+                        "icon": "dashboard",
+                        "link": reverse_lazy("admin:index"),
+                    },
+                ],
+            },
+            {
+                "title": "Identity & Access",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Users",
+                        "icon": "person",
+                        "link": reverse_lazy("admin:users_user_changelist"),
+                    },
+                    {
+                        "title": "Organizations",
+                        "icon": "business",
+                        "link": reverse_lazy("admin:organizations_organization_changelist"),
+                    },
+                    {
+                        "title": "Memberships",
+                        "icon": "group",
+                        "link": reverse_lazy("admin:organizations_membership_changelist"),
+                    },
+                    {
+                        "title": "Invitations",
+                        "icon": "mail",
+                        "link": reverse_lazy("admin:organizations_invitation_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "Platform",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "White-label configuration",
+                        "icon": "palette",
+                        "link": reverse_lazy("admin:white_label_organizationbranding_changelist"),
+                    },
+                    {
+                        "title": "Domains",
+                        "icon": "language",
+                        "link": reverse_lazy("admin:white_label_organizationdomain_changelist"),
+                    },
+                    {
+                        "title": "API clients",
+                        "icon": "key",
+                        "link": reverse_lazy("admin:white_label_apiclient_changelist"),
+                    },
+                    {
+                        "title": "API keys",
+                        "icon": "vpn_key",
+                        "link": reverse_lazy("admin:white_label_apikey_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "Governance",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Audit events",
+                        "icon": "policy",
+                        "link": reverse_lazy("admin:audit_auditevent_changelist"),
+                    },
+                ],
+            },
+        ],
+    },
 }

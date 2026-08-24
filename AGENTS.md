@@ -98,7 +98,16 @@ their requirements are defined.
   authentication tokens in localStorage or introduce a second authentication authority.
 - Frontend organization selection is transient UX state only. Every backend operation must
   authorize the supplied organization independently.
-- Important organization, membership, invitation, profile, and platform mutations write
+- Important organization, membership, invitation, profile, branding, domain, API credential, and platform mutations write
   immutable audit events without secrets or invitation tokens.
 - Deactivate memberships, organizations, and users instead of hard-deleting operational
   identity records. Never remove the last active organization owner.
+
+## White-label and integration invariants
+
+- Branding and verified host mappings are organization scoped and never grant access.
+- Theme input is constrained to validated tokens and URL references; arbitrary CSS and local production uploads are prohibited.
+- The canonical integration API remains `https://evolve.nastycsa.com/api/`.
+- API secrets are returned once, stored only as SHA-256 digests, explicitly scoped, and separate from browser sessions.
+- Unknown or unverified hosts must never resolve an organization. Domain verification and Caddy activation are controlled operations.
+- Raw API secrets, domain-independent credentials, and private key material must never enter logs or audit metadata.

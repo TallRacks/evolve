@@ -1,7 +1,7 @@
 # Evolve v2
 
 Private artist-management and operations platform. This repository currently contains
-the engineering foundation only; product domains have not been implemented.
+the identity, organization management, white-label, and developer-platform foundations; product domains have not been implemented.
 
 ## Prerequisites
 
@@ -86,6 +86,8 @@ See [`docs/identity-and-access.md`](docs/identity-and-access.md),
 [`docs/authentication.md`](docs/authentication.md), and
 [`docs/permissions.md`](docs/permissions.md).
 
-Milestone 4 adds the responsive application shell, organization-scoped team and invitation
+Milestone 4 added the responsive application shell, organization-scoped team and invitation
 management, organization settings, profile editing, platform organization/user views, and a
 read-only audit log. See docs/portal-architecture.md and docs/team-management.md.
+
+Milestone 5 adds organization branding, controlled custom-domain onboarding, and organization-scoped API credentials. See [`docs/white-label.md`](docs/white-label.md), [`docs/custom-domains.md`](docs/custom-domains.md), [`docs/api.md`](docs/api.md), and [`docs/api-authentication.md`](docs/api-authentication.md).

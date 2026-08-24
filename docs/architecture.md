@@ -69,3 +69,14 @@ safe self-service name editing. Django admin remains a separate Unfold operation
 Explicit DRF API views serve only the data and mutations required by these routes. They
 resolve organization identifiers through authorized querysets and record important mutations
 in the read-only AuditEvent log.
+
+## White-label and integration boundaries
+
+Branding, domain mappings, API clients, and API keys live in the `white_label` Django app.
+The authenticated shell requests effective branding for an organization that Django has
+already authorized. A verified, active, primary hostname may select tenant presentation
+context, but host resolution never creates membership or permission.
+
+The canonical integration API remains `https://evolve.nastycsa.com/api/`. Integration keys
+use an isolated Bearer-key path and do not replace Django session authentication. Caddy
+configuration is not dynamically managed by the application.

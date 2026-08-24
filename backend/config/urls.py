@@ -7,4 +7,5 @@ urlpatterns = [
     path("api/auth/", include("users.api.urls")),
     path("api/", include("organizations.api.urls")),
     path("api/", include("audit.api.urls")),
+    path("api/", include("white_label.api.urls")),
 ]

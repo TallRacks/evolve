@@ -16,3 +16,14 @@ Production uses the external `evolve_postgres_data` volume without a published h
 Credentials remain in `/opt/evolve/secrets/evolve.env`. Backup, restore, retention, and
 production connection-pool policies remain operational decisions to finalize before broader
 product data is introduced.
+
+## White-label records
+
+`OrganizationBranding` is a one-to-one organization configuration with validated color tokens,
+URL references, and support metadata. Defaults are computed when no row exists. `OrganizationDomain`
+normalizes and globally uniquifies hostnames, records a DNS challenge and verification state,
+and constrains each organization to one active primary domain.
+
+`APIClient` belongs to one organization. `APIKey` stores a display prefix, SHA-256 secret digest,
+allowlisted scopes, timestamps, expiry, and revocation state. Raw API secrets are never persisted.
+The `white_label.0001_initial` migration creates these four tables and their constraints.
