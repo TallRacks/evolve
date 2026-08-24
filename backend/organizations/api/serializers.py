@@ -12,6 +12,9 @@ class OrganizationSerializer(serializers.ModelSerializer):
     artist_count = serializers.IntegerField(read_only=True)
     active_artist_count = serializers.IntegerField(read_only=True)
     inactive_artist_count = serializers.IntegerField(read_only=True)
+    promoter_count = serializers.IntegerField(read_only=True)
+    venue_count = serializers.IntegerField(read_only=True)
+    contact_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Organization
@@ -27,6 +30,9 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "artist_count",
             "active_artist_count",
             "inactive_artist_count",
+            "promoter_count",
+            "venue_count",
+            "contact_count",
         )
         read_only_fields = ("id", "created_at", "updated_at")
 

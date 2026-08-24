@@ -57,3 +57,7 @@ administrators receive all three; managers receive view/manage; members receive 
 role receives only `portal.artist` and can see linked portal-safe data rather than the internal
 artist directory. Platform superusers can manage artists across organizations. Staff status alone
 never grants Artist access.
+
+## Relationship management
+
+`promoter.view/manage`, `venue.view/manage`, and `contact.view/manage` use the centralized organization permission map. Owners and administrators receive full permissions, managers receive view/manage, and members receive view only. Artist-role memberships receive none. Platform superusers have explicit cross-organization access; `is_staff` alone never bypasses organization scoping.

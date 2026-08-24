@@ -36,3 +36,7 @@ artist and membership and constrains each artist to one effective primary assign
 `ArtistPortalLink` uniquely pairs an artist and user. Domain validation rejects cross-organization
 or ineffective membership relationships. Operational workflows deactivate/archive records rather
 than deleting them. These tables are introduced by `artists.0001_initial`.
+
+## Relationship records
+
+`contacts_contact`, `promoters_promoter`, and `venues_venue` hold organization-owned UUID master records. Relationship tables connect promoter/contact and venue/contact records with same-organization validation, constrained responsibility, active state, and conditional primary-per-role uniqueness. Promoter and venue slugs are unique per organization. Schema creation uses the three normal `0001_initial` migrations.

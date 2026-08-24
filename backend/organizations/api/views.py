@@ -11,7 +11,10 @@ from rest_framework.views import APIView
 from artists.models import Artist
 from audit.models import AuditEvent
 from audit.services import record_event
+from contacts.models import Contact
+from promoters.models import Promoter
 from users.models import User
+from venues.models import Venue
 
 from ..models import Invitation, Membership, Organization
 from ..ownership import validate_membership_owner_change, validate_user_deactivation
@@ -56,6 +59,9 @@ def organization_queryset():
             filter=Q(artists__status__in=("inactive", "archived")),
             distinct=True,
         ),
+        promoter_count=Count("promoters", distinct=True),
+        venue_count=Count("venues", distinct=True),
+        contact_count=Count("contacts", distinct=True),
     )
 
 
@@ -261,6 +267,9 @@ class PlatformOverviewView(APIView):
                 "recent_audit": AuditEvent.objects.count(),
                 "artists": Artist.objects.count(),
                 "active_artists": Artist.objects.filter(status="active").count(),
+                "promoters": Promoter.objects.count(),
+                "venues": Venue.objects.count(),
+                "contacts": Contact.objects.count(),
             }
         )
 

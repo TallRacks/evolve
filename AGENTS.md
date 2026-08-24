@@ -119,3 +119,12 @@ their requirements are defined.
 - API secrets are returned once, stored only as SHA-256 digests, explicitly scoped, and separate from browser sessions.
 - Unknown or unverified hosts must never resolve an organization. Domain verification and Caddy activation are controlled operations.
 - Raw API secrets, domain-independent credentials, and private key material must never enter logs or audit metadata.
+
+## Relationship-domain invariants
+
+- `contacts.Contact` is an organization-owned business record, never an authentication identity or automatic link to `users.User`.
+- Promoter and Venue UUIDs are canonical; their slugs are unique only inside an organization.
+- PromoterContact and VenueContact must link records in the same organization. Active relationships require an active Contact.
+- Relationship responsibilities are descriptive and never confer organization permissions.
+- Promoter, Venue, Contact, and relationship mutations are backend-authorized, audited, and deactivation based.
+- Master records remain current; future Booking snapshots may preserve historical operational fields, but no Booking schema belongs in these domains.

@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  Building2, ChevronDown, Code2, Globe2, LayoutDashboard, LogOut, Menu, Palette,
+  Building2, ChevronDown, Code2, ContactRound, Globe2, LayoutDashboard, LogOut, MapPin, Menu, Palette,
   ShieldCheck, UserRound, UsersRound, X,
 } from "lucide-react";
 import Link from "next/link";
@@ -35,6 +35,9 @@ export function AppShell({ children, organizationScoped = false }: { children: R
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, show: true },
     { href: "/workspace", label: "Overview", icon: Building2, show: !!membership },
     { href: "/workspace/artists", label: "Artists", icon: UserRound, show: !!membership?.permissions.includes("artist.view") },
+    { href: "/workspace/promoters", label: "Promoters", icon: UsersRound, show: !!membership?.permissions.includes("promoter.view") },
+    { href: "/workspace/venues", label: "Venues", icon: MapPin, show: !!membership?.permissions.includes("venue.view") },
+    { href: "/workspace/contacts", label: "Contacts", icon: ContactRound, show: !!membership?.permissions.includes("contact.view") },
     { href: "/workspace/team", label: "Team", icon: UsersRound, show: !!membership?.permissions.includes("membership.view") },
     { href: "/workspace/invitations", label: "Invitations", icon: UsersRound, show: !!membership?.permissions.includes("membership.view") },
     { href: "/workspace/organization", label: "Organization", icon: Building2, show: !!membership },
@@ -44,6 +47,9 @@ export function AppShell({ children, organizationScoped = false }: { children: R
     { href: "/platform", label: "Platform", icon: ShieldCheck, show: !!session?.user.is_superuser },
     { href: "/platform/organizations", label: "Organizations", icon: Building2, show: !!session?.user.is_superuser },
     { href: "/platform/artists", label: "Artists", icon: UserRound, show: !!session?.user.is_superuser },
+    { href: "/platform/promoters", label: "Promoters", icon: UsersRound, show: !!session?.user.is_superuser },
+    { href: "/platform/venues", label: "Venues", icon: MapPin, show: !!session?.user.is_superuser },
+    { href: "/platform/contacts", label: "Contacts", icon: ContactRound, show: !!session?.user.is_superuser },
     { href: "/platform/users", label: "Users", icon: UsersRound, show: !!session?.user.is_superuser },
     { href: "/platform/branding", label: "White-label", icon: Palette, show: !!session?.user.is_superuser },
     { href: "/platform/domains", label: "Domains", icon: Globe2, show: !!session?.user.is_superuser },

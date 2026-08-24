@@ -96,3 +96,7 @@ Milestone 6 introduces the first product domain: organization-owned Artist profi
 artist-team responsibilities, optional portal-user links, workspace and platform administration,
 an artist-aware portal, and a read-only `artist.read` integration API. Artist remains distinct
 from User. See [`docs/artists.md`](docs/artists.md).
+
+## Relationship management
+
+Milestone 7 adds organization-scoped Promoter, Venue, and reusable business Contact master records. Workspace routes live under `/workspace/promoters`, `/workspace/venues`, and `/workspace/contacts`; platform-superuser views use the corresponding `/platform` routes. See `docs/promoters.md`, `docs/venues.md`, and `docs/contacts.md`.

@@ -24,7 +24,14 @@ DEFAULT_BRANDING = {
     "support_email": "",
     "support_url": "",
 }
-ALLOWED_SCOPES = ("profile.read", "organization.read", "team.read", "artist.read")
+ALLOWED_SCOPES = (
+    "profile.read",
+    "organization.read",
+    "team.read",
+    "artist.read",
+    "promoter.read",
+    "venue.read",
+)
 
 
 def effective_branding(organization):

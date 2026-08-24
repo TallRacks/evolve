@@ -89,3 +89,7 @@ artist without changing that membership's authorization role. `ArtistPortalLink`
 with artists, but portal reads additionally require an active artist-role membership in the same
 organization. Workspace and platform routes call explicit Django APIs; organization branding
 continues to theme the shared shell.
+
+## Relationship domains
+
+Promoters, Venues, and Contacts are separate organization-owned Django domains. PromoterContact and VenueContact provide reusable same-organization relationships. Django services and model validation remain authoritative for mutation, scoping, lifecycle, and audit behavior. These are current master records; future Bookings may snapshot selected fields without replacing the master entities.

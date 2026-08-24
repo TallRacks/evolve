@@ -21,3 +21,9 @@ Artist integrations add the allowlisted `artist.read` scope and the read-only en
 identity, lifecycle, location, website, image reference, and update time. It excludes legal names,
 private contact fields, team data, portal links, and audit data. Artist write scopes and integration
 write endpoints are deferred.
+
+## Relationship APIs
+
+Session APIs provide explicit organization-scoped list/create/detail/update routes for `/api/promoters/`, `/api/venues/`, and `/api/contacts/`. Promoter and venue contact relationships use nested `/contacts/` routes and deactivate links instead of deleting them. `search` and lifecycle filters support future selectors without a separate search service.
+
+Read-only integration endpoints `/api/developer/promoters/` and `/api/developer/venues/` require `promoter.read` and `venue.read` respectively. Responses are organization scoped and curated. Contact notes and relationship contact details are not exposed through developer endpoints.
