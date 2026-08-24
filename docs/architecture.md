@@ -80,3 +80,12 @@ context, but host resolution never creates membership or permission.
 The canonical integration API remains `https://evolve.nastycsa.com/api/`. Integration keys
 use an isolated Bearer-key path and do not replace Django session authentication. Caddy
 configuration is not dynamically managed by the application.
+
+## Artist domain
+
+`artists.Artist` is the first business-domain entity and belongs to one organization. It is not an
+authentication identity. `ArtistTeamAssignment` describes a membership's responsibility for one
+artist without changing that membership's authorization role. `ArtistPortalLink` associates users
+with artists, but portal reads additionally require an active artist-role membership in the same
+organization. Workspace and platform routes call explicit Django APIs; organization branding
+continues to theme the shared shell.

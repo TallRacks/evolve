@@ -43,9 +43,13 @@ urlpatterns = [
         InvitationDetailView.as_view(),
         name="invitation-revoke",
     ),
-    path("invitations/accept/", InvitationAcceptView.as_view(), name="invitation-accept"),
+    path(
+        "invitations/accept/", InvitationAcceptView.as_view(), name="invitation-accept"
+    ),
     path("profile/", ProfileView.as_view(), name="profile"),
-    path("platform/overview/", PlatformOverviewView.as_view(), name="platform-overview"),
+    path(
+        "platform/overview/", PlatformOverviewView.as_view(), name="platform-overview"
+    ),
     path(
         "platform/organizations/",
         PlatformOrganizationListView.as_view(),

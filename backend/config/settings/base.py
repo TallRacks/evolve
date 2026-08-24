@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "users",
     "organizations",
+    "artists",
     "white_label",
     "audit",
     "core",
@@ -174,6 +175,27 @@ UNFOLD = {
                         "title": "API keys",
                         "icon": "vpn_key",
                         "link": reverse_lazy("admin:white_label_apikey_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "Operations",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Artists",
+                        "icon": "person",
+                        "link": reverse_lazy("admin:artists_artist_changelist"),
+                    },
+                    {
+                        "title": "Artist team assignments",
+                        "icon": "groups",
+                        "link": reverse_lazy("admin:artists_artistteamassignment_changelist"),
+                    },
+                    {
+                        "title": "Artist portal links",
+                        "icon": "link",
+                        "link": reverse_lazy("admin:artists_artistportallink_changelist"),
                     },
                 ],
             },

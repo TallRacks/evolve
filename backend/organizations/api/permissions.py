@@ -28,7 +28,9 @@ class ActiveOrganizationMember(BasePermission):
 
 class ArtistAccess(BasePermission):
     def has_object_permission(self, request, view, organization):
-        return user_has_organization_permission(request.user, organization, "portal.artist")
+        return user_has_organization_permission(
+            request.user, organization, "portal.artist"
+        )
 
     def has_permission(self, request, view):
         if not request.user or not request.user.is_authenticated:
@@ -37,5 +39,7 @@ class ArtistAccess(BasePermission):
         if organization is None:
             return False
         return get_active_membership(request.user, organization) is not None and (
-            user_has_organization_permission(request.user, organization, "portal.artist")
+            user_has_organization_permission(
+                request.user, organization, "portal.artist"
+            )
         )

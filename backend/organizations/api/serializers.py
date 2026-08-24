@@ -9,6 +9,9 @@ from users.models import User
 class OrganizationSerializer(serializers.ModelSerializer):
     member_count = serializers.IntegerField(read_only=True)
     pending_invitation_count = serializers.IntegerField(read_only=True)
+    artist_count = serializers.IntegerField(read_only=True)
+    active_artist_count = serializers.IntegerField(read_only=True)
+    inactive_artist_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Organization
@@ -21,6 +24,9 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "updated_at",
             "member_count",
             "pending_invitation_count",
+            "artist_count",
+            "active_artist_count",
+            "inactive_artist_count",
         )
         read_only_fields = ("id", "created_at", "updated_at")
 
@@ -37,7 +43,15 @@ class MembershipSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Membership
-        fields = ("id", "user", "organization", "role", "is_active", "created_at", "updated_at")
+        fields = (
+            "id",
+            "user",
+            "organization",
+            "role",
+            "is_active",
+            "created_at",
+            "updated_at",
+        )
 
     def get_user(self, membership):
         return {
@@ -63,7 +77,9 @@ class MembershipUpdateSerializer(serializers.ModelSerializer):
 
 
 class InvitationSerializer(serializers.ModelSerializer):
-    invited_by = serializers.EmailField(source="invited_by.email", read_only=True, allow_null=True)
+    invited_by = serializers.EmailField(
+        source="invited_by.email", read_only=True, allow_null=True
+    )
     status = serializers.SerializerMethodField()
 
     class Meta:
@@ -107,7 +123,14 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("id", "email", "first_name", "last_name", "is_superuser", "memberships")
+        fields = (
+            "id",
+            "email",
+            "first_name",
+            "last_name",
+            "is_superuser",
+            "memberships",
+        )
         read_only_fields = ("id", "email", "is_superuser", "memberships")
 
     def get_memberships(self, user):

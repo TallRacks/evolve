@@ -48,3 +48,12 @@ operations require `is_superuser`; `is_staff` alone remains insufficient.
 API scopes (`profile.read`, `organization.read`, and `team.read`) constrain integration keys.
 They are not organization-role permissions and cannot expand the organization attached to the
 API client. Hostname selection and frontend navigation never confer authorization.
+
+## Artist permissions
+
+`artist.view` allows organization directory/detail reads. `artist.manage` allows profile and
+lifecycle changes. `artist.team.manage` controls assignments and portal links. Owners and
+administrators receive all three; managers receive view/manage; members receive view; the artist
+role receives only `portal.artist` and can see linked portal-safe data rather than the internal
+artist directory. Platform superusers can manage artists across organizations. Staff status alone
+never grants Artist access.

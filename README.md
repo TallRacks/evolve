@@ -91,3 +91,8 @@ management, organization settings, profile editing, platform organization/user v
 read-only audit log. See docs/portal-architecture.md and docs/team-management.md.
 
 Milestone 5 adds organization branding, controlled custom-domain onboarding, and organization-scoped API credentials. See [`docs/white-label.md`](docs/white-label.md), [`docs/custom-domains.md`](docs/custom-domains.md), [`docs/api.md`](docs/api.md), and [`docs/api-authentication.md`](docs/api-authentication.md).
+
+Milestone 6 introduces the first product domain: organization-owned Artist profiles, lifecycle,
+artist-team responsibilities, optional portal-user links, workspace and platform administration,
+an artist-aware portal, and a read-only `artist.read` integration API. Artist remains distinct
+from User. See [`docs/artists.md`](docs/artists.md).

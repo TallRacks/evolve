@@ -34,6 +34,7 @@ export function AppShell({ children, organizationScoped = false }: { children: R
   const links = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, show: true },
     { href: "/workspace", label: "Overview", icon: Building2, show: !!membership },
+    { href: "/workspace/artists", label: "Artists", icon: UserRound, show: !!membership?.permissions.includes("artist.view") },
     { href: "/workspace/team", label: "Team", icon: UsersRound, show: !!membership?.permissions.includes("membership.view") },
     { href: "/workspace/invitations", label: "Invitations", icon: UsersRound, show: !!membership?.permissions.includes("membership.view") },
     { href: "/workspace/organization", label: "Organization", icon: Building2, show: !!membership },
@@ -42,6 +43,7 @@ export function AppShell({ children, organizationScoped = false }: { children: R
     { href: "/developer", label: "Developer", icon: Code2, show: !!membership },
     { href: "/platform", label: "Platform", icon: ShieldCheck, show: !!session?.user.is_superuser },
     { href: "/platform/organizations", label: "Organizations", icon: Building2, show: !!session?.user.is_superuser },
+    { href: "/platform/artists", label: "Artists", icon: UserRound, show: !!session?.user.is_superuser },
     { href: "/platform/users", label: "Users", icon: UsersRound, show: !!session?.user.is_superuser },
     { href: "/platform/branding", label: "White-label", icon: Palette, show: !!session?.user.is_superuser },
     { href: "/platform/domains", label: "Domains", icon: Globe2, show: !!session?.user.is_superuser },

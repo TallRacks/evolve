@@ -91,7 +91,7 @@ their requirements are defined.
   scattered role-name comparisons.
 - A membership has one role for now. Invitations expire seven days after server issuance and
   only token digests may be stored.
-- Artist remains a future domain entity separate from User.
+- `artists.Artist` is an organization-owned business entity separate from `users.User`; portal access uses explicit links plus active membership authorization.
 - Django `/admin/` is the internal platform administration system. Next.js portal routes are
   presentation shells and must never be treated as authorization boundaries.
 - Browser authentication uses same-origin Django sessions and CSRF protection. Never store
@@ -102,6 +102,14 @@ their requirements are defined.
   immutable audit events without secrets or invitation tokens.
 - Deactivate memberships, organizations, and users instead of hard-deleting operational
   identity records. Never remove the last active organization owner.
+
+## Artist-domain invariants
+
+- Artist UUIDs are organization owned; slugs are unique only within an organization.
+- Artist team responsibility is descriptive and never replaces organization authorization roles.
+- Artist portal links never grant access by themselves; active linked users still require backend-authorized active membership.
+- Artist, assignment, and portal-link mutation paths must be organization scoped, audited, and deactivation based.
+- Artist asset references use validated URLs; do not add arbitrary CSS or local production uploads.
 
 ## White-label and integration invariants
 

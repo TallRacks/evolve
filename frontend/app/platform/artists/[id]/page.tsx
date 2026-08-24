@@ -1,0 +1,1 @@
+import { PlatformArtistDetailPage } from "@/components/artist-pages"; export default async function Page({params}:{params:Promise<{id:string}>}){return <PlatformArtistDetailPage id={(await params).id}/>;}

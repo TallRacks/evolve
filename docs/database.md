@@ -27,3 +27,12 @@ and constrains each organization to one active primary domain.
 `APIClient` belongs to one organization. `APIKey` stores a display prefix, SHA-256 secret digest,
 allowlisted scopes, timestamps, expiry, and revocation state. Raw API secrets are never persisted.
 The `white_label.0001_initial` migration creates these four tables and their constraints.
+
+## Artist records
+
+`Artist` uses a UUID primary key, organization ownership, an organization-scoped unique slug, and
+the lifecycle values active, inactive, and archived. `ArtistTeamAssignment` uniquely pairs an
+artist and membership and constrains each artist to one effective primary assignment.
+`ArtistPortalLink` uniquely pairs an artist and user. Domain validation rejects cross-organization
+or ineffective membership relationships. Operational workflows deactivate/archive records rather
+than deleting them. These tables are introduced by `artists.0001_initial`.

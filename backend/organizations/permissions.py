@@ -12,9 +12,17 @@ ROLE_PERMISSIONS = {
         "branding.manage",
         "domain.manage",
         "api.manage",
+        "artist.view",
+        "artist.manage",
+        "artist.team.manage",
     },
-    Membership.Role.MANAGER: {"organization.view", "membership.view"},
-    Membership.Role.MEMBER: {"organization.view"},
+    Membership.Role.MANAGER: {
+        "organization.view",
+        "membership.view",
+        "artist.view",
+        "artist.manage",
+    },
+    Membership.Role.MEMBER: {"organization.view", "artist.view"},
     Membership.Role.ARTIST: {"organization.view", "portal.artist"},
 }
 

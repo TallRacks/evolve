@@ -20,3 +20,8 @@ authorizes every API request.
 Shared request code adds same-origin cookies and Django CSRF headers to mutations. Forms use
 consistent validation notices, confirmations, disabled states, status badges, and empty
 states. Tables and navigation degrade to scrolling or slide-over layouts on narrow screens.
+
+Milestone 6 routes add `/workspace/artists`, `/workspace/artists/new`, and artist detail pages;
+platform superusers use `/platform/artists` and its detail pages. `/artist` resolves only explicitly
+linked artist profiles authorized by an active artist-role membership, supports multiple linked
+profiles, and exposes no organization administration controls.
