@@ -1,0 +1,76 @@
+name: evolve-production
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    env_file:
+      - ${EVOLVE_ENV_FILE:-/opt/evolve/secrets/evolve.env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - database
+
+  backend:
+    build:
+      context: ./backend
+      target: production
+    restart: unless-stopped
+    env_file:
+      - ${EVOLVE_ENV_FILE:-/opt/evolve/secrets/evolve.env}
+    volumes:
+      - static_data:/app/staticfiles
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; r=urllib.request.Request('http://127.0.0.1:8000/api/health/', headers={'Host':'evolve.nastycsa.com','X-Forwarded-Proto':'https'}); urllib.request.urlopen(r, timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      database:
+      proxy:
+        aliases:
+          - backend
+
+  frontend:
+    build:
+      context: ./frontend
+      target: production
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      proxy:
+        aliases:
+          - frontend
+
+volumes:
+  postgres_data:
+    name: evolve_postgres_data
+    external: true
+  static_data:
+    name: evolve_static_data
+
+networks:
+  database:
+    name: evolve_database
+    internal: true
+  proxy:
+    name: evolve_proxy
+    external: true

@@ -1,0 +1,74 @@
+# Evolve v2
+
+Private artist-management and operations platform. This repository currently contains
+the engineering foundation only; product domains have not been implemented.
+
+## Prerequisites
+
+- Docker Engine with Docker Compose
+- Git
+
+## Local development
+
+From the repository root:
+
+```bash
+cp .env.example .env
+```
+
+Replace every placeholder in `.env` with a local-only value. Generate a Django key,
+for example, with:
+
+```bash
+docker compose run --rm --no-deps backend python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
+```
+
+Then start the stack:
+
+```bash
+docker compose up --build -d
+docker compose exec backend python manage.py migrate
+docker compose exec backend python manage.py createsuperuser
+```
+
+Open:
+
+- Frontend: http://127.0.0.1:3000
+- API health: http://127.0.0.1:8000/api/health/
+- Django admin: http://127.0.0.1:8000/admin/
+
+Follow logs and stop the stack with:
+
+```bash
+docker compose logs -f backend frontend
+docker compose down
+```
+
+PostgreSQL has no host-published port. The frontend and backend ports are bound only
+to loopback for local development. In production, remove those `ports` mappings and
+attach the containers to the private network used by the independently managed Caddy
+instance; only Caddy publishes ports 80 and 443.
+
+## Validation
+
+```bash
+docker compose config --quiet
+docker compose build backend frontend
+docker run --rm -e EVOLVE_ENV=test evolve-backend ruff check .
+docker run --rm -e EVOLVE_ENV=test evolve-backend pytest
+docker run --rm -e EVOLVE_ENV=test evolve-backend python manage.py check
+docker run --rm -e EVOLVE_ENV=test evolve-backend python manage.py makemigrations --check --dry-run
+docker run --rm evolve-frontend npm run lint
+docker run --rm evolve-frontend npm run typecheck
+docker run --rm -e NODE_ENV=production evolve-frontend npm run build
+```
+
+Architecture and operational notes live in [`docs/`](docs/).
+
+## Production
+
+The live deployment checkout is `/opt/evolve/app`, and the canonical origin is
+https://evolve.nastycsa.com. Production uses `compose.production.yml`, external secrets at
+`/opt/evolve/secrets/evolve.env`, the external `evolve_proxy` network, and the preserved
+`evolve_postgres_data` volume. Exact deployment, migration, Caddy, validation, and rollback
+commands are documented in [`docs/deployment.md`](docs/deployment.md).
