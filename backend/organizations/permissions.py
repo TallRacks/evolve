@@ -41,6 +41,11 @@ ROLE_PERMISSIONS = {
         "rollout.view",
         "rollout.manage",
         "rollout.task.manage",
+        "calendar.view",
+        "calendar.manage",
+        "document.view",
+        "document.manage",
+        "document.restricted.view",
     },
     Membership.Role.MANAGER: {
         "organization.view",
@@ -71,6 +76,11 @@ ROLE_PERMISSIONS = {
         "rollout.view",
         "rollout.manage",
         "rollout.task.manage",
+        "calendar.view",
+        "calendar.manage",
+        "document.view",
+        "document.manage",
+        "document.restricted.view",
     },
     Membership.Role.MEMBER: {
         "organization.view",
@@ -83,6 +93,8 @@ ROLE_PERMISSIONS = {
         "music.view",
         "campaign.view",
         "rollout.view",
+        "calendar.view",
+        "document.view",
     },
     Membership.Role.ARTIST: {"organization.view", "portal.artist"},
 }

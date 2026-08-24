@@ -17,3 +17,7 @@ Workspace execution is `/workspace/rollouts/[id]`; platform inventory/detail is 
 `campaign.read` integration clients may call `/api/developer/rollouts/` for curated plan summaries and computed progress. Task detail, internal descriptions, assignee contact information, and audit data are excluded.
 
 A future Calendar should be a read projection over Bookings, Releases, Campaign dates, Rollout task due dates, and Call Sheets, not duplicated calendar tables. Future Notifications may consume approaching/overdue task dates and lifecycle audit events. No Redis, Celery, or notification delivery is introduced.
+
+## Calendar and documents
+
+Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. Binary upload, external calendar sync, and notification delivery remain deferred. See `docs/calendar.md` and `docs/documents.md`.

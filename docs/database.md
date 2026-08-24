@@ -56,3 +56,7 @@ than deleting them. These tables are introduced by `artists.0001_initial`.
 ## Campaign and rollout data
 
 `campaigns.Campaign` links one Organization and Artist plus an optional compatible Release. CampaignChannel stores constrained planned channels. Rollout belongs to Campaign and Organization; RolloutMilestone and RolloutTask belong to Rollout. RolloutTaskDependency is a directed same-rollout edge. UUID keys, scoped slug/order uniqueness, dependency uniqueness/self constraints, and Django validation preserve integrity. Schema is introduced by `campaigns.0001_initial`.
+
+## Calendar and documents
+
+Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. Binary upload, external calendar sync, and notification delivery remain deferred. See `docs/calendar.md` and `docs/documents.md`.

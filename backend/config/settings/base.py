@@ -30,6 +30,8 @@ INSTALLED_APPS = [
     "callsheets",
     "music",
     "campaigns",
+    "calendar_app",
+    "documents",
     "contacts",
     "promoters",
     "venues",
@@ -190,6 +192,11 @@ UNFOLD = {
                 "collapsible": True,
                 "items": [
                     {
+                        "title": "Calendar events",
+                        "icon": "calendar_month",
+                        "link": reverse_lazy("admin:calendar_app_calendarevent_changelist"),
+                    },
+                    {
                         "title": "Artists",
                         "icon": "person",
                         "link": reverse_lazy("admin:artists_artist_changelist"),
@@ -304,6 +311,22 @@ UNFOLD = {
                         "title": "Channels",
                         "icon": "share",
                         "link": reverse_lazy("admin:campaigns_campaignchannel_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "Content & Documents",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Documents",
+                        "icon": "folder",
+                        "link": reverse_lazy("admin:documents_document_changelist"),
+                    },
+                    {
+                        "title": "Document links",
+                        "icon": "link",
+                        "link": reverse_lazy("admin:documents_documentlink_changelist"),
                     },
                 ],
             },

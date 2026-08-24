@@ -1,0 +1,49 @@
+from artists.selectors import portal_artists_for_user
+from organizations.permissions import user_has_organization_permission
+
+from .models import Document
+
+
+def documents_for_user(user, organization):
+    qs = (
+        Document.objects.filter(organization=organization)
+        .select_related("uploaded_by", "parent_document")
+        .prefetch_related(
+            "links__artist",
+            "links__booking",
+            "links__call_sheet",
+            "links__release",
+            "links__campaign",
+        )
+    )
+    if user.is_superuser:
+        return qs
+    if not user_has_organization_permission(user, organization, "document.view"):
+        return qs.none()
+    if not user_has_organization_permission(user, organization, "document.restricted.view"):
+        qs = qs.exclude(visibility=Document.Visibility.RESTRICTED)
+    return qs
+
+
+def portal_documents(user, organization):
+    artist_ids = portal_artists_for_user(user).filter(organization=organization).values("pk")
+    return (
+        Document.objects.filter(
+            organization=organization,
+            visibility=Document.Visibility.ARTIST,
+            links__artist_id__in=artist_ids,
+        )
+        .select_related("uploaded_by")
+        .prefetch_related("links__artist")
+        .distinct()
+    )
+
+
+def developer_documents(organization):
+    return Document.objects.filter(
+        organization=organization,
+        visibility=Document.Visibility.ORGANIZATION,
+        status=Document.Status.ACTIVE,
+    ).prefetch_related(
+        "links__artist", "links__booking", "links__call_sheet", "links__release", "links__campaign"
+    )

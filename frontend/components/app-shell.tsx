@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  BookOpen, Building2, ChevronDown, ClipboardList, Code2, ContactRound, Globe2, LayoutDashboard, LogOut, MapPin, Menu, Palette,
+  BookOpen, Building2, CalendarDays, FileText, ChevronDown, ClipboardList, Code2, ContactRound, Globe2, LayoutDashboard, LogOut, MapPin, Menu, Palette,
   Megaphone, Music2, ShieldCheck, UserRound, UsersRound, X,
 } from "lucide-react";
 import Link from "next/link";
@@ -39,6 +39,8 @@ export function AppShell({ children, organizationScoped = false }: { children: R
     { href: "/workspace/venues", label: "Venues", icon: MapPin, show: !!membership?.permissions.includes("venue.view") },
     { href: "/workspace/contacts", label: "Contacts", icon: ContactRound, show: !!membership?.permissions.includes("contact.view") },
     { href: "/workspace/bookings", label: "Bookings", icon: BookOpen, show: !!membership?.permissions.includes("booking.view") },
+    { href: "/workspace/calendar", label: "Calendar", icon: CalendarDays, show: !!membership?.permissions.includes("calendar.view") },
+    { href: "/workspace/documents", label: "Documents", icon: FileText, show: !!membership?.permissions.includes("document.view") },
     { href: "/workspace/music", label: "Music", icon: Music2, show: !!membership?.permissions.includes("music.view") },
     { href: "/workspace/campaigns", label: "Campaigns", icon: Megaphone, show: !!membership?.permissions.includes("campaign.view") },
     { href: "/workspace/team", label: "Team", icon: UsersRound, show: !!membership?.permissions.includes("membership.view") },
@@ -54,6 +56,8 @@ export function AppShell({ children, organizationScoped = false }: { children: R
     { href: "/platform/venues", label: "Venues", icon: MapPin, show: !!session?.user.is_superuser },
     { href: "/platform/contacts", label: "Contacts", icon: ContactRound, show: !!session?.user.is_superuser },
     { href: "/platform/bookings", label: "Bookings", icon: BookOpen, show: !!session?.user.is_superuser },
+    { href: "/platform/calendar", label: "Calendar", icon: CalendarDays, show: !!session?.user.is_superuser },
+    { href: "/platform/documents", label: "Documents", icon: FileText, show: !!session?.user.is_superuser },
     { href: "/platform/call-sheets", label: "Call Sheets", icon: ClipboardList, show: !!session?.user.is_superuser },
     { href: "/platform/music", label: "Music", icon: Music2, show: !!session?.user.is_superuser },
     { href: "/platform/campaigns", label: "Campaigns", icon: Megaphone, show: !!session?.user.is_superuser },

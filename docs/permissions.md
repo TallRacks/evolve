@@ -77,3 +77,7 @@ The centralized permissions are `music.view`, `music.manage`, `music.release.man
 ## Campaign and Rollout permissions
 
 `campaign.view/manage/status.manage` and `rollout.view/manage/task.manage` use centralized Membership permissions. Owners, administrators, and managers manage plans; members receive read access; artist portal reads are separately limited to linked Artists. Platform access requires an active superuser, never `is_staff` alone.
+
+## Calendar and documents
+
+Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. Binary upload, external calendar sync, and notification delivery remain deferred. See `docs/calendar.md` and `docs/documents.md`.

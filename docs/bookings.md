@@ -33,3 +33,7 @@ Workspace routes are `/workspace/bookings`, `/workspace/bookings/new`, and `/wor
 Session APIs are rooted at `/api/bookings/`, with explicit nested status, status-history, team, and contact routes. Platform list/detail routes are rooted at `/api/platform/bookings/`. `GET /api/developer/bookings/` requires `booking.read` and returns a curated organization-scoped directory without commercial terms, notes, contacts, team, or audit data. Booking write integrations are not implemented.
 
 Each Booking may now own one versioned Call Sheet operational document. Booking remains the commercial and event source of truth; Call Sheet versions preserve execution snapshots and never include commercial terms. See [`call-sheets.md`](call-sheets.md). Settlement and artist-portal Booking visibility remain deferred.
+
+## Calendar and documents
+
+Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. Binary upload, external calendar sync, and notification delivery remain deferred. See `docs/calendar.md` and `docs/documents.md`.

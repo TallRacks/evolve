@@ -19,3 +19,7 @@ Workspace routes are `/workspace/campaigns`, `/workspace/campaigns/new`, and `/w
 Integration credentials with `campaign.read` may call `/api/developer/campaigns/`. Responses are organization scoped and omit strategy notes, ownership contact details, tasks, and audit data.
 
 Budgets, ad spend, analytics, social/DSP/email integrations, asset approval, and finances are deferred.
+
+## Calendar and documents
+
+Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. Binary upload, external calendar sync, and notification delivery remain deferred. See `docs/calendar.md` and `docs/documents.md`.

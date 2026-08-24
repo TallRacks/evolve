@@ -35,3 +35,7 @@ Workspace routes live under `/workspace/music`; platform routes live under `/pla
 Campaign now references `Campaign -> Release -> Artist` where a Release is applicable. Operational execution uses `Campaign -> Rollout -> milestones/tasks`; Music data is referenced rather than duplicated. See [`campaigns.md`](campaigns.md) and [`rollouts.md`](rollouts.md).
 
 Territory-specific schedules, DSP integrations, audio/object storage, distribution feeds, rights, royalties, publishing ownership, accounting, invoices, and payments are deferred.
+
+## Calendar and documents
+
+Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. Binary upload, external calendar sync, and notification delivery remain deferred. See `docs/calendar.md` and `docs/documents.md`.

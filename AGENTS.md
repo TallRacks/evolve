@@ -162,3 +162,10 @@ their requirements are defined.
 - Campaign, Rollout, and Task lifecycle changes use explicit services; task completion records actor/time and reopening is explicit.
 - Task dependencies remain within one Rollout and reject self-links, duplicates, and cycles. Progress and overdue state are derived.
 - Calendar and notification delivery remain deferred read/consumer concerns. Do not add analytics, budgets, integrations, Redis, or Celery.
+
+## Calendar and document invariants
+
+- Calendar source records remain authoritative; never persist duplicate projections. Standalone events alone use `CalendarEvent`.
+- Calendar queries are organization scoped, permission filtered, timezone aware, and limited to 366 days. Private events and internal/commercial fields never leak.
+- Documents are metadata with explicit version lineage and constrained same-organization typed links. Never introduce unrestricted generic relations.
+- Binary uploads and sensitive identity documents remain disabled until durable private storage and security controls are explicitly selected. Restricted access is backend enforced.

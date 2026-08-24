@@ -114,3 +114,7 @@ Milestone 10 adds organization-scoped Releases, reusable Tracks, ordered trackli
 ## Campaign and rollout planning
 
 Milestone 11 adds strategic Campaigns, planned channels, operational Rollouts, milestones, assigned tasks, dependencies, derived progress, artist/release views, platform administration, and the `campaign.read` integration scope. See [`docs/campaigns.md`](docs/campaigns.md) and [`docs/rollouts.md`](docs/rollouts.md).
+
+## Milestone 12: Calendar and Documents
+
+The unified calendar projects existing operational dates without duplicate rows. Standalone events and external-reference document metadata are available in workspace, platform, Artist portal, Django admin, and scoped developer APIs. Binary document upload remains disabled. See `docs/calendar.md` and `docs/documents.md`.

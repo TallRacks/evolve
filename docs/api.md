@@ -47,3 +47,7 @@ API credentials may receive `music.read`. `GET /api/developer/releases/` and `GE
 ## Campaign APIs
 
 `campaign.read` enables organization-scoped `GET /api/developer/campaigns/` and `GET /api/developer/rollouts/`. Responses contain curated identity, lifecycle, dates, relationships, and computed progress. Internal descriptions, task details, assignee contact data, and audit history are excluded.
+
+## Calendar and documents
+
+Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. Binary upload, external calendar sync, and notification delivery remain deferred. See `docs/calendar.md` and `docs/documents.md`.

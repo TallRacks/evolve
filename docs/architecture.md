@@ -109,3 +109,7 @@ The `music` Django app owns Release, Track, ReleaseTrack, MusicCredit, and Relea
 ## Marketing planning
 
 The `campaigns` Django app separates organization-owned Campaign strategy from Rollout execution. Rollouts contain milestones, tasks, and validated dependencies. Future Calendar is a read projection and future Notifications consume audit/date state; neither is a standalone domain in Milestone 11.
+
+## Calendar and documents
+
+Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. Binary upload, external calendar sync, and notification delivery remain deferred. See `docs/calendar.md` and `docs/documents.md`.

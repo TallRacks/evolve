@@ -33,3 +33,7 @@ Published and superseded versions and all children reject edits through API, ser
 The Booking Call Sheet landing route is `/workspace/bookings/{id}/call-sheet`; editors use `/workspace/call-sheets/{versionId}` and authenticated read/print views use `/workspace/call-sheets/{versionId}/view`. Platform inventory uses `/platform/call-sheets`. The HTML view includes print CSS suitable for browser A4/Letter output. Server PDF rendering is deferred to avoid adding browser infrastructure.
 
 Anonymous sharing, expiring links, revocation, password protection, email/SMS distribution, notifications, and public field-level privacy policies are deferred.
+
+## Calendar and documents
+
+Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. Binary upload, external calendar sync, and notification delivery remain deferred. See `docs/calendar.md` and `docs/documents.md`.
