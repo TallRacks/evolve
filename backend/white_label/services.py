@@ -33,6 +33,7 @@ ALLOWED_SCOPES = (
     "venue.read",
     "booking.read",
     "callsheet.read",
+    "music.read",
 )
 
 

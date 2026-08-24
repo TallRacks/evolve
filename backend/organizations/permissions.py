@@ -30,6 +30,11 @@ ROLE_PERMISSIONS = {
         "callsheet.view",
         "callsheet.manage",
         "callsheet.publish",
+        "music.view",
+        "music.manage",
+        "music.release.manage",
+        "music.track.manage",
+        "music.credits.manage",
     },
     Membership.Role.MANAGER: {
         "organization.view",
@@ -49,6 +54,11 @@ ROLE_PERMISSIONS = {
         "callsheet.view",
         "callsheet.manage",
         "callsheet.publish",
+        "music.view",
+        "music.manage",
+        "music.release.manage",
+        "music.track.manage",
+        "music.credits.manage",
     },
     Membership.Role.MEMBER: {
         "organization.view",
@@ -58,6 +68,7 @@ ROLE_PERMISSIONS = {
         "contact.view",
         "booking.view",
         "callsheet.view",
+        "music.view",
     },
     Membership.Role.ARTIST: {"organization.view", "portal.artist"},
 }

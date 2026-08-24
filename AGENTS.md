@@ -146,3 +146,11 @@ their requirements are defined.
 - Booking, venue, team, and contact source changes never rewrite historical versions. Refresh from Booking is explicit and draft-only.
 - Call Sheets contain operational data only. Booking commercial terms, payment data, passport data, and card data are prohibited.
 - Developer Call Sheet responses include only current published summaries and exclude private contact details and internal notes.
+
+## Music-domain invariants
+
+- Release and Track records are organization owned and primarily linked to Artist; all related placements, credits, and links must preserve organization compatibility.
+- Release status changes use the centralized lifecycle service and row locking; generic updates and Django admin must not bypass it.
+- ISRC and UPC/EAN values are normalized/validated and unique when non-empty. Evolve never acts as an issuing agency.
+- Artist portal Music access is read-only and limited to explicitly authorized linked Artists. Internal notes remain private.
+- Credits are descriptive only. Do not add royalties, payments, DSP integrations, audio storage, Campaigns, or Rollouts without a later milestone.

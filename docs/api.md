@@ -39,3 +39,7 @@ Session endpoints provide organization-scoped booking list, create, detail, and 
 Session endpoints create or retrieve a Booking's single Call Sheet, create sequential versions, edit draft/ready snapshots, manage structured schedule/team/contact/travel/accommodation children, and invoke explicit ready, publish, cancel, and refresh operations. Publication cannot occur through generic PATCH. Platform endpoints provide superuser inventory/detail access.
 
 `GET /api/developer/call-sheets/` requires `callsheet.read` and returns only current published summaries for the API client's organization. It excludes schedule details, personal contact information, internal notes, commercial terms, and historical superseded versions. No Call Sheet write scope exists.
+
+## Music integration API
+
+API credentials may receive `music.read`. `GET /api/developer/releases/` and `GET /api/developer/tracks/` are read-only and organization scoped. Responses contain curated public catalog fields and exclude internal notes, audit history, and private business metadata.

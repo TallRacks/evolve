@@ -106,3 +106,7 @@ Milestone 7 adds organization-scoped Promoter, Venue, and reusable business Cont
 Milestone 8 adds organization-scoped booking workflow, explicit status transitions, frozen partner/contact snapshots, team and contact assignments, permission-gated commercial terms, platform administration, dashboard metrics, and a read-only `booking.read` integration endpoint. See [`docs/bookings.md`](docs/bookings.md).
 
 Milestone 9 adds one versioned Call Sheet per Booking, structured run-of-show and operational sections, atomic publication/superseding, immutable published history, print-friendly authenticated views, platform administration, and a curated `callsheet.read` integration endpoint. See [`docs/call-sheets.md`](docs/call-sheets.md).
+
+## Music catalog
+
+Milestone 10 adds organization-scoped Releases, reusable Tracks, ordered tracklists, descriptive credits, identifiers, release links, explicit release lifecycle, artist read-only catalog views, platform administration, and the `music.read` developer API. See [`docs/music.md`](docs/music.md).

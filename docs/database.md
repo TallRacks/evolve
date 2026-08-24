@@ -48,3 +48,7 @@ than deleting them. These tables are introduced by `artists.0001_initial`.
 ## Call Sheet records
 
 `callsheets_callsheet` is a one-to-one operational document identity for Booking. `CallSheetVersion` has a unique sequential number per Call Sheet and a conditional database constraint permitting one published version. Explicit snapshot columns preserve event, venue, access, production, hospitality, and note data. Ordered child tables store schedule, team, contact, travel, and accommodation snapshots. Foreign keys protect historical rows from source deletion. `callsheets.0001_initial` creates the domain after Booking, Membership, Contact, and User dependencies.
+
+## Music catalog
+
+`music.Release` and `music.Track` use UUID primary keys and organization-scoped slugs. `music.ReleaseTrack` provides ordered many-to-many placement. `music.MusicCredit` targets at least one Release or Track. `music.ReleaseLink` stores constrained public URLs. Database constraints enforce non-empty global ISRC/UPC uniqueness, placement uniqueness, disc/track uniqueness, one primary release link, and the credit target requirement. Schema is introduced by `music.0001_initial`.

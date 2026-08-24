@@ -101,3 +101,7 @@ Bookings are organization-owned operational records linked to an artist and opti
 ## Call Sheet domain
 
 Each Booking may own one CallSheet identity with sequential CallSheetVersion revisions. Versions contain explicit event and venue snapshots plus ordered schedule, team, contact, travel, and accommodation records. Django serializes version creation and publication, supersedes the previous published version atomically, and protects published operational history. Next.js provides authenticated editing and print views only; anonymous distribution and PDF rendering infrastructure are deferred.
+
+## Music domain
+
+The `music` Django app owns Release, Track, ReleaseTrack, MusicCredit, and ReleaseLink persistence and business rules. Next.js consumes same-origin Django APIs for workspace, artist, and platform Music views. Future Campaign and Rollout domains may reference Release but are not implemented. See [`music.md`](music.md).

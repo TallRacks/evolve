@@ -69,3 +69,7 @@ never grants Artist access.
 ## Call Sheet operations
 
 `callsheet.view`, `callsheet.manage`, and `callsheet.publish` separate authenticated reads, draft/structured editing, and official publication. Owners, administrators, and managers receive all three. Members receive read-only access. Artist memberships receive no Call Sheet access until a dedicated published-view policy is approved. Platform superusers cross organizations; `is_staff` alone grants nothing. Booking assignment responsibility never creates Call Sheet authorization.
+
+## Music permissions
+
+The centralized permissions are `music.view`, `music.manage`, `music.release.manage`, `music.track.manage`, and `music.credits.manage`. Owners, admins, and managers receive Music management permissions; members receive read access. Artist-linked portal reads are separately scoped to authorized Artists. Platform-wide Music access requires an active Django superuser; `is_staff` is insufficient. Frontend route guards are UX only.

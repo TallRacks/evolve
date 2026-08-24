@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "artists",
     "bookings",
     "callsheets",
+    "music",
     "contacts",
     "promoters",
     "venues",
@@ -231,6 +232,21 @@ UNFOLD = {
                         "title": "Call Sheet versions",
                         "icon": "history_edu",
                         "link": reverse_lazy("admin:callsheets_callsheetversion_changelist"),
+                    },
+                    {
+                        "title": "Music releases",
+                        "icon": "album",
+                        "link": reverse_lazy("admin:music_release_changelist"),
+                    },
+                    {
+                        "title": "Music tracks",
+                        "icon": "music_note",
+                        "link": reverse_lazy("admin:music_track_changelist"),
+                    },
+                    {
+                        "title": "Music credits",
+                        "icon": "group",
+                        "link": reverse_lazy("admin:music_musiccredit_changelist"),
                     },
                     {
                         "title": "Promoters",
