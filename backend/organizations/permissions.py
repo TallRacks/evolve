@@ -27,6 +27,9 @@ ROLE_PERMISSIONS = {
         "booking.team.manage",
         "booking.commercial.view",
         "booking.commercial.manage",
+        "callsheet.view",
+        "callsheet.manage",
+        "callsheet.publish",
     },
     Membership.Role.MANAGER: {
         "organization.view",
@@ -43,6 +46,9 @@ ROLE_PERMISSIONS = {
         "booking.manage",
         "booking.status.manage",
         "booking.team.manage",
+        "callsheet.view",
+        "callsheet.manage",
+        "callsheet.publish",
     },
     Membership.Role.MEMBER: {
         "organization.view",
@@ -51,6 +57,7 @@ ROLE_PERMISSIONS = {
         "venue.view",
         "contact.view",
         "booking.view",
+        "callsheet.view",
     },
     Membership.Role.ARTIST: {"organization.view", "portal.artist"},
 }

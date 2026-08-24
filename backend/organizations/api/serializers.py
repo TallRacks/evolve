@@ -20,6 +20,10 @@ class OrganizationSerializer(serializers.ModelSerializer):
     confirmed_booking_count = serializers.IntegerField(read_only=True)
     pending_booking_count = serializers.IntegerField(read_only=True)
     priority_booking_count = serializers.IntegerField(read_only=True)
+    call_sheet_count = serializers.IntegerField(read_only=True)
+    draft_call_sheet_count = serializers.IntegerField(read_only=True)
+    published_upcoming_call_sheet_count = serializers.IntegerField(read_only=True)
+    confirmed_without_call_sheet_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Organization
@@ -43,6 +47,10 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "confirmed_booking_count",
             "pending_booking_count",
             "priority_booking_count",
+            "call_sheet_count",
+            "draft_call_sheet_count",
+            "published_upcoming_call_sheet_count",
+            "confirmed_without_call_sheet_count",
         )
         read_only_fields = ("id", "created_at", "updated_at")
 

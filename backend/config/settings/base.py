@@ -27,6 +27,7 @@ INSTALLED_APPS = [
     "organizations",
     "artists",
     "bookings",
+    "callsheets",
     "contacts",
     "promoters",
     "venues",
@@ -220,6 +221,16 @@ UNFOLD = {
                         "title": "Booking status history",
                         "icon": "history",
                         "link": reverse_lazy("admin:bookings_bookingstatushistory_changelist"),
+                    },
+                    {
+                        "title": "Call Sheets",
+                        "icon": "description",
+                        "link": reverse_lazy("admin:callsheets_callsheet_changelist"),
+                    },
+                    {
+                        "title": "Call Sheet versions",
+                        "icon": "history_edu",
+                        "link": reverse_lazy("admin:callsheets_callsheetversion_changelist"),
                     },
                     {
                         "title": "Promoters",

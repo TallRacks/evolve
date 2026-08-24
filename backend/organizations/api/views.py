@@ -12,6 +12,7 @@ from artists.models import Artist
 from audit.models import AuditEvent
 from audit.services import record_event
 from bookings.models import Booking
+from callsheets.models import CallSheet, CallSheetVersion
 from contacts.models import Contact
 from promoters.models import Promoter
 from users.models import User
@@ -80,6 +81,29 @@ def organization_queryset():
         priority_booking_count=Count(
             "bookings",
             filter=Q(bookings__priority__in=("high", "urgent")),
+            distinct=True,
+        ),
+        call_sheet_count=Count("call_sheets", distinct=True),
+        draft_call_sheet_count=Count(
+            "call_sheets__versions",
+            filter=Q(call_sheets__versions__status__in=("draft", "ready")),
+            distinct=True,
+        ),
+        published_upcoming_call_sheet_count=Count(
+            "call_sheets__versions",
+            filter=Q(
+                call_sheets__versions__status="published",
+                call_sheets__versions__event_date__gte=timezone.localdate(),
+            ),
+            distinct=True,
+        ),
+        confirmed_without_call_sheet_count=Count(
+            "bookings",
+            filter=Q(
+                bookings__status="confirmed",
+                bookings__event_date__gte=timezone.localdate(),
+                bookings__call_sheet__isnull=True,
+            ),
             distinct=True,
         ),
     )
@@ -293,6 +317,13 @@ class PlatformOverviewView(APIView):
                 "bookings": Booking.objects.count(),
                 "upcoming_bookings": Booking.objects.filter(
                     event_date__gte=timezone.localdate()
+                ).count(),
+                "call_sheets": CallSheet.objects.count(),
+                "draft_call_sheets": CallSheetVersion.objects.filter(
+                    status__in=("draft", "ready")
+                ).count(),
+                "published_upcoming_call_sheets": CallSheetVersion.objects.filter(
+                    status="published", event_date__gte=timezone.localdate()
                 ).count(),
             }
         )

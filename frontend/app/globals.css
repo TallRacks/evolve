@@ -16,5 +16,12 @@ body {
   overflow-x: hidden;
 }
 
+@media print {
+  aside, header:not(.call-sheet-print header), button, nav { display: none !important; }
+  main, .lg\:pl-72 { margin: 0 !important; padding: 0 !important; }
+  .call-sheet-print { max-width: none !important; box-shadow: none !important; }
+  @page { size: auto; margin: 12mm; }
+}
+
 button, a, input, select { outline-offset: 3px; }
 :focus-visible { outline: 2px solid #fbbf24; }

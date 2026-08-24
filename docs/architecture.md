@@ -97,3 +97,7 @@ Promoters, Venues, and Contacts are separate organization-owned Django domains. 
 ## Booking domain
 
 Bookings are organization-owned operational records linked to an artist and optional promoter and venue masters. Selected partner, location, and contact values are frozen into booking snapshots for historical accuracy. Django services own transition validation, commercial-field authorization, assignment validation, and audit recording. Next.js workspace and platform booking routes remain presentation only.
+
+## Call Sheet domain
+
+Each Booking may own one CallSheet identity with sequential CallSheetVersion revisions. Versions contain explicit event and venue snapshots plus ordered schedule, team, contact, travel, and accommodation records. Django serializes version creation and publication, supersedes the previous published version atomically, and protects published operational history. Next.js provides authenticated editing and print views only; anonymous distribution and PDF rendering infrastructure are deferred.

@@ -33,3 +33,9 @@ Read-only integration endpoints `/api/developer/promoters/` and `/api/developer/
 Session endpoints provide organization-scoped booking list, create, detail, and update operations. Status transitions, status history, team assignments, and contact assignments use explicit nested endpoints. Generic booking updates cannot change status. Platform routes provide superuser cross-organization administration.
 
 `GET /api/developer/bookings/` requires `booking.read`. Its organization-scoped response is read-only and intentionally excludes commercial terms, internal notes, contact details, and audit data. No booking write scope exists.
+
+## Call Sheet APIs
+
+Session endpoints create or retrieve a Booking's single Call Sheet, create sequential versions, edit draft/ready snapshots, manage structured schedule/team/contact/travel/accommodation children, and invoke explicit ready, publish, cancel, and refresh operations. Publication cannot occur through generic PATCH. Platform endpoints provide superuser inventory/detail access.
+
+`GET /api/developer/call-sheets/` requires `callsheet.read` and returns only current published summaries for the API client's organization. It excludes schedule details, personal contact information, internal notes, commercial terms, and historical superseded versions. No Call Sheet write scope exists.

@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  BookOpen, Building2, ChevronDown, Code2, ContactRound, Globe2, LayoutDashboard, LogOut, MapPin, Menu, Palette,
+  BookOpen, Building2, ChevronDown, ClipboardList, Code2, ContactRound, Globe2, LayoutDashboard, LogOut, MapPin, Menu, Palette,
   ShieldCheck, UserRound, UsersRound, X,
 } from "lucide-react";
 import Link from "next/link";
@@ -52,6 +52,7 @@ export function AppShell({ children, organizationScoped = false }: { children: R
     { href: "/platform/venues", label: "Venues", icon: MapPin, show: !!session?.user.is_superuser },
     { href: "/platform/contacts", label: "Contacts", icon: ContactRound, show: !!session?.user.is_superuser },
     { href: "/platform/bookings", label: "Bookings", icon: BookOpen, show: !!session?.user.is_superuser },
+    { href: "/platform/call-sheets", label: "Call Sheets", icon: ClipboardList, show: !!session?.user.is_superuser },
     { href: "/platform/users", label: "Users", icon: UsersRound, show: !!session?.user.is_superuser },
     { href: "/platform/branding", label: "White-label", icon: Palette, show: !!session?.user.is_superuser },
     { href: "/platform/domains", label: "Domains", icon: Globe2, show: !!session?.user.is_superuser },

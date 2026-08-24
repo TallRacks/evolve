@@ -32,4 +32,4 @@ Workspace routes are `/workspace/bookings`, `/workspace/bookings/new`, and `/wor
 
 Session APIs are rooted at `/api/bookings/`, with explicit nested status, status-history, team, and contact routes. Platform list/detail routes are rooted at `/api/platform/bookings/`. `GET /api/developer/bookings/` requires `booking.read` and returns a curated organization-scoped directory without commercial terms, notes, contacts, team, or audit data. Booking write integrations are not implemented.
 
-Call sheets, travel, settlement, hospitality, production workflows, and artist-portal booking visibility are intentionally deferred.
+Each Booking may now own one versioned Call Sheet operational document. Booking remains the commercial and event source of truth; Call Sheet versions preserve execution snapshots and never include commercial terms. See [`call-sheets.md`](call-sheets.md). Settlement and artist-portal Booking visibility remain deferred.

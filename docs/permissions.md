@@ -65,3 +65,7 @@ never grants Artist access.
 ## Booking management
 
 `booking.view`, `booking.manage`, `booking.status.manage`, and `booking.team.manage` separate reading, operational editing, controlled transitions, and team assignments. Owners and administrators receive full booking and commercial access. Managers receive operational booking permissions but not `booking.commercial.view/manage`; members receive read-only booking access with commercial fields omitted. Artist memberships receive none until an explicit artist-booking policy is approved. Platform superusers retain cross-organization access; staff status alone grants nothing.
+
+## Call Sheet operations
+
+`callsheet.view`, `callsheet.manage`, and `callsheet.publish` separate authenticated reads, draft/structured editing, and official publication. Owners, administrators, and managers receive all three. Members receive read-only access. Artist memberships receive no Call Sheet access until a dedicated published-view policy is approved. Platform superusers cross organizations; `is_staff` alone grants nothing. Booking assignment responsibility never creates Call Sheet authorization.

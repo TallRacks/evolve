@@ -44,3 +44,7 @@ than deleting them. These tables are introduced by `artists.0001_initial`.
 ## Booking records
 
 `bookings_booking` stores organization-owned events with UUID identity, a globally unique public reference, artist and optional promoter/venue references, schedule, lifecycle, priority, operational notes, and permission-gated commercial terms. Selected promoter, venue, city, and country values are frozen snapshots. Status history is append-only. Team and contact assignments enforce same-organization relationships and conditional primary uniqueness; assigned contact identity fields are snapshotted. `bookings.0001_initial` creates the domain after its master-record dependencies.
+
+## Call Sheet records
+
+`callsheets_callsheet` is a one-to-one operational document identity for Booking. `CallSheetVersion` has a unique sequential number per Call Sheet and a conditional database constraint permitting one published version. Explicit snapshot columns preserve event, venue, access, production, hospitality, and note data. Ordered child tables store schedule, team, contact, travel, and accommodation snapshots. Foreign keys protect historical rows from source deletion. `callsheets.0001_initial` creates the domain after Booking, Membership, Contact, and User dependencies.

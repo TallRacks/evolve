@@ -137,3 +137,12 @@ their requirements are defined.
 - Promoter, venue, location, and assigned-contact snapshots are frozen historical values. Master-record edits never silently rewrite them.
 - Commercial terms require explicit `booking.commercial.view/manage` permissions and are excluded from generic lists and developer responses.
 - Important booking, status, team, and contact mutations are audited without commercial values or private credentials.
+
+## Call Sheet invariants
+
+- Each Booking has at most one CallSheet identity; revisions are sequential CallSheetVersion records.
+- Publishing is atomic, supersedes the previous published version, and permits only one current published version.
+- Published, superseded, and cancelled versions and their structured children are immutable. Changes require a new draft.
+- Booking, venue, team, and contact source changes never rewrite historical versions. Refresh from Booking is explicit and draft-only.
+- Call Sheets contain operational data only. Booking commercial terms, payment data, passport data, and card data are prohibited.
+- Developer Call Sheet responses include only current published summaries and exclude private contact details and internal notes.

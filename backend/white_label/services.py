@@ -32,6 +32,7 @@ ALLOWED_SCOPES = (
     "promoter.read",
     "venue.read",
     "booking.read",
+    "callsheet.read",
 )
 
 
