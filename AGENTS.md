@@ -79,3 +79,18 @@ their requirements are defined.
 - Do not install application runtimes directly on Ubuntu when Docker can provide them.
 - Back up, format, and validate the host-side Caddyfile before reload. Do not edit the
   read-only copy mounted inside the container.
+
+## Identity and organization invariants
+
+- `users.User` is the permanent Django user model; email is the unique login identifier.
+- Organizations are the application ownership and authorization boundary.
+- Normal users require an active membership and permission for organization operations.
+- Django superusers are platform-wide and may cross organization boundaries; `is_staff` is
+  never equivalent to organization access.
+- Authorization belongs in centralized Django permissions/selectors, not frontend routes or
+  scattered role-name comparisons.
+- A membership has one role for now. Invitations expire seven days after server issuance and
+  only token digests may be stored.
+- Artist remains a future domain entity separate from User.
+- Django `/admin/` is the internal platform administration system. Next.js portal routes are
+  presentation shells and must never be treated as authorization boundaries.

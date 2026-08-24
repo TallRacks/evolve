@@ -1,12 +1,18 @@
 # Authentication
 
-Django is the source of truth for identity and authentication. The initial API enables
-Django session authentication, which fits the same-origin Caddy architecture and Django
-admin. The public health endpoint is the only anonymous API behavior currently defined.
+Django is the authentication authority. The same-origin browser architecture uses Django
+sessions and CSRF protection through `https://evolve.nastycsa.com`; JWT and Auth.js are not
+used. `/api/auth/me/` exposes safe identity and active-membership data for an authenticated
+session and returns 401 otherwise.
 
-The frontend must not persist database credentials or bypass Django. Detailed login,
-session lifetime, account recovery, multi-factor authentication, and invitation flows
-require product decisions before implementation.
+Production cookies are HttpOnly, Secure, and SameSite=Lax. Sessions currently last at most
+eight hours and expire when the browser closes. Django stores sessions server-side, allowing
+server-side invalidation. Advanced device management, remember-me, concurrent-session limits,
+and forced periodic reauthentication are deferred.
 
-Production cookies are secure and CSRF protection remains enabled. Trusted origins and
-allowed hosts are configured through environment variables.
+Passwords use Django's standard hashers and validation framework: user similarity checks, a
+12-character minimum, common-password rejection, and numeric-only rejection. Password expiry
+and custom cryptography are intentionally excluded.
+
+MFA is not implemented yet. The future direction should support TOTP, recovery codes, and
+potential WebAuthn/passkeys without changing Django's identity authority.

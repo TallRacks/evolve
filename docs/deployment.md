@@ -60,3 +60,17 @@ For application rollback, check out the previously known-good commit, rebuild it
 images, inspect its reverse migration implications, and recreate backend/frontend. Do not
 reverse migrations automatically. Restore the backed-up host Caddyfile and validate/reload it
 only when rolling back routing. Database and certificate volumes remain in place.
+
+## Platform superuser password
+
+The initial platform account is `admin@evolve.nastycsa.com`. Its generated bootstrap password
+is not stored or printed. Set a known password through Django's interactive, hashed-password
+workflow from `/opt/evolve/app`:
+
+```bash
+docker compose -f compose.production.yml exec backend \
+  python manage.py changepassword admin@evolve.nastycsa.com
+```
+
+Enter the new password only at the protected terminal prompt. Do not place it in shell
+arguments, environment templates, documentation, or Git.

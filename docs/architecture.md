@@ -46,3 +46,10 @@ joins `evolve_proxy` with the frontend and backend. Django and PostgreSQL additi
 the internal `evolve_database` network; Caddy and the frontend cannot reach PostgreSQL.
 Application containers expose ports only to Docker networks, while Caddy alone publishes
 host ports 80 and 443.
+
+## Portal and authorization boundaries
+
+Next.js presents `/login`, `/dashboard`, `/platform`, `/workspace`, and `/artist`. These routes
+separate future user experiences but confer no authority. Django sessions identify users, and
+Django organization permission helpers enforce all data access. Django `/admin/` remains the
+platform-superuser operations interface.

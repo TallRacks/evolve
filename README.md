@@ -72,3 +72,14 @@ https://evolve.nastycsa.com. Production uses `compose.production.yml`, external 
 `/opt/evolve/secrets/evolve.env`, the external `evolve_proxy` network, and the preserved
 `evolve_postgres_data` volume. Exact deployment, migration, Caddy, validation, and rollback
 commands are documented in [`docs/deployment.md`](docs/deployment.md).
+
+## Identity foundation
+
+Evolve uses the custom `users.User` model, Django sessions, organization-scoped memberships,
+centralized backend permission helpers, and hashed seven-day invitations. The identity API is
+`GET /api/auth/me/`. Next.js currently provides lightweight shells at `/login`, `/dashboard`,
+`/platform`, `/workspace`, and `/artist`; Django administration remains at `/admin/`.
+
+See [`docs/identity-and-access.md`](docs/identity-and-access.md),
+[`docs/authentication.md`](docs/authentication.md), and
+[`docs/permissions.md`](docs/permissions.md).
