@@ -1,11 +1,15 @@
-import { PortalShell } from "@/components/portal-shell";
+import { AppShell } from "@/components/app-shell";
+import { RouteGuard } from "@/components/auth/route-guard";
 
 export default function WorkspacePage() {
   return (
-    <PortalShell
-      eyebrow="Organisation portal"
-      title="Organisation Workspace"
-      description="The future organisation-scoped workspace for artist-management operations."
-    />
+    <RouteGuard portal="workspace">
+      <AppShell
+        eyebrow="Organisation portal"
+        title="Organisation Workspace"
+        description="The authenticated organisation context for future management operations."
+        organizationScoped
+      />
+    </RouteGuard>
   );
 }

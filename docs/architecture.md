@@ -53,3 +53,9 @@ Next.js presents `/login`, `/dashboard`, `/platform`, `/workspace`, and `/artist
 separate future user experiences but confer no authority. Django sessions identify users, and
 Django organization permission helpers enforce all data access. Django `/admin/` remains the
 platform-superuser operations interface.
+
+The App Router root installs a small client-side auth provider. It bootstraps from
+`/api/auth/me/`, holds no credential or session token, and uses same-origin cookies for API
+requests. Client route guards improve navigation but do not replace Django permissions.
+Organization selection is tab-local presentation state; backend requests must reauthorize
+any supplied organization identifier.

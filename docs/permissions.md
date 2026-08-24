@@ -18,3 +18,13 @@ organization and memberships; manager can view the organization and memberships;
 artist can view the organization. Application code asks for permission identifiers rather
 than comparing role names. Future organization-owned querysets must start from an authorized
 organization selector, never an organization ID supplied by a client alone.
+
+Reusable DRF permission classes live in `organizations.api.permissions` for authenticated
+users, active organization access, platform superusers, and artist access. Artist portal
+access is represented by the backend-derived `portal.artist` permission. Platform access
+requires an active Django superuser; `is_staff` alone never qualifies.
+
+Frontend guards provide loading, redirect, and 403 user experience only. They consume
+backend-derived bootstrap data but do not protect backend resources. Every future
+organization-owned endpoint must independently resolve an authorized organization and apply
+the relevant backend permission.

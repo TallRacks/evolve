@@ -94,3 +94,7 @@ their requirements are defined.
 - Artist remains a future domain entity separate from User.
 - Django `/admin/` is the internal platform administration system. Next.js portal routes are
   presentation shells and must never be treated as authorization boundaries.
+- Browser authentication uses same-origin Django sessions and CSRF protection. Never store
+  authentication tokens in localStorage or introduce a second authentication authority.
+- Frontend organization selection is transient UX state only. Every backend operation must
+  authorize the supplied organization independently.

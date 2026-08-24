@@ -7,8 +7,15 @@ ROLE_PERMISSIONS = {
     Membership.Role.ADMIN: {"organization.view", "organization.manage", "membership.manage"},
     Membership.Role.MANAGER: {"organization.view", "membership.view"},
     Membership.Role.MEMBER: {"organization.view"},
-    Membership.Role.ARTIST: {"organization.view"},
+    Membership.Role.ARTIST: {"organization.view", "portal.artist"},
 }
+
+
+def permissions_for_role(role: str) -> list[str]:
+    permissions = ROLE_PERMISSIONS.get(role, set())
+    if "*" in permissions:
+        return ["organization.manage", "organization.view", "membership.manage", "membership.view"]
+    return sorted(permissions)
 
 
 def get_active_membership(user, organization: Organization) -> Membership | None:

@@ -27,6 +27,24 @@ Django superusers are platform superusers and may cross organization boundaries.
 only permits Django admin login and never grants organization access. Identity and
 organization administration screens are restricted to platform superusers.
 
+## Session bootstrap and organization context
+
+`/api/auth/me/` and successful login return a safe user object plus active memberships.
+Each membership includes its organization, role, and backend-derived permission identifiers.
+Inactive users, organizations, and memberships confer no access. Platform superusers are
+identified explicitly and are not given fabricated memberships.
+
+For a normal user, the frontend selects the first active membership by default. A single
+membership therefore becomes the workspace context automatically; multiple memberships can
+be switched in the application shell. The selected organization ID is kept in
+`sessionStorage` for browser-tab UX only and is discarded if it is not in the latest
+bootstrap response. It is never an authorization grant and is not persisted in PostgreSQL.
+Platform superusers have no automatic organization context.
+
+Portal UX rules are: authenticated users may enter `/dashboard`, platform superusers may
+enter `/platform`, active members may enter `/workspace`, and memberships with
+`portal.artist` may enter `/artist`. Django remains authoritative for every API operation.
+
 ## Invitations
 
 Invitation tokens use Python's cryptographically secure token generator. PostgreSQL stores

@@ -1,11 +1,15 @@
-import { PortalShell } from "@/components/portal-shell";
+import { AppShell } from "@/components/app-shell";
+import { RouteGuard } from "@/components/auth/route-guard";
 
 export default function ArtistPage() {
   return (
-    <PortalShell
-      eyebrow="Artist-facing portal"
-      title="Artist Portal"
-      description="A reserved presentation boundary for future artist-facing workflows. Artist remains separate from User in the domain model."
-    />
+    <RouteGuard portal="artist">
+      <AppShell
+        eyebrow="Artist-facing portal"
+        title="Artist Portal"
+        description="The authenticated artist-facing boundary. Artist remains separate from User in the domain model."
+        organizationScoped
+      />
+    </RouteGuard>
   );
 }

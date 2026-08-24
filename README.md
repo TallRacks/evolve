@@ -76,9 +76,11 @@ commands are documented in [`docs/deployment.md`](docs/deployment.md).
 ## Identity foundation
 
 Evolve uses the custom `users.User` model, Django sessions, organization-scoped memberships,
-centralized backend permission helpers, and hashed seven-day invitations. The identity API is
-`GET /api/auth/me/`. Next.js currently provides lightweight shells at `/login`, `/dashboard`,
-`/platform`, `/workspace`, and `/artist`; Django administration remains at `/admin/`.
+centralized backend permission helpers, and hashed seven-day invitations. Same-origin Django
+session authentication is exposed through `/api/auth/csrf/`, `/api/auth/login/`,
+`/api/auth/me/`, and `/api/auth/logout/`. Next.js provides the authenticated application
+shells at `/dashboard`, `/platform`, `/workspace`, and `/artist`; Django administration
+remains at `/admin/`.
 
 See [`docs/identity-and-access.md`](docs/identity-and-access.md),
 [`docs/authentication.md`](docs/authentication.md), and
