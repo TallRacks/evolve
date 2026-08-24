@@ -43,3 +43,7 @@ Session endpoints create or retrieve a Booking's single Call Sheet, create seque
 ## Music integration API
 
 API credentials may receive `music.read`. `GET /api/developer/releases/` and `GET /api/developer/tracks/` are read-only and organization scoped. Responses contain curated public catalog fields and exclude internal notes, audit history, and private business metadata.
+
+## Campaign APIs
+
+`campaign.read` enables organization-scoped `GET /api/developer/campaigns/` and `GET /api/developer/rollouts/`. Responses contain curated identity, lifecycle, dates, relationships, and computed progress. Internal descriptions, task details, assignee contact data, and audit history are excluded.

@@ -1,0 +1,57 @@
+from django.urls import path
+
+from campaigns.models import Campaign, Rollout
+
+from .views import (
+    ArtistPortalCampaignView,
+    CampaignDetailView,
+    CampaignListView,
+    CampaignStatusView,
+    ChannelDetailView,
+    ChannelView,
+    DependencyDetailView,
+    DependencyView,
+    DeveloperView,
+    MilestoneDetailView,
+    MilestoneView,
+    PlatformCampaignDetailView,
+    PlatformCampaignListView,
+    PlatformRolloutDetailView,
+    PlatformRolloutListView,
+    RolloutCreateView,
+    RolloutDetailView,
+    RolloutStatusView,
+    TaskCompleteView,
+    TaskDetailView,
+    TaskStatusView,
+    TaskView,
+)
+
+urlpatterns = [
+    path("campaigns/", CampaignListView.as_view()),
+    path("campaigns/<uuid:campaign_id>/", CampaignDetailView.as_view()),
+    path("campaigns/<uuid:campaign_id>/status/", CampaignStatusView.as_view()),
+    path("campaigns/<uuid:campaign_id>/channels/", ChannelView.as_view()),
+    path("campaigns/<uuid:campaign_id>/channels/<uuid:channel_id>/", ChannelDetailView.as_view()),
+    path("campaigns/<uuid:campaign_id>/rollouts/", RolloutCreateView.as_view()),
+    path("rollouts/<uuid:rollout_id>/", RolloutDetailView.as_view()),
+    path("rollouts/<uuid:rollout_id>/status/", RolloutStatusView.as_view()),
+    path("rollouts/<uuid:rollout_id>/milestones/", MilestoneView.as_view()),
+    path("rollouts/<uuid:rollout_id>/tasks/", TaskView.as_view()),
+    path("rollout-milestones/<uuid:milestone_id>/", MilestoneDetailView.as_view()),
+    path("rollout-tasks/<uuid:task_id>/", TaskDetailView.as_view()),
+    path("rollout-tasks/<uuid:task_id>/status/", TaskStatusView.as_view()),
+    path("rollout-tasks/<uuid:task_id>/complete/", TaskCompleteView.as_view()),
+    path("rollout-tasks/<uuid:task_id>/dependencies/", DependencyView.as_view()),
+    path(
+        "rollout-tasks/<uuid:task_id>/dependencies/<uuid:dependency_id>/",
+        DependencyDetailView.as_view(),
+    ),
+    path("artist-portal/campaigns/", ArtistPortalCampaignView.as_view()),
+    path("platform/campaigns/", PlatformCampaignListView.as_view()),
+    path("platform/campaigns/<uuid:campaign_id>/", PlatformCampaignDetailView.as_view()),
+    path("platform/rollouts/", PlatformRolloutListView.as_view()),
+    path("platform/rollouts/<uuid:rollout_id>/", PlatformRolloutDetailView.as_view()),
+    path("developer/campaigns/", DeveloperView.as_view(model=Campaign)),
+    path("developer/rollouts/", DeveloperView.as_view(model=Rollout)),
+]

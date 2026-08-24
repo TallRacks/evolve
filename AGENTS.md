@@ -154,3 +154,11 @@ their requirements are defined.
 - ISRC and UPC/EAN values are normalized/validated and unique when non-empty. Evolve never acts as an issuing agency.
 - Artist portal Music access is read-only and limited to explicitly authorized linked Artists. Internal notes remain private.
 - Credits are descriptive only. Do not add royalties, payments, DSP integrations, audio storage, Campaigns, or Rollouts without a later milestone.
+
+## Campaign and Rollout invariants
+
+- Campaign is strategic and Rollout is operational; do not collapse them into one model.
+- Campaign Artist, optional Release, ownership Membership, Rollout, milestone, task, and dependency relationships must preserve organization scope.
+- Campaign, Rollout, and Task lifecycle changes use explicit services; task completion records actor/time and reopening is explicit.
+- Task dependencies remain within one Rollout and reject self-links, duplicates, and cycles. Progress and overdue state are derived.
+- Calendar and notification delivery remain deferred read/consumer concerns. Do not add analytics, budgets, integrations, Redis, or Celery.

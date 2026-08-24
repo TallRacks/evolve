@@ -30,8 +30,8 @@ Workspace APIs are under `/api/music/`; artist catalog bootstrap is `/api/artist
 
 Workspace routes live under `/workspace/music`; platform routes live under `/platform/music`. Django Unfold provides protected Music administration and uses the lifecycle service for release status changes.
 
-## Future relationships
+## Campaign relationships
 
-A future Campaign may reference `Campaign -> Release -> Artist`. A future Rollout may reference `Rollout -> Release -> milestones/tasks`. No Campaign or Rollout models or speculative fields are included now.
+Campaign now references `Campaign -> Release -> Artist` where a Release is applicable. Operational execution uses `Campaign -> Rollout -> milestones/tasks`; Music data is referenced rather than duplicated. See [`campaigns.md`](campaigns.md) and [`rollouts.md`](rollouts.md).
 
 Territory-specific schedules, DSP integrations, audio/object storage, distribution feeds, rights, royalties, publishing ownership, accounting, invoices, and payments are deferred.

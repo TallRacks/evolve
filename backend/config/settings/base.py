@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "bookings",
     "callsheets",
     "music",
+    "campaigns",
     "contacts",
     "promoters",
     "venues",
@@ -272,6 +273,37 @@ UNFOLD = {
                         "title": "Contacts",
                         "icon": "contacts",
                         "link": reverse_lazy("admin:contacts_contact_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "Marketing",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Campaigns",
+                        "icon": "campaign",
+                        "link": reverse_lazy("admin:campaigns_campaign_changelist"),
+                    },
+                    {
+                        "title": "Rollouts",
+                        "icon": "view_timeline",
+                        "link": reverse_lazy("admin:campaigns_rollout_changelist"),
+                    },
+                    {
+                        "title": "Milestones",
+                        "icon": "flag",
+                        "link": reverse_lazy("admin:campaigns_rolloutmilestone_changelist"),
+                    },
+                    {
+                        "title": "Tasks",
+                        "icon": "task_alt",
+                        "link": reverse_lazy("admin:campaigns_rollouttask_changelist"),
+                    },
+                    {
+                        "title": "Channels",
+                        "icon": "share",
+                        "link": reverse_lazy("admin:campaigns_campaignchannel_changelist"),
                     },
                 ],
             },

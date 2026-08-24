@@ -52,3 +52,7 @@ than deleting them. These tables are introduced by `artists.0001_initial`.
 ## Music catalog
 
 `music.Release` and `music.Track` use UUID primary keys and organization-scoped slugs. `music.ReleaseTrack` provides ordered many-to-many placement. `music.MusicCredit` targets at least one Release or Track. `music.ReleaseLink` stores constrained public URLs. Database constraints enforce non-empty global ISRC/UPC uniqueness, placement uniqueness, disc/track uniqueness, one primary release link, and the credit target requirement. Schema is introduced by `music.0001_initial`.
+
+## Campaign and rollout data
+
+`campaigns.Campaign` links one Organization and Artist plus an optional compatible Release. CampaignChannel stores constrained planned channels. Rollout belongs to Campaign and Organization; RolloutMilestone and RolloutTask belong to Rollout. RolloutTaskDependency is a directed same-rollout edge. UUID keys, scoped slug/order uniqueness, dependency uniqueness/self constraints, and Django validation preserve integrity. Schema is introduced by `campaigns.0001_initial`.

@@ -110,3 +110,7 @@ Milestone 9 adds one versioned Call Sheet per Booking, structured run-of-show an
 ## Music catalog
 
 Milestone 10 adds organization-scoped Releases, reusable Tracks, ordered tracklists, descriptive credits, identifiers, release links, explicit release lifecycle, artist read-only catalog views, platform administration, and the `music.read` developer API. See [`docs/music.md`](docs/music.md).
+
+## Campaign and rollout planning
+
+Milestone 11 adds strategic Campaigns, planned channels, operational Rollouts, milestones, assigned tasks, dependencies, derived progress, artist/release views, platform administration, and the `campaign.read` integration scope. See [`docs/campaigns.md`](docs/campaigns.md) and [`docs/rollouts.md`](docs/rollouts.md).

@@ -73,3 +73,7 @@ never grants Artist access.
 ## Music permissions
 
 The centralized permissions are `music.view`, `music.manage`, `music.release.manage`, `music.track.manage`, and `music.credits.manage`. Owners, admins, and managers receive Music management permissions; members receive read access. Artist-linked portal reads are separately scoped to authorized Artists. Platform-wide Music access requires an active Django superuser; `is_staff` is insufficient. Frontend route guards are UX only.
+
+## Campaign and Rollout permissions
+
+`campaign.view/manage/status.manage` and `rollout.view/manage/task.manage` use centralized Membership permissions. Owners, administrators, and managers manage plans; members receive read access; artist portal reads are separately limited to linked Artists. Platform access requires an active superuser, never `is_staff` alone.

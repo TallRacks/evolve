@@ -105,3 +105,7 @@ Each Booking may own one CallSheet identity with sequential CallSheetVersion rev
 ## Music domain
 
 The `music` Django app owns Release, Track, ReleaseTrack, MusicCredit, and ReleaseLink persistence and business rules. Next.js consumes same-origin Django APIs for workspace, artist, and platform Music views. Future Campaign and Rollout domains may reference Release but are not implemented. See [`music.md`](music.md).
+
+## Marketing planning
+
+The `campaigns` Django app separates organization-owned Campaign strategy from Rollout execution. Rollouts contain milestones, tasks, and validated dependencies. Future Calendar is a read projection and future Notifications consume audit/date state; neither is a standalone domain in Milestone 11.
