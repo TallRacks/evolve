@@ -7,3 +7,7 @@ Search can return Artists, Bookings, Promoters, Venues, Contacts, Releases, Trac
 Each domain group is enabled only when Django confirms the corresponding permission for an active membership. Document results additionally reuse Document visibility selectors. Artist-role and staff-only accounts receive no workspace-wide results. Platform superusers may intentionally search across active organizations when no organization filter is supplied.
 
 Results contain only an ID, type, title, subtitle, internal destination, and optional status. Search reads are not audited.
+
+## Travel integration
+
+See `docs/travel.md` for the implemented Travel integration and its authorization, privacy, and snapshot rules.

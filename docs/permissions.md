@@ -112,3 +112,7 @@ receive curated rights.read; royalties are never exposed.
 | Artist portal | No | No | No | No | No | Explicit links only | No |
 
 Frontend navigation and commands mirror this matrix for usability only. Backend membership, permission, organization and Artist-attribution checks remain authoritative.
+
+## Travel
+
+`travel.view`, `travel.manage`, `travel.status.manage`, and `travel.private_contact.view` are organization permissions. Owner/Admin receive all; Manager receives management and private-contact access; Member receives read access; Artist uses only attributed portal endpoints; platform access requires superuser. Staff status alone grants nothing.

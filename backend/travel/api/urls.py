@@ -1,0 +1,48 @@
+from django.urls import path
+
+from .views import (
+    ArtistTravelView,
+    DeveloperTravelView,
+    ItineraryDetailView,
+    ItineraryListView,
+    ItineraryStatusView,
+    PlatformItineraryDetailView,
+    PlatformItineraryListView,
+    RoomView,
+    SegmentDetailView,
+    SegmentListView,
+    SegmentReorderView,
+    SegmentStatusView,
+    SegmentTravellerView,
+    StayDetailView,
+    StayListView,
+    StayStatusView,
+    TravellerDetailView,
+    TravellerListView,
+)
+
+urlpatterns = [
+    path("travel/itineraries/", ItineraryListView.as_view()),
+    path("travel/itineraries/<uuid:itinerary_id>/", ItineraryDetailView.as_view()),
+    path("travel/itineraries/<uuid:itinerary_id>/status/", ItineraryStatusView.as_view()),
+    path("travel/itineraries/<uuid:itinerary_id>/travellers/", TravellerListView.as_view()),
+    path("travel/travellers/<uuid:traveller_id>/", TravellerDetailView.as_view()),
+    path("travel/itineraries/<uuid:itinerary_id>/segments/", SegmentListView.as_view()),
+    path("travel/segments/<uuid:segment_id>/", SegmentDetailView.as_view()),
+    path("travel/segments/<uuid:segment_id>/status/", SegmentStatusView.as_view()),
+    path("travel/segments/<uuid:segment_id>/reorder/", SegmentReorderView.as_view()),
+    path("travel/segments/<uuid:segment_id>/travellers/", SegmentTravellerView.as_view()),
+    path(
+        "travel/segments/<uuid:segment_id>/travellers/<uuid:assignment_id>/",
+        SegmentTravellerView.as_view(),
+    ),
+    path("travel/itineraries/<uuid:itinerary_id>/stays/", StayListView.as_view()),
+    path("travel/stays/<uuid:stay_id>/", StayDetailView.as_view()),
+    path("travel/stays/<uuid:stay_id>/status/", StayStatusView.as_view()),
+    path("travel/stays/<uuid:stay_id>/rooms/", RoomView.as_view()),
+    path("travel/stays/<uuid:stay_id>/rooms/<uuid:room_id>/", RoomView.as_view()),
+    path("artist/travel/", ArtistTravelView.as_view()),
+    path("platform/travel/", PlatformItineraryListView.as_view()),
+    path("platform/travel/<uuid:itinerary_id>/", PlatformItineraryDetailView.as_view()),
+    path("developer/travel/itineraries/", DeveloperTravelView.as_view()),
+]

@@ -20,6 +20,9 @@ class LinkSerializer(serializers.ModelSerializer):
             "call_sheet",
             "release",
             "campaign",
+            "travel_itinerary",
+            "travel_segment",
+            "accommodation_stay",
             "created_at",
         )
 

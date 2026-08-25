@@ -134,3 +134,7 @@ protect split and allocation integrity.
 ## Product consolidation
 
 Global Search and dashboard aggregation remain synchronous read-only Django APIs backed by PostgreSQL. No search engine, cache service, task queue, or denormalized dashboard store is introduced. Artist 360 composes bounded domain queries while reusing domain authorization and Document visibility selectors.
+
+## Travel domain
+
+The Travel Django app owns itineraries, traveller assignments, transport segments, accommodation, and room assignments. Booking remains the event source; Call Sheets retain immutable imported snapshots; Calendar remains a computed projection. No external travel service or sensitive identity store is introduced.

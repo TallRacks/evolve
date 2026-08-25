@@ -70,3 +70,7 @@ earnings are excluded. royalties.read is deliberately not implemented.
 - `GET /api/search/?q=&organization_id=` returns capped, grouped, permission-filtered search results.
 - `GET /api/dashboard/?organization_id=` returns a curated role-aware operational summary.
 - `GET /api/artists/{id}/overview/` returns the workspace-authorized Artist 360 summary without finance or royalty earnings.
+
+## Travel API
+
+Workspace endpoints under `/api/travel/` provide scoped itinerary, traveller, segment, assignment, accommodation, room, reorder, and explicit lifecycle operations. `/api/artist/travel/` is a curated attributed read. `/api/platform/travel/` requires superuser. `GET /api/developer/travel/itineraries/` requires `travel.read` and excludes private contacts, references, notes, and private URLs.

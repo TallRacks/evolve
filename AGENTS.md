@@ -205,3 +205,12 @@ their requirements are defined.
 - Search results must be capped, curated, organization-scoped, and permission-filtered by Django. Never search private notes, secrets, audit descriptions, payment data, or royalty earnings.
 - Browser-stored navigation preferences are presentation only and must never influence authorization.
 - Dashboard monetary summaries must remain grouped by currency; never combine currencies.
+
+## Travel invariants
+
+- Travel itineraries, travellers, transport, accommodation, segment assignments, and room assignments must preserve organization and itinerary scope.
+- Travel lifecycle mutations use centralized services; generic updates and Django admin must not bypass status transitions.
+- Call Sheet Travel imports are explicit and draft/ready-only. Published historical snapshots never dynamically follow Travel records.
+- Store no passport, identity/visa document, payment-card, bank, airline credential, or loyalty credential data.
+- Confirmation references and operational contacts are workspace-private by default and must not leak through search, notifications, Artist responses, developer APIs, audits, or broad platform lists.
+- Travel timestamps are timezone aware and retain IANA departure, arrival, or property timezone identifiers for local display.

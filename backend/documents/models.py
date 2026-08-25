@@ -133,44 +133,112 @@ class DocumentLink(TimestampedModel):
         on_delete=models.PROTECT,
         related_name="document_links",
     )
+    travel_itinerary = models.ForeignKey(
+        "travel.TravelItinerary",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="document_links",
+    )
+    travel_segment = models.ForeignKey(
+        "travel.TravelSegment",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="document_links",
+    )
+    accommodation_stay = models.ForeignKey(
+        "travel.AccommodationStay",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="document_links",
+    )
 
     class Meta:
         constraints = [
             models.CheckConstraint(
                 condition=(
-                    Q(artist__isnull=False)
-                    & Q(booking__isnull=True)
-                    & Q(call_sheet__isnull=True)
-                    & Q(release__isnull=True)
-                    & Q(campaign__isnull=True)
-                )
-                | (
-                    Q(artist__isnull=True)
-                    & Q(booking__isnull=False)
-                    & Q(call_sheet__isnull=True)
-                    & Q(release__isnull=True)
-                    & Q(campaign__isnull=True)
-                )
-                | (
-                    Q(artist__isnull=True)
-                    & Q(booking__isnull=True)
-                    & Q(call_sheet__isnull=False)
-                    & Q(release__isnull=True)
-                    & Q(campaign__isnull=True)
-                )
-                | (
-                    Q(artist__isnull=True)
-                    & Q(booking__isnull=True)
-                    & Q(call_sheet__isnull=True)
-                    & Q(release__isnull=False)
-                    & Q(campaign__isnull=True)
-                )
-                | (
-                    Q(artist__isnull=True)
-                    & Q(booking__isnull=True)
-                    & Q(call_sheet__isnull=True)
-                    & Q(release__isnull=True)
-                    & Q(campaign__isnull=False)
+                    (
+                        Q(artist__isnull=False)
+                        & Q(booking__isnull=True)
+                        & Q(call_sheet__isnull=True)
+                        & Q(release__isnull=True)
+                        & Q(campaign__isnull=True)
+                        & Q(travel_itinerary__isnull=True)
+                        & Q(travel_segment__isnull=True)
+                        & Q(accommodation_stay__isnull=True)
+                    )
+                    | (
+                        Q(artist__isnull=True)
+                        & Q(booking__isnull=False)
+                        & Q(call_sheet__isnull=True)
+                        & Q(release__isnull=True)
+                        & Q(campaign__isnull=True)
+                        & Q(travel_itinerary__isnull=True)
+                        & Q(travel_segment__isnull=True)
+                        & Q(accommodation_stay__isnull=True)
+                    )
+                    | (
+                        Q(artist__isnull=True)
+                        & Q(booking__isnull=True)
+                        & Q(call_sheet__isnull=False)
+                        & Q(release__isnull=True)
+                        & Q(campaign__isnull=True)
+                        & Q(travel_itinerary__isnull=True)
+                        & Q(travel_segment__isnull=True)
+                        & Q(accommodation_stay__isnull=True)
+                    )
+                    | (
+                        Q(artist__isnull=True)
+                        & Q(booking__isnull=True)
+                        & Q(call_sheet__isnull=True)
+                        & Q(release__isnull=False)
+                        & Q(campaign__isnull=True)
+                        & Q(travel_itinerary__isnull=True)
+                        & Q(travel_segment__isnull=True)
+                        & Q(accommodation_stay__isnull=True)
+                    )
+                    | (
+                        Q(artist__isnull=True)
+                        & Q(booking__isnull=True)
+                        & Q(call_sheet__isnull=True)
+                        & Q(release__isnull=True)
+                        & Q(campaign__isnull=False)
+                        & Q(travel_itinerary__isnull=True)
+                        & Q(travel_segment__isnull=True)
+                        & Q(accommodation_stay__isnull=True)
+                    )
+                    | (
+                        Q(artist__isnull=True)
+                        & Q(booking__isnull=True)
+                        & Q(call_sheet__isnull=True)
+                        & Q(release__isnull=True)
+                        & Q(campaign__isnull=True)
+                        & Q(travel_itinerary__isnull=False)
+                        & Q(travel_segment__isnull=True)
+                        & Q(accommodation_stay__isnull=True)
+                    )
+                    | (
+                        Q(artist__isnull=True)
+                        & Q(booking__isnull=True)
+                        & Q(call_sheet__isnull=True)
+                        & Q(release__isnull=True)
+                        & Q(campaign__isnull=True)
+                        & Q(travel_itinerary__isnull=True)
+                        & Q(travel_segment__isnull=False)
+                        & Q(accommodation_stay__isnull=True)
+                    )
+                    | (
+                        Q(artist__isnull=True)
+                        & Q(booking__isnull=True)
+                        & Q(call_sheet__isnull=True)
+                        & Q(release__isnull=True)
+                        & Q(campaign__isnull=True)
+                        & Q(travel_itinerary__isnull=True)
+                        & Q(travel_segment__isnull=True)
+                        & Q(accommodation_stay__isnull=False)
+                    )
                 ),
                 name="document_link_exactly_one_entity",
             ),
@@ -187,7 +255,7 @@ class DocumentLink(TimestampedModel):
             models.UniqueConstraint(
                 fields=("document", "call_sheet"),
                 condition=Q(call_sheet__isnull=False),
-                name="unique_document_callsheet_link",
+                name="unique_document_call_sheet_link",
             ),
             models.UniqueConstraint(
                 fields=("document", "release"),
@@ -199,26 +267,74 @@ class DocumentLink(TimestampedModel):
                 condition=Q(campaign__isnull=False),
                 name="unique_document_campaign_link",
             ),
+            models.UniqueConstraint(
+                fields=("document", "travel_itinerary"),
+                condition=Q(travel_itinerary__isnull=False),
+                name="unique_document_travel_itinerary_link",
+            ),
+            models.UniqueConstraint(
+                fields=("document", "travel_segment"),
+                condition=Q(travel_segment__isnull=False),
+                name="unique_document_travel_segment_link",
+            ),
+            models.UniqueConstraint(
+                fields=("document", "accommodation_stay"),
+                condition=Q(accommodation_stay__isnull=False),
+                name="unique_document_accommodation_stay_link",
+            ),
         ]
 
     @property
     def entity(self):
-        return self.artist or self.booking or self.call_sheet or self.release or self.campaign
+        return next(
+            value
+            for value in (
+                self.artist,
+                self.booking,
+                self.call_sheet,
+                self.release,
+                self.campaign,
+                self.travel_itinerary,
+                self.travel_segment,
+                self.accommodation_stay,
+            )
+            if value
+        )
 
     @property
     def entity_type(self):
         return next(
             name
-            for name in ("artist", "booking", "call_sheet", "release", "campaign")
+            for name in (
+                "artist",
+                "booking",
+                "call_sheet",
+                "release",
+                "campaign",
+                "travel_itinerary",
+                "travel_segment",
+                "accommodation_stay",
+            )
             if getattr(self, f"{name}_id")
         )
 
     def clean(self):
-        entities = [self.artist, self.booking, self.call_sheet, self.release, self.campaign]
+        entities = [
+            self.artist,
+            self.booking,
+            self.call_sheet,
+            self.release,
+            self.campaign,
+            self.travel_itinerary,
+            self.travel_segment,
+            self.accommodation_stay,
+        ]
         selected = [entity for entity in entities if entity]
         if len(selected) != 1:
             raise ValidationError("A document link must select exactly one entity.")
-        organization_id = selected[0].organization_id
+        organization_id = getattr(selected[0], "organization_id", None)
+        if organization_id is None:
+            organization_id = selected[0].itinerary.organization_id
         if organization_id != self.document.organization_id:
             raise ValidationError(
                 "Document and linked entity must belong to the same organization."

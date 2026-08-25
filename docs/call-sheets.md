@@ -37,3 +37,7 @@ Anonymous sharing, expiring links, revocation, password protection, email/SMS di
 ## Calendar and documents
 
 Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. Binary upload, external calendar sync, and notification delivery remain deferred. See `docs/calendar.md` and `docs/documents.md`.
+
+## Travel integration
+
+See `docs/travel.md` for the implemented Travel integration and its authorization, privacy, and snapshot rules.

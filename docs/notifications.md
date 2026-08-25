@@ -17,3 +17,7 @@ Rights emits a sparse royalty.statement_finalized event containing only the stat
 It excludes earnings, percentages, parties, documents, and internal notes.
 
 Messages exclude commercial amounts, secrets, raw invitation tokens, restricted URLs, and sensitive personal data. Email, SMS, push, WhatsApp, WebSockets, Redis, Celery, scheduled delivery, retention automation, and digests are deferred.
+
+## Travel integration
+
+See `docs/travel.md` for the implemented Travel integration and its authorization, privacy, and snapshot rules.

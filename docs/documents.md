@@ -24,3 +24,7 @@ Workspace, platform, Artist portal, and `document.read` developer APIs expose cu
 
 Work and RoyaltyStatement may reference an existing same-organization Document explicitly. This
 does not enable binary upload, automatic ingestion, or unrestricted generic relations.
+
+## Travel integration
+
+See `docs/travel.md` for the implemented Travel integration and its authorization, privacy, and snapshot rules.

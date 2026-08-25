@@ -21,6 +21,7 @@ from documents.services import (
 from music.models import Release
 from organizations.api.permissions import PlatformSuperuser
 from organizations.selectors import organizations_for_user
+from travel.models import AccommodationStay, TravelItinerary, TravelSegment
 from white_label.services import authenticate_api_key
 
 from .serializers import (
@@ -139,6 +140,9 @@ ENTITY_MODELS = {
     "call_sheet": CallSheet,
     "release": Release,
     "campaign": Campaign,
+    "travel_itinerary": TravelItinerary,
+    "travel_segment": TravelSegment,
+    "accommodation_stay": AccommodationStay,
 }
 
 
@@ -149,8 +153,15 @@ class LinkView(APIView):
         entity_type = request.data.get("entity_type")
         if entity_type not in ENTITY_MODELS:
             raise ValidationError({"entity_type": "Unsupported entity type."})
+        organization_field = (
+            "itinerary__organization"
+            if entity_type in {"travel_segment", "accommodation_stay"}
+            else "organization"
+        )
         entity = get_object_or_404(
-            ENTITY_MODELS[entity_type], pk=request.data.get("entity_id"), organization=org
+            ENTITY_MODELS[entity_type],
+            pk=request.data.get("entity_id"),
+            **{organization_field: org},
         )
         try:
             link = link_document(

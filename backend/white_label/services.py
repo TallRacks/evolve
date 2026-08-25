@@ -39,6 +39,7 @@ ALLOWED_SCOPES = (
     "document.read",
     "finance.read",
     "rights.read",
+    "travel.read",
 )
 
 

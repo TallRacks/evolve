@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "notifications",
     "finance",
     "rights",
+    "travel",
     "contacts",
     "promoters",
     "venues",
@@ -230,6 +231,21 @@ UNFOLD = {
                 "title": "Artist & Live Operations",
                 "collapsible": True,
                 "items": [
+                    {
+                        "title": "Travel Itineraries",
+                        "icon": "luggage",
+                        "link": reverse_lazy("admin:travel_travelitinerary_changelist"),
+                    },
+                    {
+                        "title": "Travel Segments",
+                        "icon": "flight",
+                        "link": reverse_lazy("admin:travel_travelsegment_changelist"),
+                    },
+                    {
+                        "title": "Accommodation",
+                        "icon": "hotel",
+                        "link": reverse_lazy("admin:travel_accommodationstay_changelist"),
+                    },
                     {
                         "title": "Calendar events",
                         "icon": "calendar_month",

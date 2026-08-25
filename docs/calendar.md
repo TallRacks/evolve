@@ -21,3 +21,7 @@ The API requires ISO-8601 `start` and `end`, rejects inverted or greater-than-36
 - `GET /api/artist-portal/calendar/`, `/api/platform/calendar/`, and `/api/developer/calendar/` (`calendar.read`)
 
 External calendar sync, recurring events, notifications, and travel projections are deferred.
+
+## Travel integration
+
+See `docs/travel.md` for the implemented Travel integration and its authorization, privacy, and snapshot rules.

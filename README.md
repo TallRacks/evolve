@@ -134,3 +134,5 @@ conservative Artist visibility, and rights.read integration summaries are implem
 payout infrastructure. See docs/rights.md and docs/royalties.md.
 
 Milestone 16 adds grouped workspace/platform navigation, a keyboard-accessible command palette, PostgreSQL-backed Global Search, a curated role-aware dashboard, and a permission-scoped Artist 360 overview. See `docs/navigation.md` and `docs/search.md`.
+
+Milestone 17 adds organization-scoped Travel itineraries, travellers, ordered transport, accommodation and room assignments, Booking and Call Sheet workflows, Calendar and Document integration, a read-only Artist itinerary, platform administration, and the conservative `travel.read` developer API. See `docs/travel.md`.

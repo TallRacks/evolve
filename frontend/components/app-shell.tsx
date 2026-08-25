@@ -19,6 +19,7 @@ import {
   Megaphone,
   Music2,
   Palette,
+  Plane,
   Search,
   Scale,
   ShieldCheck,
@@ -236,6 +237,12 @@ export function AppShell({
               icon: ClipboardList,
               show: superuser,
             },
+            {
+              href: "/platform/travel",
+              label: "Travel",
+              icon: Plane,
+              show: superuser,
+            },
           ],
         },
         {
@@ -377,6 +384,12 @@ export function AppShell({
               show: true,
             },
             {
+              href: "/artist/travel",
+              label: "Travel",
+              icon: Plane,
+              show: true,
+            },
+            {
               href: "/artist/rights",
               label: "Rights",
               icon: Scale,
@@ -435,6 +448,12 @@ export function AppShell({
             label: "Bookings",
             icon: BookOpen,
             show: can("booking.view"),
+          },
+          {
+            href: "/workspace/travel",
+            label: "Travel",
+            icon: Plane,
+            show: can("travel.view"),
           },
           {
             href: "/workspace/promoters",
@@ -607,6 +626,11 @@ export function AppShell({
             title: "Create Booking",
             destination: "/workspace/bookings/new",
             show: can("booking.manage"),
+          },
+          {
+            title: "Create Travel Itinerary",
+            destination: "/workspace/travel/new",
+            show: can("travel.manage"),
           },
           {
             title: "Create Invoice",

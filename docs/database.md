@@ -77,3 +77,7 @@ Rights adds Work, TrackWork, RightsParty, WorkContributor, MasterRight, Publishi
 RoyaltyStatement, RoyaltyStatementLine, and RoyaltyAllocation. UUIDs are canonical; percentages
 and money are Decimal; totals remain derived; same-organization catalog and Document relationships
 are validated.
+
+## Travel
+
+Travel uses UUID identities and PostgreSQL constraints for one itinerary per optional Booking, unique segment/stay sequence within an itinerary, one segment assignment per traveller, one room assignment per stay/traveller, and typed Document links. Django migrations are the only schema-change mechanism.

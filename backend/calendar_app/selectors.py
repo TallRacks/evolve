@@ -10,6 +10,8 @@ from bookings.models import Booking
 from callsheets.models import CallSheetVersion
 from campaigns.models import Campaign, RolloutMilestone, RolloutTask
 from music.models import Release
+from organizations.permissions import user_has_organization_permission
+from travel.models import AccommodationStay, TravelSegment
 
 from .models import CalendarEvent
 
@@ -34,6 +36,9 @@ def _item(
     priority=None,
     all_day=False,
 ):
+    organization_id = getattr(obj, "organization_id", None)
+    if organization_id is None:
+        organization_id = obj.itinerary.organization_id
     return {
         "id": f"{source_type}:{obj.pk}",
         "source_type": source_type,
@@ -44,7 +49,7 @@ def _item(
         "all_day": all_day,
         "status": status,
         "artist": ({"id": str(artist.pk), "name": artist.stage_name} if artist else None),
-        "organization": {"id": str(obj.organization_id)},
+        "organization": {"id": str(organization_id)},
         "url": url,
         "category": source_type,
         "priority": priority,
@@ -237,6 +242,55 @@ def get_calendar_items(user, organization, start, end, filters=None, portal=Fals
                     all_day=True,
                 )
             )
+    travel_allowed = portal or user_has_organization_permission(user, organization, "travel.view")
+    if travel_allowed and include("travel"):
+        qs = (
+            TravelSegment.objects.filter(
+                itinerary__organization=organization,
+                departure_at__range=(start, end),
+            )
+            .exclude(status=TravelSegment.Status.CANCELLED)
+            .select_related("itinerary__artist")
+        )
+        qs = artist_filter(qs, "itinerary__artist_id")
+        for o in qs:
+            items.append(
+                _item(
+                    "travel",
+                    o,
+                    f"{o.get_segment_type_display()}: {o.departure_location} "
+                    f"to {o.arrival_location}",
+                    o.departure_at,
+                    o.arrival_at,
+                    o.itinerary.artist,
+                    o.status,
+                    f"/workspace/travel/{o.itinerary_id}",
+                )
+            )
+    if travel_allowed and include("accommodation"):
+        qs = (
+            AccommodationStay.objects.filter(
+                itinerary__organization=organization,
+                check_in_at__range=(start, end),
+            )
+            .exclude(status=AccommodationStay.Status.CANCELLED)
+            .select_related("itinerary__artist")
+        )
+        qs = artist_filter(qs, "itinerary__artist_id")
+        for o in qs:
+            items.append(
+                _item(
+                    "accommodation",
+                    o,
+                    f"Check in: {o.property_name}",
+                    o.check_in_at,
+                    o.check_out_at,
+                    o.itinerary.artist,
+                    o.status,
+                    f"/workspace/travel/{o.itinerary_id}",
+                )
+            )
+
     if include("calendar_event"):
         qs = (
             visible_events(user, organization)

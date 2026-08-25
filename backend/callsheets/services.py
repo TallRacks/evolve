@@ -512,3 +512,63 @@ def remove_child(*, actor, child, action, request=None):
         description=f"Updated Call Sheet version {version.version_number}.",
         request=request,
     )
+
+
+@transaction.atomic
+def import_travel_from_itinerary(*, actor, version, request=None):
+    """Replace draft travel/accommodation snapshots from the Booking's current itinerary."""
+    from travel.models import TravelItinerary
+
+    require_callsheet_permission(actor, version.call_sheet.organization, "callsheet.manage")
+    locked = (
+        CallSheetVersion.objects.select_for_update()
+        .select_related("call_sheet__booking", "call_sheet__organization")
+        .get(pk=version.pk)
+    )
+    ensure_editable(locked)
+    itinerary = TravelItinerary.objects.filter(booking=locked.call_sheet.booking).first()
+    if not itinerary:
+        raise ValidationError("This Booking has no linked Travel itinerary.")
+    locked.travel_items.all().delete()
+    locked.accommodation_items.all().delete()
+    type_map = {
+        "flight": CallSheetTravelItem.Type.FLIGHT,
+        "rail": CallSheetTravelItem.Type.TRAIN,
+        "ground": CallSheetTravelItem.Type.GROUND,
+        "ferry": CallSheetTravelItem.Type.OTHER,
+        "other": CallSheetTravelItem.Type.OTHER,
+    }
+    for segment in itinerary.segments.exclude(status="cancelled"):
+        CallSheetTravelItem.objects.create(
+            version=locked,
+            sequence=segment.sequence,
+            type=type_map[segment.segment_type],
+            provider=segment.airline or segment.provider,
+            reference=segment.flight_number or segment.service_number,
+            departure_location=segment.departure_location,
+            arrival_location=segment.arrival_location,
+            departure_datetime=segment.departure_at,
+            arrival_datetime=segment.arrival_at,
+            traveler_notes=segment.seat_or_vehicle_info,
+        )
+    for stay in itinerary.stays.exclude(status="cancelled"):
+        CallSheetAccommodationItem.objects.create(
+            version=locked,
+            sequence=stay.sequence,
+            property_name=stay.property_name,
+            address=", ".join(filter(None, (stay.address, stay.city, stay.country))),
+            check_in_datetime=stay.check_in_at,
+            check_out_datetime=stay.check_out_at,
+            confirmation_reference=stay.confirmation_reference,
+            contact_name=stay.contact_name,
+            contact_phone=stay.contact_phone,
+        )
+    record_event(
+        actor=actor,
+        organization=locked.call_sheet.organization,
+        action="callsheet.travel_imported",
+        resource=locked,
+        description="Travel itinerary imported into draft Call Sheet snapshots.",
+        request=request,
+    )
+    return locked

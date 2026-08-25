@@ -15,6 +15,7 @@ from organizations.permissions import user_has_organization_permission
 from organizations.selectors import organizations_for_user
 from promoters.models import Promoter
 from rights.models import Work
+from travel.models import TravelItinerary, TravelSegment
 from venues.models import Venue
 
 RESULT_LIMIT = 6
@@ -24,11 +25,7 @@ def permitted_organizations(user, permission, organization_id=None):
     organizations = organizations_for_user(user)
     if organization_id:
         organizations = organizations.filter(pk=organization_id)
-    return [
-        org
-        for org in organizations
-        if user_has_organization_permission(user, org, permission)
-    ]
+    return [org for org in organizations if user_has_organization_permission(user, org, permission)]
 
 
 def result(obj, kind, title, subtitle, destination, status=None):
@@ -163,9 +160,7 @@ def global_search(user, query, organization_id=None):
             "contact",
             "Contacts",
             (
-                result(
-                    x, "contact", x.full_name, x.email, f"/workspace/contacts/{x.id}"
-                )
+                result(x, "contact", x.full_name, x.email, f"/workspace/contacts/{x.id}")
                 for x in rows[: RESULT_LIMIT + 1]
             ),
         )
@@ -249,6 +244,36 @@ def global_search(user, query, organization_id=None):
                     x.title,
                     x.iswc or "No ISWC",
                     f"/workspace/rights/works/{x.id}",
+                    x.status,
+                )
+                for x in rows[: RESULT_LIMIT + 1]
+            ),
+        )
+
+    travel_orgs = permitted_organizations(user, "travel.view", organization_id)
+    if travel_orgs:
+        rows = (
+            TravelItinerary.objects.filter(organization__in=travel_orgs)
+            .filter(
+                Q(title__icontains=query)
+                | Q(artist__stage_name__icontains=query)
+                | Q(booking__reference__icontains=query)
+                | Q(segments__provider__icontains=query)
+                | Q(segments__flight_number__icontains=query)
+            )
+            .select_related("artist", "booking")
+            .distinct()
+        )
+        add(
+            "travel",
+            "Travel",
+            (
+                result(
+                    x,
+                    "travel",
+                    x.title,
+                    f"{x.artist.stage_name} / {x.booking.reference if x.booking else 'No booking'}",
+                    f"/workspace/travel/{x.id}",
                     x.status,
                 )
                 for x in rows[: RESULT_LIMIT + 1]
@@ -362,6 +387,28 @@ def dashboard(user, organization_id=None):
         read_at__isnull=True,
         archived_at__isnull=True,
     ).count()
+    if user_has_organization_permission(user, organization, "travel.view"):
+        next_segment = (
+            TravelSegment.objects.filter(
+                itinerary__organization=organization,
+                departure_at__gte=timezone.now(),
+            )
+            .exclude(status=TravelSegment.Status.CANCELLED)
+            .select_related("itinerary__artist")
+            .order_by("departure_at")
+            .first()
+        )
+        counts["upcoming_travel"] = TravelItinerary.objects.filter(
+            organization=organization,
+            status__in=(TravelItinerary.Status.CONFIRMED, TravelItinerary.Status.IN_PROGRESS),
+        ).count()
+        if next_segment:
+            counts["next_travel"] = {
+                "itinerary_id": str(next_segment.itinerary_id),
+                "artist": next_segment.itinerary.artist.stage_name,
+                "departure_at": next_segment.departure_at,
+                "destination": next_segment.arrival_location,
+            }
     if user_has_organization_permission(user, organization, "finance.view"):
         counts["draft_invoices"] = Invoice.objects.filter(
             organization=organization, status=Invoice.Status.DRAFT
@@ -374,9 +421,7 @@ def dashboard(user, organization_id=None):
             .count()
         )
         counts["incomplete_publishing_splits"] = (
-            Work.objects.filter(
-                organization=organization, publishing_rights__isnull=False
-            )
+            Work.objects.filter(organization=organization, publishing_rights__isnull=False)
             .annotate(allocated=Sum("publishing_rights__ownership_percentage"))
             .filter(allocated__lt=100)
             .count()

@@ -7,3 +7,7 @@ Workspace groups cover Overview, Artists, Live & Operations, Music, Rights & Roy
 Groups are keyboard-operable and collapsible. Collapse preferences may be stored in browser local storage because they are presentation preferences only. Organization choice remains UX context and never grants access.
 
 `Cmd+K` or `Ctrl+K` opens the command palette. It combines visible navigation commands with backend-authorized Global Search. Arrow keys select results, Enter opens one, and Escape closes the dialog.
+
+## Travel integration
+
+See `docs/travel.md` for the implemented Travel integration and its authorization, privacy, and snapshot rules.
