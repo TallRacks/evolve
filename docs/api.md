@@ -58,3 +58,9 @@ The deliberately granted `finance.read` scope enables organization-scoped read-o
 `GET /api/developer/finance/invoices/` and `GET /api/developer/finance/payments/`. Representations
 contain financial identity, lifecycle, currency, totals/balance, and dates. They exclude billing
 addresses/emails, payer identity, internal notes, audit data, and allocation actors.
+
+## Rights API
+
+rights.read enables organization-scoped GET /api/developer/rights/works/ and
+GET /api/developer/rights/tracks/. Private contacts, notes, contracts, audit data, and royalty
+earnings are excluded. royalties.read is deliberately not implemented.

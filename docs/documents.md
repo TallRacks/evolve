@@ -21,3 +21,6 @@ Identification/passport material, passwords, API secrets, card data, private key
 ## APIs and storage
 
 Workspace, platform, Artist portal, and `document.read` developer APIs expose curated metadata. The developer API excludes restricted/Artist documents and all download URLs. `documents.storage` is the single future storage interface; S3-compatible provider selection, signed downloads, upload allowlists, checksum generation, malware scanning, OCR, public sharing, PDF generation, and e-signatures are deferred.
+
+Work and RoyaltyStatement may reference an existing same-organization Document explicitly. This
+does not enable binary upload, automatic ingestion, or unrestricted generic relations.

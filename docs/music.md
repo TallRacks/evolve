@@ -34,7 +34,9 @@ Workspace routes live under `/workspace/music`; platform routes live under `/pla
 
 Campaign now references `Campaign -> Release -> Artist` where a Release is applicable. Operational execution uses `Campaign -> Rollout -> milestones/tasks`; Music data is referenced rather than duplicated. See [`campaigns.md`](campaigns.md) and [`rollouts.md`](rollouts.md).
 
-Territory-specific schedules, DSP integrations, audio/object storage, distribution feeds, rights, royalties, publishing ownership, accounting, invoices, and payments are deferred.
+Rights and Royalties are separate domains. MusicCredit remains descriptive and is never converted
+automatically to ownership. Tracks link to Works and Master ownership without duplicating those
+values onto Track. See rights.md and royalties.md.
 
 ## Calendar and documents
 

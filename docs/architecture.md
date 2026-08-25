@@ -123,3 +123,10 @@ Milestone 13 adds immutable shared Notification content, unique per-user recipie
 The `finance` Django app owns Invoice, InvoiceLineItem, Payment, and PaymentAllocation. Booking
 commercial terms are explicit creation inputs only; issued snapshots are independent. PostgreSQL
 row locks serialize allocations. Next.js provides workspace, platform, and print presentation.
+
+## Rights and royalties
+
+The rights Django app owns Works, Track links, independent Rights Parties, Master/Publishing
+ownership, Royalty Statements, lines, and earnings allocations. It references Music and Documents
+without reinterpreting catalog credits or merging with Finance. PostgreSQL parent/line locks
+protect split and allocation integrity.

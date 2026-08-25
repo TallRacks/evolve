@@ -185,3 +185,16 @@ their requirements are defined.
 - Allocation locks Payment before Invoice and must reject cross-organization, cross-currency, void, and over-allocation attempts.
 - Finance data requires explicit backend permissions. Managers, members, artists, and staff-only users receive no Finance access by default.
 - Store no card or bank credentials. Audit and notification content must not leak financial amounts, billing addresses, payer details, or private notes.
+
+## Rights and royalties invariants
+
+- Credit is not ownership; ownership is not earnings; earnings are not payment. MusicCredit,
+  Rights ownership, RoyaltyAllocation, and Finance records remain separate.
+- Rights percentages use Decimal 0..100 semantics. Parent Track/Work locks serialize applicable
+  split validation, and overlapping territory/effective periods must never exceed 100%.
+- Finalized Royalty Statements, lines, and allocations are immutable historical snapshots.
+  Allocation generation is explicit and never follows later Rights changes automatically.
+- RoyaltyAllocation is attributable earnings only. Payouts, bank details, taxes, and payment
+  instructions require an explicit later milestone.
+- Artist users see only their explicitly linked RightsParty earnings. Audits, notifications, and
+  API keys must not leak royalty amounts.

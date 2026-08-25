@@ -51,3 +51,6 @@ email, or scheduler.
 
 FinanceSettings, credit notes, refunds, ledgers, journals, tax automation, reconciliation,
 gateways, bank feeds, FX, payroll, royalties, invoice emails, and PDF infrastructure are deferred.
+
+Royalty earnings attribution now lives in the separate Rights domain. A RoyaltyAllocation is not
+a Payment, payout, receivable, Invoice, or accounting-ledger entry.

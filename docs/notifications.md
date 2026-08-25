@@ -13,4 +13,7 @@ APIs provide a paginated personal inbox, unread count, read/unread, read-all, ar
 Finance emits sparse `invoice.issued`, `payment.recorded`, and `invoice.paid` events. Messages use
 record references and exclude amounts, billing addresses, payer details, notes, and credentials.
 
+Rights emits a sparse royalty.statement_finalized event containing only the statement reference.
+It excludes earnings, percentages, parties, documents, and internal notes.
+
 Messages exclude commercial amounts, secrets, raw invitation tokens, restricted URLs, and sensitive personal data. Email, SMS, push, WhatsApp, WebSockets, Redis, Celery, scheduled delivery, retention automation, and digests are deferred.

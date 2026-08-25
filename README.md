@@ -126,3 +126,9 @@ The unified calendar projects existing operational dates without duplicate rows.
 ## Milestone 13: In-app notifications
 
 Recipient-specific in-app notifications, preferences, inbox state, lifecycle integrations, and platform metadata oversight are implemented without external delivery infrastructure. See `docs/notifications.md`.
+
+## Milestone 15: Rights and Royalties
+
+Works, Rights Parties, Master/Publishing ownership, Royalty Statements, earnings allocations,
+conservative Artist visibility, and rights.read integration summaries are implemented without
+payout infrastructure. See docs/rights.md and docs/royalties.md.

@@ -2,7 +2,7 @@
 
 import {
   BookOpen, Building2, CalendarDays, FileText, ChevronDown, ClipboardList, Code2, ContactRound, Globe2, LayoutDashboard, LogOut, MapPin, Menu, Palette,
-  Megaphone, Music2, ShieldCheck, UserRound, UsersRound, WalletCards, X,
+  CircleDollarSign, Megaphone, Music2, Scale, ShieldCheck, UserRound, UsersRound, WalletCards, X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -45,6 +45,8 @@ export function AppShell({ children, organizationScoped = false }: { children: R
     { href: "/workspace/music", label: "Music", icon: Music2, show: !!membership?.permissions.includes("music.view") },
     { href: "/workspace/campaigns", label: "Campaigns", icon: Megaphone, show: !!membership?.permissions.includes("campaign.view") },
     { href: "/workspace/finance", label: "Finance", icon: WalletCards, show: !!membership?.permissions.includes("finance.view") },
+    { href: "/workspace/rights", label: "Rights", icon: Scale, show: !!membership?.permissions.includes("rights.view") },
+    { href: "/workspace/royalties", label: "Royalties", icon: CircleDollarSign, show: !!membership?.permissions.includes("royalties.view") },
     { href: "/workspace/team", label: "Team", icon: UsersRound, show: !!membership?.permissions.includes("membership.view") },
     { href: "/workspace/invitations", label: "Invitations", icon: UsersRound, show: !!membership?.permissions.includes("membership.view") },
     { href: "/workspace/organization", label: "Organization", icon: Building2, show: !!membership },
@@ -64,6 +66,8 @@ export function AppShell({ children, organizationScoped = false }: { children: R
     { href: "/platform/music", label: "Music", icon: Music2, show: !!session?.user.is_superuser },
     { href: "/platform/campaigns", label: "Campaigns", icon: Megaphone, show: !!session?.user.is_superuser },
     { href: "/platform/finance", label: "Finance", icon: WalletCards, show: !!session?.user.is_superuser },
+    { href: "/platform/rights", label: "Rights", icon: Scale, show: !!session?.user.is_superuser },
+    { href: "/platform/royalties", label: "Royalties", icon: CircleDollarSign, show: !!session?.user.is_superuser },
     { href: "/platform/rollouts", label: "Rollouts", icon: ClipboardList, show: !!session?.user.is_superuser },
     { href: "/platform/users", label: "Users", icon: UsersRound, show: !!session?.user.is_superuser },
     { href: "/platform/branding", label: "White-label", icon: Palette, show: !!session?.user.is_superuser },

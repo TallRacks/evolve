@@ -92,3 +92,10 @@ Milestone 13 adds immutable shared Notification content, unique per-user recipie
 `finance.payment.allocate` belong to owners and administrators. Managers, members, artists, and
 staff-only users receive none. Platform Finance requires superuser; API keys require the separate,
 deliberately granted `finance.read` scope.
+
+## Rights and royalties permissions
+
+rights.view/manage, royalties.view/manage, and royalties.statement.finalize belong to owners and
+administrators. Managers, members, artists, and staff-only users receive none. Artist portal reads
+return only that party's finalized allocations. Platform access requires superuser. API keys may
+receive curated rights.read; royalties are never exposed.

@@ -22,6 +22,7 @@ class Notification(models.Model):
         MARKETING = "marketing", "Marketing"
         DOCUMENTS = "documents", "Documents"
         FINANCE = "finance", "Finance"
+        RIGHTS = "rights", "Rights & royalties"
         SYSTEM = "system", "System"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

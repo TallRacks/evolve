@@ -70,3 +70,10 @@ Milestone 13 adds immutable shared Notification content, unique per-user recipie
 `finance.0001_initial` creates organization-owned Invoice, InvoiceLineItem, Payment, and
 PaymentAllocation records with UUID identity, unique references, money constraints, lifecycle
 indexes, and protected financial history. Balances are derived from line items and allocations.
+
+## Rights and royalties
+
+Rights adds Work, TrackWork, RightsParty, WorkContributor, MasterRight, PublishingRight,
+RoyaltyStatement, RoyaltyStatementLine, and RoyaltyAllocation. UUIDs are canonical; percentages
+and money are Decimal; totals remain derived; same-organization catalog and Document relationships
+are validated.

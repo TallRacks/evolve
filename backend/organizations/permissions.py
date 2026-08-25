@@ -51,6 +51,11 @@ ROLE_PERMISSIONS = {
         "finance.invoice.issue",
         "finance.payment.record",
         "finance.payment.allocate",
+        "rights.view",
+        "rights.manage",
+        "royalties.view",
+        "royalties.manage",
+        "royalties.statement.finalize",
     },
     Membership.Role.MANAGER: {
         "organization.view",

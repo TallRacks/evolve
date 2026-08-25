@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "documents",
     "notifications",
     "finance",
+    "rights",
     "contacts",
     "promoters",
     "venues",
@@ -126,6 +127,42 @@ UNFOLD = {
         "show_search": True,
         "show_all_applications": False,
         "navigation": [
+            {
+                "title": "Rights & Royalties",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Works",
+                        "icon": "library_music",
+                        "link": reverse_lazy("admin:rights_work_changelist"),
+                    },
+                    {
+                        "title": "Rights Parties",
+                        "icon": "groups",
+                        "link": reverse_lazy("admin:rights_rightsparty_changelist"),
+                    },
+                    {
+                        "title": "Master Rights",
+                        "icon": "copyright",
+                        "link": reverse_lazy("admin:rights_masterright_changelist"),
+                    },
+                    {
+                        "title": "Publishing Rights",
+                        "icon": "edit_note",
+                        "link": reverse_lazy("admin:rights_publishingright_changelist"),
+                    },
+                    {
+                        "title": "Royalty Statements",
+                        "icon": "receipt_long",
+                        "link": reverse_lazy("admin:rights_royaltystatement_changelist"),
+                    },
+                    {
+                        "title": "Royalty Allocations",
+                        "icon": "account_tree",
+                        "link": reverse_lazy("admin:rights_royaltyallocation_changelist"),
+                    },
+                ],
+            },
             {
                 "title": "Overview",
                 "collapsible": True,
@@ -360,9 +397,7 @@ UNFOLD = {
                     {
                         "title": "Notifications",
                         "icon": "notifications",
-                        "link": reverse_lazy(
-                            "admin:notifications_notification_changelist"
-                        ),
+                        "link": reverse_lazy("admin:notifications_notification_changelist"),
                     },
                     {
                         "title": "Preferences",
