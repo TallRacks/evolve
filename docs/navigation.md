@@ -1,0 +1,9 @@
+# Navigation and product consolidation
+
+The application shell separates tenant workspace, Artist portal, and platform administration. Navigation groups are permission-aware UX; Django remains authoritative for every destination and API.
+
+Workspace groups cover Overview, Artists, Live & Operations, Music, Rights & Royalties, Finance, Content & Records, Organization, and Account. Platform superusers receive a separate cross-organization structure. Artist-linked users receive only the limited Artist portal structure.
+
+Groups are keyboard-operable and collapsible. Collapse preferences may be stored in browser local storage because they are presentation preferences only. Organization choice remains UX context and never grants access.
+
+`Cmd+K` or `Ctrl+K` opens the command palette. It combines visible navigation commands with backend-authorized Global Search. Arrow keys select results, Enter opens one, and Escape closes the dialog.

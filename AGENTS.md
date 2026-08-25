@@ -198,3 +198,10 @@ their requirements are defined.
   instructions require an explicit later milestone.
 - Artist users see only their explicitly linked RightsParty earnings. Audits, notifications, and
   API keys must not leak royalty amounts.
+
+## Consolidated product experience
+
+- Global Search, dashboards, command navigation, and Artist 360 are read-only consolidation surfaces; do not duplicate domain mutation logic in them.
+- Search results must be capped, curated, organization-scoped, and permission-filtered by Django. Never search private notes, secrets, audit descriptions, payment data, or royalty earnings.
+- Browser-stored navigation preferences are presentation only and must never influence authorization.
+- Dashboard monetary summaries must remain grouped by currency; never combine currencies.

@@ -132,3 +132,5 @@ Recipient-specific in-app notifications, preferences, inbox state, lifecycle int
 Works, Rights Parties, Master/Publishing ownership, Royalty Statements, earnings allocations,
 conservative Artist visibility, and rights.read integration summaries are implemented without
 payout infrastructure. See docs/rights.md and docs/royalties.md.
+
+Milestone 16 adds grouped workspace/platform navigation, a keyboard-accessible command palette, PostgreSQL-backed Global Search, a curated role-aware dashboard, and a permission-scoped Artist 360 overview. See `docs/navigation.md` and `docs/search.md`.

@@ -64,3 +64,9 @@ addresses/emails, payer identity, internal notes, audit data, and allocation act
 rights.read enables organization-scoped GET /api/developer/rights/works/ and
 GET /api/developer/rights/tracks/. Private contacts, notes, contracts, audit data, and royalty
 earnings are excluded. royalties.read is deliberately not implemented.
+
+## Consolidation APIs
+
+- `GET /api/search/?q=&organization_id=` returns capped, grouped, permission-filtered search results.
+- `GET /api/dashboard/?organization_id=` returns a curated role-aware operational summary.
+- `GET /api/artists/{id}/overview/` returns the workspace-authorized Artist 360 summary without finance or royalty earnings.

@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Count, Prefetch, Q, Sum
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -18,9 +18,15 @@ from artists.services import (
     update_artist,
     update_team_assignment,
 )
+from bookings.models import Booking
+from callsheets.models import CallSheetVersion
+from campaigns.models import Campaign
+from documents.selectors import documents_for_user
+from music.models import Release, Track
 from organizations.api.permissions import PlatformSuperuser
 from organizations.models import Membership, Organization
 from organizations.selectors import organizations_for_user
+from rights.models import Work
 from users.models import User
 from white_label.services import authenticate_api_key
 
@@ -53,9 +59,7 @@ def artist_queryset():
             ),
         )
         .prefetch_related(
-            Prefetch(
-                "team_assignments", queryset=active_team, to_attr="prefetched_team"
-            )
+            Prefetch("team_assignments", queryset=active_team, to_attr="prefetched_team")
         )
     )
 
@@ -78,9 +82,7 @@ def validation_call(callable_):
     try:
         return callable_()
     except DjangoValidationError as error:
-        detail = (
-            error.message_dict if hasattr(error, "message_dict") else error.messages
-        )
+        detail = error.message_dict if hasattr(error, "message_dict") else error.messages
         raise ValidationError(detail) from error
 
 
@@ -107,9 +109,7 @@ class ArtistListView(APIView):
         return Response(ArtistSerializer(artists, many=True).data)
 
     def post(self, request):
-        organization = scoped_organization(
-            request.user, request.data.get("organization_id")
-        )
+        organization = scoped_organization(request.user, request.data.get("organization_id"))
         serializer = ArtistWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         artist = validation_call(
@@ -155,6 +155,94 @@ class ArtistDetailView(APIView):
         return Response(ArtistSerializer(artist_queryset().get(pk=artist.pk)).data)
 
 
+class Artist360View(APIView):
+    def get(self, request, artist_id):
+        artist = scoped_artist(request.user, artist_id)
+        require_artist_permission(request.user, artist.organization, "artist.view")
+        bookings = (
+            Booking.objects.filter(organization=artist.organization, artist=artist)
+            .select_related("venue", "promoter")
+            .order_by("-event_date")[:12]
+        )
+        releases = Release.objects.filter(primary_artist=artist).order_by("-planned_release_date")[
+            :8
+        ]
+        tracks = Track.objects.filter(primary_artist=artist).order_by("title")[:12]
+        campaigns = Campaign.objects.filter(artist=artist).order_by("-updated_at")[:8]
+        works = Work.objects.filter(track_links__track__primary_artist=artist).distinct()
+        documents = (
+            documents_for_user(request.user, artist.organization)
+            .filter(links__artist=artist)
+            .distinct()[:8]
+        )
+        call_sheets = CallSheetVersion.objects.filter(
+            call_sheet__booking__artist=artist,
+            status=CallSheetVersion.Status.PUBLISHED,
+        ).order_by("-event_date")[:6]
+        tracks_with_master_rights = Track.objects.filter(
+            primary_artist=artist, master_rights__isnull=False
+        ).distinct()
+        master_incomplete = (
+            tracks_with_master_rights.annotate(
+                allocated_percentage=Sum("master_rights__ownership_percentage")
+            )
+            .filter(allocated_percentage__lt=100)
+            .count()
+        )
+        publishing_incomplete = (
+            works.filter(publishing_rights__isnull=False)
+            .annotate(allocated_percentage=Sum("publishing_rights__ownership_percentage"))
+            .filter(allocated_percentage__lt=100)
+            .count()
+        )
+        return Response(
+            {
+                "bookings": [
+                    {
+                        "id": item.id,
+                        "reference": item.reference,
+                        "date": item.event_date,
+                        "venue": item.venue.name if item.venue else item.venue_name_snapshot,
+                        "promoter": item.promoter.name
+                        if item.promoter
+                        else item.promoter_name_snapshot,
+                        "status": item.status,
+                    }
+                    for item in bookings
+                ],
+                "call_sheets": [
+                    {"id": item.id, "title": item.title, "date": item.event_date}
+                    for item in call_sheets
+                ],
+                "releases": [
+                    {
+                        "id": item.id,
+                        "title": item.title,
+                        "date": item.planned_release_date,
+                        "status": item.status,
+                    }
+                    for item in releases
+                ],
+                "tracks": [
+                    {"id": item.id, "title": item.title, "status": item.status} for item in tracks
+                ],
+                "campaigns": [
+                    {"id": item.id, "name": item.name, "status": item.status} for item in campaigns
+                ],
+                "documents": [
+                    {"id": item.id, "title": item.title, "type": item.document_type}
+                    for item in documents
+                ],
+                "rights": {
+                    "works": works.count(),
+                    "tracks_with_master_rights": tracks_with_master_rights.count(),
+                    "incomplete_master_splits": master_incomplete,
+                    "incomplete_publishing_splits": publishing_incomplete,
+                },
+            }
+        )
+
+
 class ArtistTeamView(APIView):
     def get(self, request, artist_id):
         artist = scoped_artist(request.user, artist_id)
@@ -180,20 +268,14 @@ class ArtistTeamView(APIView):
                 request=request,
             )
         )
-        return Response(
-            TeamAssignmentSerializer(assignment).data, status=status.HTTP_201_CREATED
-        )
+        return Response(TeamAssignmentSerializer(assignment).data, status=status.HTTP_201_CREATED)
 
 
 class ArtistTeamDetailView(APIView):
     def patch(self, request, artist_id, assignment_id):
         artist = scoped_artist(request.user, artist_id)
-        assignment = get_object_or_404(
-            ArtistTeamAssignment, pk=assignment_id, artist=artist
-        )
-        serializer = TeamAssignmentSerializer(
-            assignment, data=request.data, partial=True
-        )
+        assignment = get_object_or_404(ArtistTeamAssignment, pk=assignment_id, artist=artist)
+        serializer = TeamAssignmentSerializer(assignment, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         assignment = validation_call(
             lambda: update_team_assignment(
@@ -209,13 +291,9 @@ class ArtistTeamDetailView(APIView):
 class ArtistPortalLinksView(APIView):
     def get(self, request, artist_id):
         artist = scoped_artist(request.user, artist_id)
-        require_artist_permission(
-            request.user, artist.organization, "artist.team.manage"
-        )
+        require_artist_permission(request.user, artist.organization, "artist.team.manage")
         return Response(
-            PortalLinkSerializer(
-                artist.portal_links.select_related("user"), many=True
-            ).data
+            PortalLinkSerializer(artist.portal_links.select_related("user"), many=True).data
         )
 
     def post(self, request, artist_id):
@@ -258,9 +336,7 @@ class PlatformArtistListView(APIView):
         return Response(ArtistSerializer(artist_queryset(), many=True).data)
 
     def post(self, request):
-        organization = get_object_or_404(
-            Organization, pk=request.data.get("organization_id")
-        )
+        organization = get_object_or_404(Organization, pk=request.data.get("organization_id"))
         serializer = ArtistWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         artist = validation_call(
@@ -316,7 +392,5 @@ class DeveloperArtistListView(APIView):
         if not header.startswith("Bearer "):
             raise PermissionDenied("Invalid API credentials.")
         key = authenticate_api_key(header[7:], required_scope="artist.read")
-        artists = Artist.objects.filter(organization=key.client.organization).order_by(
-            "stage_name"
-        )
+        artists = Artist.objects.filter(organization=key.client.organization).order_by("stage_name")
         return Response(DeveloperArtistSerializer(artists, many=True).data)

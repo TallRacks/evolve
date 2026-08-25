@@ -130,3 +130,7 @@ The rights Django app owns Works, Track links, independent Rights Parties, Maste
 ownership, Royalty Statements, lines, and earnings allocations. It references Music and Documents
 without reinterpreting catalog credits or merging with Finance. PostgreSQL parent/line locks
 protect split and allocation integrity.
+
+## Product consolidation
+
+Global Search and dashboard aggregation remain synchronous read-only Django APIs backed by PostgreSQL. No search engine, cache service, task queue, or denormalized dashboard store is introduced. Artist 360 composes bounded domain queries while reusing domain authorization and Document visibility selectors.

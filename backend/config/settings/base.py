@@ -227,7 +227,7 @@ UNFOLD = {
                 ],
             },
             {
-                "title": "Operations",
+                "title": "Artist & Live Operations",
                 "collapsible": True,
                 "items": [
                     {
@@ -323,7 +323,7 @@ UNFOLD = {
                 ],
             },
             {
-                "title": "Marketing",
+                "title": "Music & Campaigns",
                 "collapsible": True,
                 "items": [
                     {

@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    Artist360View,
     ArtistDetailView,
     ArtistListView,
     ArtistPortalLinkDetailView,
@@ -16,9 +17,8 @@ from .views import (
 urlpatterns = [
     path("artists/", ArtistListView.as_view(), name="artist-list"),
     path("artists/<uuid:artist_id>/", ArtistDetailView.as_view(), name="artist-detail"),
-    path(
-        "artists/<uuid:artist_id>/team/", ArtistTeamView.as_view(), name="artist-team"
-    ),
+    path("artists/<uuid:artist_id>/overview/", Artist360View.as_view(), name="artist-overview"),
+    path("artists/<uuid:artist_id>/team/", ArtistTeamView.as_view(), name="artist-team"),
     path(
         "artists/<uuid:artist_id>/team/<uuid:assignment_id>/",
         ArtistTeamDetailView.as_view(),

@@ -99,3 +99,16 @@ rights.view/manage, royalties.view/manage, and royalties.statement.finalize belo
 administrators. Managers, members, artists, and staff-only users receive none. Artist portal reads
 return only that party's finalized allocations. Platform access requires superuser. API keys may
 receive curated rights.read; royalties are never exposed.
+
+## Consolidated experience matrix
+
+| Capability | Superuser | Owner | Admin | Manager | Member | Artist | Staff only |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Platform portal | Yes | No | No | No | No | No | No |
+| Workspace search | Cross-org | Permitted domains | Permitted domains | Operational domains | Read domains | No | No |
+| Finance search/dashboard | Yes | Yes | Yes | No | No | No | No |
+| Rights search/dashboard | Yes | Yes | Yes | No | No | No | No |
+| Artist 360 workspace | Yes | Yes | Yes | Yes | Read | No | No |
+| Artist portal | No | No | No | No | No | Explicit links only | No |
+
+Frontend navigation and commands mirror this matrix for usability only. Backend membership, permission, organization and Artist-attribution checks remain authoritative.
