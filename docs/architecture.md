@@ -138,3 +138,7 @@ Global Search and dashboard aggregation remain synchronous read-only Django APIs
 ## Travel domain
 
 The Travel Django app owns itineraries, traveller assignments, transport segments, accommodation, and room assignments. Booking remains the event source; Call Sheets retain immutable imported snapshots; Calendar remains a computed projection. No external travel service or sensitive identity store is introduced.
+
+## Production advancing
+
+`production` is the mutable preparation layer between Booking and Call Sheet. It references Booking, Artist, Venue, Promoter, Contact, and Travel records without taking ownership of them. Explicit draft-only import copies a safe Production snapshot into an existing Call Sheet version; published Call Sheets remain immutable.

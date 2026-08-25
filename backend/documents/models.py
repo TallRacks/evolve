@@ -154,6 +154,13 @@ class DocumentLink(TimestampedModel):
         on_delete=models.PROTECT,
         related_name="document_links",
     )
+    production_advance = models.ForeignKey(
+        "production.ProductionAdvance",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="document_links",
+    )
 
     class Meta:
         constraints = [
@@ -168,6 +175,7 @@ class DocumentLink(TimestampedModel):
                         & Q(travel_itinerary__isnull=True)
                         & Q(travel_segment__isnull=True)
                         & Q(accommodation_stay__isnull=True)
+                        & Q(production_advance__isnull=True)
                     )
                     | (
                         Q(artist__isnull=True)
@@ -178,6 +186,7 @@ class DocumentLink(TimestampedModel):
                         & Q(travel_itinerary__isnull=True)
                         & Q(travel_segment__isnull=True)
                         & Q(accommodation_stay__isnull=True)
+                        & Q(production_advance__isnull=True)
                     )
                     | (
                         Q(artist__isnull=True)
@@ -188,6 +197,7 @@ class DocumentLink(TimestampedModel):
                         & Q(travel_itinerary__isnull=True)
                         & Q(travel_segment__isnull=True)
                         & Q(accommodation_stay__isnull=True)
+                        & Q(production_advance__isnull=True)
                     )
                     | (
                         Q(artist__isnull=True)
@@ -198,6 +208,7 @@ class DocumentLink(TimestampedModel):
                         & Q(travel_itinerary__isnull=True)
                         & Q(travel_segment__isnull=True)
                         & Q(accommodation_stay__isnull=True)
+                        & Q(production_advance__isnull=True)
                     )
                     | (
                         Q(artist__isnull=True)
@@ -208,6 +219,7 @@ class DocumentLink(TimestampedModel):
                         & Q(travel_itinerary__isnull=True)
                         & Q(travel_segment__isnull=True)
                         & Q(accommodation_stay__isnull=True)
+                        & Q(production_advance__isnull=True)
                     )
                     | (
                         Q(artist__isnull=True)
@@ -218,6 +230,7 @@ class DocumentLink(TimestampedModel):
                         & Q(travel_itinerary__isnull=False)
                         & Q(travel_segment__isnull=True)
                         & Q(accommodation_stay__isnull=True)
+                        & Q(production_advance__isnull=True)
                     )
                     | (
                         Q(artist__isnull=True)
@@ -228,6 +241,7 @@ class DocumentLink(TimestampedModel):
                         & Q(travel_itinerary__isnull=True)
                         & Q(travel_segment__isnull=False)
                         & Q(accommodation_stay__isnull=True)
+                        & Q(production_advance__isnull=True)
                     )
                     | (
                         Q(artist__isnull=True)
@@ -238,6 +252,18 @@ class DocumentLink(TimestampedModel):
                         & Q(travel_itinerary__isnull=True)
                         & Q(travel_segment__isnull=True)
                         & Q(accommodation_stay__isnull=False)
+                        & Q(production_advance__isnull=True)
+                    )
+                    | (
+                        Q(artist__isnull=True)
+                        & Q(booking__isnull=True)
+                        & Q(call_sheet__isnull=True)
+                        & Q(release__isnull=True)
+                        & Q(campaign__isnull=True)
+                        & Q(travel_itinerary__isnull=True)
+                        & Q(travel_segment__isnull=True)
+                        & Q(accommodation_stay__isnull=True)
+                        & Q(production_advance__isnull=False)
                     )
                 ),
                 name="document_link_exactly_one_entity",
@@ -282,6 +308,11 @@ class DocumentLink(TimestampedModel):
                 condition=Q(accommodation_stay__isnull=False),
                 name="unique_document_accommodation_stay_link",
             ),
+            models.UniqueConstraint(
+                fields=("document", "production_advance"),
+                condition=Q(production_advance__isnull=False),
+                name="unique_document_production_advance_link",
+            ),
         ]
 
     @property
@@ -297,6 +328,8 @@ class DocumentLink(TimestampedModel):
                 self.travel_itinerary,
                 self.travel_segment,
                 self.accommodation_stay,
+                self.production_advance,
+                self.production_advance,
             )
             if value
         )
@@ -314,6 +347,7 @@ class DocumentLink(TimestampedModel):
                 "travel_itinerary",
                 "travel_segment",
                 "accommodation_stay",
+                "production_advance",
             )
             if getattr(self, f"{name}_id")
         )
@@ -328,6 +362,7 @@ class DocumentLink(TimestampedModel):
             self.travel_itinerary,
             self.travel_segment,
             self.accommodation_stay,
+            self.production_advance,
         ]
         selected = [entity for entity in entities if entity]
         if len(selected) != 1:

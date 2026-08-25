@@ -21,3 +21,7 @@ Messages exclude commercial amounts, secrets, raw invitation tokens, restricted 
 ## Travel integration
 
 See `docs/travel.md` for the implemented Travel integration and its authorization, privacy, and snapshot rules.
+
+## Production notifications
+
+Production lifecycle and assignment services may create sparse in-app notifications for relevant active Booking team members or the assigned member. Content uses safe identifiers and excludes notes, security detail, Contact details, and other private operational data.

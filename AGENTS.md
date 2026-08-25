@@ -214,3 +214,11 @@ their requirements are defined.
 - Store no passport, identity/visa document, payment-card, bank, airline credential, or loyalty credential data.
 - Confirmation references and operational contacts are workspace-private by default and must not leak through search, notifications, Artist responses, developer APIs, audits, or broad platform lists.
 - Travel timestamps are timezone aware and retain IANA departure, arrival, or property timezone identifiers for local display.
+
+## Production advancing invariants
+
+- A Booking has one canonical Production Advance; Booking determines organization and Artist, while Venue and Promoter are explicit creation-time references.
+- Production Advance is mutable preparation. Call Sheet versions are snapshots and only explicit draft imports may copy Production data; published history never follows Production dynamically.
+- Requirements describe what must be agreed or provided. Advance checklist items describe actions the internal team must perform.
+- Production lifecycle, requirement/schedule status, checklist completion, removal, and reordering use centralized services and audit without note or contact contents.
+- Artist and developer responses are curated. Never expose security/management notes, internal checklists, private Contact details, or audit metadata.

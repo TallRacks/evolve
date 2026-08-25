@@ -23,6 +23,7 @@ class LinkSerializer(serializers.ModelSerializer):
             "travel_itinerary",
             "travel_segment",
             "accommodation_stay",
+            "production_advance",
             "created_at",
         )
 

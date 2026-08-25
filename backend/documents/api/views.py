@@ -21,6 +21,7 @@ from documents.services import (
 from music.models import Release
 from organizations.api.permissions import PlatformSuperuser
 from organizations.selectors import organizations_for_user
+from production.models import ProductionAdvance
 from travel.models import AccommodationStay, TravelItinerary, TravelSegment
 from white_label.services import authenticate_api_key
 
@@ -143,6 +144,7 @@ ENTITY_MODELS = {
     "travel_itinerary": TravelItinerary,
     "travel_segment": TravelSegment,
     "accommodation_stay": AccommodationStay,
+    "production_advance": ProductionAdvance,
 }
 
 

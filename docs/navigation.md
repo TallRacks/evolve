@@ -11,3 +11,7 @@ Groups are keyboard-operable and collapsible. Collapse preferences may be stored
 ## Travel integration
 
 See `docs/travel.md` for the implemented Travel integration and its authorization, privacy, and snapshot rules.
+
+## Production
+
+Production is a canonical item in the Live & Operations group, with a permission-aware create command. Platform and Artist navigation expose their respective superuser and curated read-only routes.

@@ -11,6 +11,7 @@ from callsheets.models import CallSheetVersion
 from campaigns.models import Campaign, RolloutMilestone, RolloutTask
 from music.models import Release
 from organizations.permissions import user_has_organization_permission
+from production.models import ProductionAdvance, ProductionScheduleItem
 from travel.models import AccommodationStay, TravelSegment
 
 from .models import CalendarEvent
@@ -38,7 +39,10 @@ def _item(
 ):
     organization_id = getattr(obj, "organization_id", None)
     if organization_id is None:
-        organization_id = obj.itinerary.organization_id
+        parent = getattr(obj, "itinerary", None) or getattr(obj, "advance", None)
+        if parent is None and hasattr(obj, "call_sheet"):
+            parent = obj.call_sheet
+        organization_id = parent.organization_id
     return {
         "id": f"{source_type}:{obj.pk}",
         "source_type": source_type,
@@ -288,6 +292,56 @@ def get_calendar_items(user, organization, start, end, filters=None, portal=Fals
                     o.itinerary.artist,
                     o.status,
                     f"/workspace/travel/{o.itinerary_id}",
+                )
+            )
+
+    production_allowed = portal or user_has_organization_permission(
+        user, organization, "production.view"
+    )
+    if production_allowed and include("production"):
+        due = (
+            ProductionAdvance.objects.filter(
+                organization=organization,
+                advance_due_at__range=(start, end),
+            )
+            .exclude(status__in=("cancelled", "archived"))
+            .select_related("artist")
+        )
+        due = artist_filter(due, "artist_id")
+        for o in due:
+            items.append(
+                _item(
+                    "production",
+                    o,
+                    f"Production advance due: {o.production_title}",
+                    o.advance_due_at,
+                    artist=o.artist,
+                    status=o.status,
+                    url=f"/workspace/production/{o.pk}",
+                )
+            )
+        schedule = (
+            ProductionScheduleItem.objects.filter(
+                advance__organization=organization,
+                starts_at__range=(start, end),
+                is_active=True,
+            )
+            .exclude(status="cancelled")
+            .exclude(item_type="show")
+            .select_related("advance__artist")
+        )
+        schedule = artist_filter(schedule, "advance__artist_id")
+        for o in schedule:
+            items.append(
+                _item(
+                    "production",
+                    o,
+                    f"{o.get_item_type_display()}: {o.title}",
+                    o.starts_at,
+                    o.ends_at,
+                    o.advance.artist,
+                    o.status,
+                    f"/workspace/production/{o.advance_id}",
                 )
             )
 

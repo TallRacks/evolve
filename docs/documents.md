@@ -28,3 +28,7 @@ does not enable binary upload, automatic ingestion, or unrestricted generic rela
 ## Travel integration
 
 See `docs/travel.md` for the implemented Travel integration and its authorization, privacy, and snapshot rules.
+
+## Production links
+
+Document links may target one Production Advance through the typed `production_advance` relationship. Organization compatibility and exact-one-target validation apply. Production does not enable binary uploads or sensitive identity documents.

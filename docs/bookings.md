@@ -45,3 +45,7 @@ Milestone 12 adds a non-persisted, bounded calendar projection and standalone `C
 ## Travel integration
 
 See `docs/travel.md` for the implemented Travel integration and its authorization, privacy, and snapshot rules.
+
+## Production Advance
+
+Booking detail can explicitly create or open its one canonical Production Advance. Production derives organization and Artist from Booking and reports progress, blocked requirements, checklist progress, and the next operational schedule item without duplicating those records on Booking.

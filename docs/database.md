@@ -81,3 +81,7 @@ are validated.
 ## Travel
 
 Travel uses UUID identities and PostgreSQL constraints for one itinerary per optional Booking, unique segment/stay sequence within an itinerary, one segment assignment per traveller, one room assignment per stay/traveller, and typed Document links. Django migrations are the only schema-change mechanism.
+
+## Production schema
+
+`ProductionAdvance` is organization owned and unique per Booking. Its requirement, contact assignment, schedule, and checklist children are explicit foreign-key models. Constraints enforce one active primary Production Contact per role and valid schedule ranges. Document links can target a Production Advance through the typed nullable foreign key and exact-one-target constraint.

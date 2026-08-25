@@ -48,6 +48,10 @@ urlpatterns = [
         "call-sheet-versions/<uuid:version_id>/import-travel/",
         LifecycleView.as_view(operation="import-travel"),
     ),
+    path(
+        "call-sheet-versions/<uuid:version_id>/import-production/",
+        LifecycleView.as_view(operation="import-production"),
+    ),
     path("platform/call-sheets/", PlatformCallSheetListView.as_view()),
     path("platform/call-sheets/<uuid:call_sheet_id>/", PlatformCallSheetDetailView.as_view()),
     path("developer/call-sheets/", DeveloperCallSheetListView.as_view()),

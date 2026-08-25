@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "finance",
     "rights",
     "travel",
+    "production",
     "contacts",
     "promoters",
     "venues",
@@ -235,6 +236,11 @@ UNFOLD = {
                         "title": "Travel Itineraries",
                         "icon": "luggage",
                         "link": reverse_lazy("admin:travel_travelitinerary_changelist"),
+                    },
+                    {
+                        "title": "Production Advances",
+                        "icon": "construction",
+                        "link": reverse_lazy("admin:production_productionadvance_changelist"),
                     },
                     {
                         "title": "Travel Segments",

@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.db.models import Q, Sum
 from django.utils import timezone
 
@@ -13,6 +15,12 @@ from notifications.models import NotificationRecipient
 from organizations.models import Invitation, Organization
 from organizations.permissions import user_has_organization_permission
 from organizations.selectors import organizations_for_user
+from production.models import (
+    AdvanceChecklistItem,
+    AdvanceRequirement,
+    ProductionAdvance,
+    ProductionScheduleItem,
+)
 from promoters.models import Promoter
 from rights.models import Work
 from travel.models import TravelItinerary, TravelSegment
@@ -280,6 +288,36 @@ def global_search(user, query, organization_id=None):
             ),
         )
 
+    production_orgs = permitted_organizations(user, "production.view", organization_id)
+    if production_orgs:
+        rows = (
+            ProductionAdvance.objects.filter(organization__in=production_orgs)
+            .filter(
+                Q(production_title__icontains=query)
+                | Q(artist__stage_name__icontains=query)
+                | Q(booking__reference__icontains=query)
+                | Q(venue__name__icontains=query)
+                | Q(promoter__name__icontains=query)
+            )
+            .select_related("artist", "booking", "venue", "promoter")
+            .distinct()
+        )
+        add(
+            "production",
+            "Production",
+            (
+                result(
+                    x,
+                    "production",
+                    x.production_title,
+                    f"{x.artist.stage_name} / {x.booking.reference}",
+                    f"/workspace/production/{x.id}",
+                    x.status,
+                )
+                for x in rows[: RESULT_LIMIT + 1]
+            ),
+        )
+
     document_orgs = permitted_organizations(user, "document.view", organization_id)
     if document_orgs:
         document_ids = []
@@ -408,6 +446,46 @@ def dashboard(user, organization_id=None):
                 "artist": next_segment.itinerary.artist.stage_name,
                 "departure_at": next_segment.departure_at,
                 "destination": next_segment.arrival_location,
+            }
+    if user_has_organization_permission(user, organization, "production.view"):
+        now = timezone.now()
+        active_advances = ProductionAdvance.objects.filter(organization=organization).exclude(
+            status__in=("completed", "cancelled", "archived")
+        )
+        counts["production_due_soon"] = active_advances.filter(
+            advance_due_at__gte=now,
+            advance_due_at__lte=now + timedelta(days=7),
+        ).count()
+        counts["overdue_production"] = active_advances.filter(advance_due_at__lt=now).count()
+        counts["blocked_critical_requirements"] = AdvanceRequirement.objects.filter(
+            advance__organization=organization,
+            is_active=True,
+            status="blocked",
+            priority="critical",
+        ).count()
+        counts["overdue_production_checklist"] = AdvanceChecklistItem.objects.filter(
+            advance__organization=organization,
+            is_active=True,
+            is_completed=False,
+            due_at__lt=now,
+        ).count()
+        next_production = (
+            ProductionScheduleItem.objects.filter(
+                advance__organization=organization,
+                is_active=True,
+                starts_at__gte=now,
+            )
+            .exclude(status="cancelled")
+            .select_related("advance__artist")
+            .order_by("starts_at")
+            .first()
+        )
+        if next_production:
+            counts["next_production"] = {
+                "advance_id": str(next_production.advance_id),
+                "artist": next_production.advance.artist.stage_name,
+                "title": next_production.title,
+                "starts_at": next_production.starts_at,
             }
     if user_has_organization_permission(user, organization, "finance.view"):
         counts["draft_invoices"] = Invoice.objects.filter(

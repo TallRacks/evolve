@@ -41,3 +41,7 @@ Milestone 12 adds a non-persisted, bounded calendar projection and standalone `C
 ## Travel integration
 
 See `docs/travel.md` for the implemented Travel integration and its authorization, privacy, and snapshot rules.
+
+## Production import
+
+A draft Call Sheet version can explicitly import the linked Booking's Production Advance. The service copies schedule, operational contacts, access/parking context, and selected safe requirement titles into the draft. Existing corresponding draft rows are replaced. Published, superseded, and cancelled versions reject import and never update dynamically.

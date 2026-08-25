@@ -11,3 +11,7 @@ Results contain only an ID, type, title, subtitle, internal destination, and opt
 ## Travel integration
 
 See `docs/travel.md` for the implemented Travel integration and its authorization, privacy, and snapshot rules.
+
+## Production
+
+Authorized global search includes Production Advance title, Artist, Booking reference, Venue, and Promoter. It does not index Production notes, requirement descriptions, checklist content, security details, or Contact information.

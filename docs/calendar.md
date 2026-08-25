@@ -25,3 +25,7 @@ External calendar sync, recurring events, notifications, and travel projections 
 ## Travel integration
 
 See `docs/travel.md` for the implemented Travel integration and its authorization, privacy, and snapshot rules.
+
+## Production projection
+
+Calendar projects Production advance due times and active non-cancelled schedule items for authorized users. Production `show` items are omitted because Booking already projects the show event. Artist projection remains limited to linked Artists and safe fields.

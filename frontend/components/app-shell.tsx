@@ -12,6 +12,7 @@ import {
   ContactRound,
   FileText,
   Globe2,
+  HardHat,
   LayoutDashboard,
   LogOut,
   MapPin,
@@ -232,6 +233,12 @@ export function AppShell({
               show: superuser,
             },
             {
+              href: "/platform/production",
+              label: "Production",
+              icon: HardHat,
+              show: superuser,
+            },
+            {
               href: "/platform/call-sheets",
               label: "Call Sheets",
               icon: ClipboardList,
@@ -384,6 +391,12 @@ export function AppShell({
               show: true,
             },
             {
+              href: "/artist/production",
+              label: "Production",
+              icon: HardHat,
+              show: true,
+            },
+            {
               href: "/artist/travel",
               label: "Travel",
               icon: Plane,
@@ -448,6 +461,12 @@ export function AppShell({
             label: "Bookings",
             icon: BookOpen,
             show: can("booking.view"),
+          },
+          {
+            href: "/workspace/production",
+            label: "Production",
+            icon: HardHat,
+            show: can("production.view"),
           },
           {
             href: "/workspace/travel",
@@ -626,6 +645,11 @@ export function AppShell({
             title: "Create Booking",
             destination: "/workspace/bookings/new",
             show: can("booking.manage"),
+          },
+          {
+            title: "Create Production Advance",
+            destination: "/workspace/production/new",
+            show: can("production.manage"),
           },
           {
             title: "Create Travel Itinerary",

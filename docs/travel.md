@@ -31,3 +31,7 @@ Itinerary transitions are `draft -> confirmed/cancelled`, `confirmed -> in_progr
 - `GET /api/developer/travel/itineraries/` requires `travel.read` and returns a conservative organization-scoped schedule without contacts, references, notes, or private document URLs.
 
 Workspace management requires centralized `travel.view`, `travel.manage`, and `travel.status.manage` permissions. Owners and admins have full Travel access, managers can manage Travel, members can read it, Artist users use only the curated read-only portal, platform access requires superuser, and `is_staff` grants no bypass.
+
+## Production relationship
+
+Travel remains a parallel Booking-owned operational input. Production detail projects the linked itinerary and opens or creates Travel without copying transport, accommodation, confirmation, or private contact data into Production. Call Sheet Travel and Production imports remain separate explicit snapshot actions.

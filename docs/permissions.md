@@ -116,3 +116,7 @@ Frontend navigation and commands mirror this matrix for usability only. Backend 
 ## Travel
 
 `travel.view`, `travel.manage`, `travel.status.manage`, and `travel.private_contact.view` are organization permissions. Owner/Admin receive all; Manager receives management and private-contact access; Member receives read access; Artist uses only attributed portal endpoints; platform access requires superuser. Staff status alone grants nothing.
+
+## Production permissions
+
+Production uses `production.view`, `production.manage`, `production.status.manage`, `production.requirements.manage`, `production.schedule.manage`, `production.checklist.manage`, and `production.contacts.manage`. Workspace access is organization scoped, Artist access is curated read-only, platform access requires a Django superuser, and `is_staff` is never a bypass.

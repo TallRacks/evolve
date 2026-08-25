@@ -40,6 +40,7 @@ ALLOWED_SCOPES = (
     "finance.read",
     "rights.read",
     "travel.read",
+    "production.read",
 )
 
 

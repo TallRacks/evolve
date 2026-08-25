@@ -74,3 +74,7 @@ earnings are excluded. royalties.read is deliberately not implemented.
 ## Travel API
 
 Workspace endpoints under `/api/travel/` provide scoped itinerary, traveller, segment, assignment, accommodation, room, reorder, and explicit lifecycle operations. `/api/artist/travel/` is a curated attributed read. `/api/platform/travel/` requires superuser. `GET /api/developer/travel/itineraries/` requires `travel.read` and excludes private contacts, references, notes, and private URLs.
+
+## Production
+
+Workspace APIs are rooted at `/api/production/advances/` with explicit status and requirement, contact, schedule, and checklist actions. `/api/artist/production/` is curated read-only data. `/api/platform/production/` requires platform superuser access. `/api/developer/production/advances/` requires the read-only `production.read` scope and excludes notes, Contact details, checklist, Documents, and audit data.

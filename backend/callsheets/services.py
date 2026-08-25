@@ -572,3 +572,91 @@ def import_travel_from_itinerary(*, actor, version, request=None):
         request=request,
     )
     return locked
+
+
+@transaction.atomic
+def import_production_from_advance(*, actor, version, request=None):
+    """Replace editable Production-derived Call Sheet snapshots from the canonical advance."""
+    from zoneinfo import ZoneInfo
+
+    from production.models import ProductionAdvance
+
+    require_callsheet_permission(actor, version.call_sheet.organization, "callsheet.manage")
+    locked = (
+        CallSheetVersion.objects.select_for_update()
+        .select_related("call_sheet__booking", "call_sheet__organization")
+        .get(pk=version.pk)
+    )
+    if locked.status != CallSheetVersion.Status.DRAFT:
+        raise ValidationError("Only draft Call Sheet versions can import Production.")
+    advance = ProductionAdvance.objects.filter(booking=locked.call_sheet.booking).first()
+    if not advance:
+        raise ValidationError("This Booking has no Production Advance.")
+
+    locked.schedule_items.all().delete()
+    locked.contact_entries.all().delete()
+    for item in advance.schedule_items.filter(is_active=True).exclude(status="cancelled"):
+        zone = ZoneInfo(item.timezone)
+        local_start = item.starts_at.astimezone(zone)
+        local_end = item.ends_at.astimezone(zone) if item.ends_at else None
+        CallSheetScheduleItem.objects.create(
+            version=locked,
+            sequence=item.sequence,
+            start_time=local_start.time().replace(tzinfo=None),
+            end_time=local_end.time().replace(tzinfo=None) if local_end else None,
+            title=item.title,
+            description=item.item_type.replace("_", " ").title(),
+            location=item.location,
+        )
+    for index, assignment in enumerate(
+        advance.contact_assignments.filter(is_active=True).select_related("contact"), start=1
+    ):
+        contact = assignment.contact
+        CallSheetContactEntry.objects.create(
+            version=locked,
+            sequence=index,
+            source_contact=contact,
+            responsibility=assignment.responsibility or assignment.get_role_display(),
+            name_snapshot=contact.full_name,
+            email_snapshot=contact.email,
+            phone_snapshot=contact.mobile or contact.phone,
+            is_primary=assignment.is_primary,
+        )
+
+    requirements = (
+        advance.requirements.filter(is_active=True)
+        .exclude(category__in=("security",))
+        .exclude(status="not_applicable")
+    )
+    locked.access_notes = advance.access_notes
+    locked.parking_notes = advance.parking_notes
+    locked.production_contact = next(
+        (
+            row.contact.full_name
+            for row in advance.contact_assignments.filter(
+                is_active=True, is_primary=True
+            ).select_related("contact")
+        ),
+        "",
+    )
+    locked.special_requirements = "\n".join(
+        f"{row.get_category_display()}: {row.title}" for row in requirements
+    )[:5000]
+    locked.save(
+        update_fields=(
+            "access_notes",
+            "parking_notes",
+            "production_contact",
+            "special_requirements",
+            "updated_at",
+        )
+    )
+    record_event(
+        actor=actor,
+        organization=locked.call_sheet.organization,
+        action="callsheet.production_imported",
+        resource=locked,
+        description="Production Advance imported into draft Call Sheet snapshots.",
+        request=request,
+    )
+    return locked
