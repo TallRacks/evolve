@@ -51,3 +51,10 @@ API credentials may receive `music.read`. `GET /api/developer/releases/` and `GE
 ## Calendar and documents
 
 Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. Binary upload, external calendar sync, and notification delivery remain deferred. See `docs/calendar.md` and `docs/documents.md`.
+
+## Finance API
+
+The deliberately granted `finance.read` scope enables organization-scoped read-only
+`GET /api/developer/finance/invoices/` and `GET /api/developer/finance/payments/`. Representations
+contain financial identity, lifecycle, currency, totals/balance, and dates. They exclude billing
+addresses/emails, payer identity, internal notes, audit data, and allocation actors.

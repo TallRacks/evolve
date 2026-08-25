@@ -1,0 +1,39 @@
+from django.urls import path
+
+from .views import (
+    AllocationView,
+    BookingInvoiceView,
+    DeveloperInvoiceView,
+    DeveloperPaymentView,
+    InvoiceDetailView,
+    InvoiceIssueView,
+    InvoiceListCreateView,
+    InvoiceVoidView,
+    LineItemDetailView,
+    LineItemView,
+    OverviewView,
+    PaymentDetailView,
+    PaymentListCreateView,
+    PaymentVoidView,
+    PlatformInvoiceView,
+    PlatformPaymentView,
+)
+
+urlpatterns = [
+    path("finance/overview/", OverviewView.as_view()),
+    path("finance/invoices/", InvoiceListCreateView.as_view()),
+    path("finance/invoices/<uuid:pk>/", InvoiceDetailView.as_view()),
+    path("finance/invoices/<uuid:pk>/issue/", InvoiceIssueView.as_view()),
+    path("finance/invoices/<uuid:pk>/void/", InvoiceVoidView.as_view()),
+    path("finance/invoices/<uuid:pk>/line-items/", LineItemView.as_view()),
+    path("finance/invoices/<uuid:pk>/line-items/<uuid:item_id>/", LineItemDetailView.as_view()),
+    path("bookings/<uuid:booking_id>/create-invoice/", BookingInvoiceView.as_view()),
+    path("finance/payments/", PaymentListCreateView.as_view()),
+    path("finance/payments/<uuid:pk>/", PaymentDetailView.as_view()),
+    path("finance/payments/<uuid:pk>/void/", PaymentVoidView.as_view()),
+    path("finance/payments/<uuid:pk>/allocations/", AllocationView.as_view()),
+    path("platform/finance/invoices/", PlatformInvoiceView.as_view()),
+    path("platform/finance/payments/", PlatformPaymentView.as_view()),
+    path("developer/finance/invoices/", DeveloperInvoiceView.as_view()),
+    path("developer/finance/payments/", DeveloperPaymentView.as_view()),
+]

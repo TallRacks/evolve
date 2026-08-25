@@ -85,3 +85,10 @@ Milestone 12 adds a non-persisted, bounded calendar projection and standalone `C
 ## Notifications
 
 Milestone 13 adds immutable shared Notification content, unique per-user recipient state, category preferences, and synchronous domain-service integration. Personal inbox data is not exposed to API keys. External and scheduled delivery remain deferred.
+
+## Finance permissions
+
+`finance.view/manage`, `finance.invoice.issue`, `finance.payment.record`, and
+`finance.payment.allocate` belong to owners and administrators. Managers, members, artists, and
+staff-only users receive none. Platform Finance requires superuser; API keys require the separate,
+deliberately granted `finance.read` scope.

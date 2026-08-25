@@ -21,6 +21,7 @@ class Notification(models.Model):
         MUSIC = "music", "Music"
         MARKETING = "marketing", "Marketing"
         DOCUMENTS = "documents", "Documents"
+        FINANCE = "finance", "Finance"
         SYSTEM = "system", "System"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

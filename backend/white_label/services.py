@@ -34,7 +34,7 @@ ALLOWED_SCOPES = (
     "booking.read",
     "callsheet.read",
     "music.read",
-    "campaign.read", "calendar.read", "document.read",
+    "campaign.read", "calendar.read", "document.read", "finance.read",
 )
 
 

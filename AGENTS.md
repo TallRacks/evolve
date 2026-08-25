@@ -176,3 +176,12 @@ their requirements are defined.
 - Recipient resolution requires active users and active organization memberships. Notifications never grant authorization.
 - Action URLs are server-generated internal paths; content must exclude secrets, commercial amounts, restricted URLs, and sensitive data.
 - In-app delivery is synchronous inside domain transactions. No Redis, Celery, WebSockets, scheduler, email, SMS, or push delivery exists.
+
+## Finance invariants
+
+- Booking owns commercial terms; Finance owns immutable invoice snapshots, payments, allocations, balances, and derived payment state.
+- All money uses Decimal and explicit uppercase currency. Never convert or aggregate unlike currencies.
+- Invoice lifecycle and payment allocation use Finance services. Issued invoices are immutable; allocated records cannot be casually voided or deleted.
+- Allocation locks Payment before Invoice and must reject cross-organization, cross-currency, void, and over-allocation attempts.
+- Finance data requires explicit backend permissions. Managers, members, artists, and staff-only users receive no Finance access by default.
+- Store no card or bank credentials. Audit and notification content must not leak financial amounts, billing addresses, payer details, or private notes.

@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "calendar_app",
     "documents",
     "notifications",
+    "finance",
     "contacts",
     "promoters",
     "venues",
@@ -328,6 +329,27 @@ UNFOLD = {
                         "title": "Document links",
                         "icon": "link",
                         "link": reverse_lazy("admin:documents_documentlink_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "Finance",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Invoices",
+                        "icon": "receipt_long",
+                        "link": reverse_lazy("admin:finance_invoice_changelist"),
+                    },
+                    {
+                        "title": "Payments",
+                        "icon": "payments",
+                        "link": reverse_lazy("admin:finance_payment_changelist"),
+                    },
+                    {
+                        "title": "Payment allocations",
+                        "icon": "account_balance",
+                        "link": reverse_lazy("admin:finance_paymentallocation_changelist"),
                     },
                 ],
             },

@@ -2,7 +2,7 @@
 
 import {
   BookOpen, Building2, CalendarDays, FileText, ChevronDown, ClipboardList, Code2, ContactRound, Globe2, LayoutDashboard, LogOut, MapPin, Menu, Palette,
-  Megaphone, Music2, ShieldCheck, UserRound, UsersRound, X,
+  Megaphone, Music2, ShieldCheck, UserRound, UsersRound, WalletCards, X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -44,6 +44,7 @@ export function AppShell({ children, organizationScoped = false }: { children: R
     { href: "/workspace/documents", label: "Documents", icon: FileText, show: !!membership?.permissions.includes("document.view") },
     { href: "/workspace/music", label: "Music", icon: Music2, show: !!membership?.permissions.includes("music.view") },
     { href: "/workspace/campaigns", label: "Campaigns", icon: Megaphone, show: !!membership?.permissions.includes("campaign.view") },
+    { href: "/workspace/finance", label: "Finance", icon: WalletCards, show: !!membership?.permissions.includes("finance.view") },
     { href: "/workspace/team", label: "Team", icon: UsersRound, show: !!membership?.permissions.includes("membership.view") },
     { href: "/workspace/invitations", label: "Invitations", icon: UsersRound, show: !!membership?.permissions.includes("membership.view") },
     { href: "/workspace/organization", label: "Organization", icon: Building2, show: !!membership },
@@ -62,6 +63,7 @@ export function AppShell({ children, organizationScoped = false }: { children: R
     { href: "/platform/call-sheets", label: "Call Sheets", icon: ClipboardList, show: !!session?.user.is_superuser },
     { href: "/platform/music", label: "Music", icon: Music2, show: !!session?.user.is_superuser },
     { href: "/platform/campaigns", label: "Campaigns", icon: Megaphone, show: !!session?.user.is_superuser },
+    { href: "/platform/finance", label: "Finance", icon: WalletCards, show: !!session?.user.is_superuser },
     { href: "/platform/rollouts", label: "Rollouts", icon: ClipboardList, show: !!session?.user.is_superuser },
     { href: "/platform/users", label: "Users", icon: UsersRound, show: !!session?.user.is_superuser },
     { href: "/platform/branding", label: "White-label", icon: Palette, show: !!session?.user.is_superuser },

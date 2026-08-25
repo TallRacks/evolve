@@ -14,6 +14,7 @@ urlpatterns = [
     path("api/", include("calendar_app.api.urls")),
     path("api/", include("documents.api.urls")),
     path("api/", include("notifications.api.urls")),
+    path("api/", include("finance.api.urls")),
     path("api/", include("contacts.api.urls")),
     path("api/", include("promoters.api.urls")),
     path("api/", include("venues.api.urls")),

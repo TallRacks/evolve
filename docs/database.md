@@ -64,3 +64,9 @@ Milestone 12 adds a non-persisted, bounded calendar projection and standalone `C
 ## Notifications
 
 Milestone 13 adds immutable shared Notification content, unique per-user recipient state, category preferences, and synchronous domain-service integration. Personal inbox data is not exposed to API keys. External and scheduled delivery remain deferred.
+
+## Finance records
+
+`finance.0001_initial` creates organization-owned Invoice, InvoiceLineItem, Payment, and
+PaymentAllocation records with UUID identity, unique references, money constraints, lifecycle
+indexes, and protected financial history. Balances are derived from line items and allocations.

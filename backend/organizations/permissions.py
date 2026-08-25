@@ -46,6 +46,11 @@ ROLE_PERMISSIONS = {
         "document.view",
         "document.manage",
         "document.restricted.view",
+        "finance.view",
+        "finance.manage",
+        "finance.invoice.issue",
+        "finance.payment.record",
+        "finance.payment.allocate",
     },
     Membership.Role.MANAGER: {
         "organization.view",

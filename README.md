@@ -3,6 +3,10 @@
 Private artist-management and operations platform. The repository contains the identity,
 organization, white-label, artist, relationship, and booking foundations.
 
+Milestone 14 adds a dedicated Finance domain for invoice snapshots, line items, recorded external
+payments, allocations, currency-aware balances, authenticated print views, and scoped
+workspace/platform/developer reads. See `docs/finance.md`.
+
 ## Prerequisites
 
 - Docker Engine with Docker Compose

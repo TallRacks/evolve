@@ -2,6 +2,9 @@
 
 Documents are organization-owned metadata records. Milestone 12 does not accept binary uploads and does not claim vault, encryption-at-rest, or malware-scanning capabilities. An HTTPS external reference is required; storage keys and checksums remain unavailable until durable private storage is selected.
 
+Invoices provide authenticated print-friendly HTML only. Finance does not generate/store PDFs or
+automatically create Documents. Invoice and Payment attachments remain deferred.
+
 ## Model and links
 
 `Document` uses UUID identity, explicit version lineage, visibility, archive lifecycle, and external file metadata. Versions are new immutable references in a root lineage; an existing reference is never silently overwritten. `DocumentLink` uses explicit nullable foreign keys to Artist, Booking, CallSheet, Release, or Campaign with a database check requiring exactly one target and service/model validation requiring the same organization. No unrestricted generic foreign key exists.

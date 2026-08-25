@@ -2,6 +2,10 @@
 
 Bookings are organization-owned operational event records. Each booking requires an Artist and may reference current Promoter, Venue, Contact, and Membership records from the same organization.
 
+Finance remains separate. Authorized users explicitly create a draft Invoice snapshot from current
+commercial terms. Booking changes never synchronize into that invoice, and Finance-derived totals
+are not duplicated onto Booking.
+
 ## Identity and lifecycle
 
 Bookings use UUID primary keys and globally unique server-generated `EV-` references. The supported workflow is:
