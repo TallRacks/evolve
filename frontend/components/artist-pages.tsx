@@ -16,6 +16,7 @@ import {
 import { useAuth } from "@/components/auth/auth-provider";
 import { RouteGuard } from "@/components/auth/route-guard";
 import { apiRequest } from "@/lib/api/client";
+import { confirmAction } from "@/components/ui/action-dialog";
 import {
   Breadcrumbs,
   buttonClass,
@@ -470,7 +471,7 @@ function ArtistDetailContent({
     }
   }
   async function lifecycle(status: string) {
-    if (!confirm(`Change artist status to ${status}?`)) return;
+    if (!await confirmAction(`Change artist status to ${status}?`)) return;
     await apiRequest(
       platform
         ? `/api/platform/artists/${data.id}/`
@@ -494,7 +495,7 @@ function ArtistDetailContent({
     await reload();
   }
   async function remove(assignment: Assignment) {
-    if (!confirm("Remove this team assignment?")) return;
+    if (!await confirmAction("Remove this team assignment?")) return;
     await apiRequest(`/api/artists/${data.id}/team/${assignment.id}/`, {
       method: "PATCH",
       body: JSON.stringify({ is_active: false, is_primary: false }),
@@ -518,7 +519,7 @@ function ArtistDetailContent({
     await reload();
   }
   async function unlink(link: PortalLink) {
-    if (!confirm("Unlink this portal user?")) return;
+    if (!await confirmAction("Unlink this portal user?")) return;
     await apiRequest(
       "/api/artists/" + data.id + "/portal-links/" + link.id + "/unlink/",
       { method: "POST" },

@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { RouteGuard } from "@/components/auth/route-guard";
 import { useAuth } from "@/components/auth/auth-provider";
 import { apiRequest } from "@/lib/api/client";
+import { confirmAction } from "@/components/ui/action-dialog";
 import {
   buttonClass,
   EmptyState,
@@ -376,7 +377,7 @@ export function TeamPage() {
     [data, query, role, status],
   );
   async function update(item: Member, patch: Partial<Member>) {
-    if (!path || !confirm("Apply this membership access change?")) return;
+    if (!path || !await confirmAction("Apply this membership access change?")) return;
     setMessage("");
     try {
       await apiRequest(`${path}${item.id}/`, {
@@ -550,7 +551,7 @@ export function InvitationsPage() {
     }
   }
   async function revoke(item: Invitation) {
-    if (!confirm("Revoke this invitation?")) return;
+    if (!await confirmAction("Revoke this invitation?")) return;
     try {
       await apiRequest(`/api/invitations/${item.id}/revoke/`, {
         method: "POST",
@@ -929,7 +930,7 @@ export function PlatformOrganizationDetailPage({ id }: { id: string }) {
   async function toggle() {
     if (
       !data ||
-      !confirm(
+      !await confirmAction(
         `${data.is_active ? "Deactivate" : "Activate"} this organization?`,
       )
     )
@@ -1050,7 +1051,7 @@ export function PlatformUserDetailPage({ id }: { id: string }) {
   async function toggle() {
     if (
       !data ||
-      !confirm(`${data.is_active ? "Deactivate" : "Activate"} this user?`)
+      !await confirmAction(`${data.is_active ? "Deactivate" : "Activate"} this user?`)
     )
       return;
     await apiRequest(`/api/platform/users/${id}/`, {

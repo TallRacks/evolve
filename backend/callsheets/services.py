@@ -204,15 +204,27 @@ def _populate_booking_people(version):
 @transaction.atomic
 def create_call_sheet(*, actor, booking, request=None):
     require_callsheet_permission(actor, booking.organization, "callsheet.manage")
-    call_sheet = CallSheet(organization=booking.organization, booking=booking, created_by=actor)
+    locked_booking = Booking.objects.select_for_update().get(pk=booking.pk)
+    existing = CallSheet.objects.filter(booking=locked_booking).first()
+    if existing:
+        working_version = existing.versions.filter(
+            status__in=(CallSheetVersion.Status.DRAFT, CallSheetVersion.Status.READY)
+        ).first()
+        return existing, working_version or existing.versions.first()
+
+    call_sheet = CallSheet(
+        organization=locked_booking.organization,
+        booking=locked_booking,
+        created_by=actor,
+    )
     call_sheet.full_clean()
     call_sheet.save()
     record_event(
         actor=actor,
-        organization=booking.organization,
+        organization=locked_booking.organization,
         action="callsheet.created",
         resource=call_sheet,
-        description=f"Created Call Sheet for booking {booking.reference}.",
+        description=f"Created Call Sheet for booking {locked_booking.reference}.",
         request=request,
     )
     version = create_call_sheet_version(actor=actor, call_sheet=call_sheet, request=request)

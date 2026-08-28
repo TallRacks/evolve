@@ -76,12 +76,12 @@ class BookingCallSheetView(APIView):
     def post(self, request, booking_id):
         booking = scoped_booking(request.user, booking_id)
         require_callsheet_permission(request.user, booking.organization, "callsheet.manage")
-        if CallSheet.objects.filter(booking=booking).exists():
-            raise ValidationError("This Booking already has a Call Sheet.")
+        existed = CallSheet.objects.filter(booking=booking).exists()
         call_sheet, _ = validated(
             lambda: create_call_sheet(actor=request.user, booking=booking, request=request)
         )
-        return Response(CallSheetSerializer(call_sheet).data, status=status.HTTP_201_CREATED)
+        response_status = status.HTTP_200_OK if existed else status.HTTP_201_CREATED
+        return Response(CallSheetSerializer(call_sheet).data, status=response_status)
 
 
 class CallSheetDetailView(APIView):

@@ -100,6 +100,7 @@ class VersionSerializer(serializers.ModelSerializer):
     booking = serializers.SerializerMethodField()
     organization = serializers.SerializerMethodField()
     published_by = serializers.EmailField(source="published_by.email", allow_null=True)
+    created_by = serializers.EmailField(source="created_by.email", allow_null=True)
     schedule = ScheduleSerializer(source="schedule_items", many=True, read_only=True)
     team = TeamSerializer(source="team_entries", many=True, read_only=True)
     contacts = ContactSerializer(source="contact_entries", many=True, read_only=True)
@@ -115,6 +116,7 @@ class VersionSerializer(serializers.ModelSerializer):
             "status",
             "created_at",
             "updated_at",
+            "created_by",
             "published_by",
             "published_at",
             "superseded_at",
@@ -138,6 +140,9 @@ class VersionSerializer(serializers.ModelSerializer):
 
 
 class VersionSummarySerializer(serializers.ModelSerializer):
+    created_by = serializers.EmailField(source="created_by.email", allow_null=True)
+    published_by = serializers.EmailField(source="published_by.email", allow_null=True)
+
     class Meta:
         model = CallSheetVersion
         fields = (
@@ -149,6 +154,8 @@ class VersionSummarySerializer(serializers.ModelSerializer):
             "venue_name",
             "published_at",
             "created_at",
+            "created_by",
+            "published_by",
         )
 
 

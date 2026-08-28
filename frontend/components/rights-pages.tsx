@@ -15,6 +15,7 @@ import {
   StatusBadge,
 } from "@/components/ui/page";
 import { apiRequest } from "@/lib/api/client";
+import { confirmAction, promptAction } from "@/components/ui/action-dialog";
 type Party = {
   id: string;
   display_name: string;
@@ -669,12 +670,12 @@ export function StatementDetailPage({
       });
   }, [load, platform, o]);
   async function act(name: string) {
-    if (name === "finalize" && !confirm("Finalize and freeze this statement?"))
+    if (name === "finalize" && !await confirmAction("Finalize and freeze this statement?"))
       return;
     await apiRequest("/api/royalties/statements/" + id + "/" + name + "/", {
       method: "POST",
       body: JSON.stringify(
-        name === "void" ? { reason: prompt("Void reason") } : {},
+        name === "void" ? { reason: await promptAction("Void reason") } : {},
       ),
     });
     await load();

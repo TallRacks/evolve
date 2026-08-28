@@ -137,6 +137,16 @@ def test_one_call_sheet_per_booking_and_snapshot_population(call_sheet, booking)
         CallSheet.objects.create(organization=booking.organization, booking=booking)
 
 
+def test_generation_is_idempotent(owner, booking):
+    first_sheet, first_version = create_call_sheet(actor=owner, booking=booking)
+    second_sheet, second_version = create_call_sheet(actor=owner, booking=booking)
+
+    assert second_sheet == first_sheet
+    assert second_version == first_version
+    assert CallSheet.objects.filter(booking=booking).count() == 1
+    assert first_sheet.versions.count() == 1
+
+
 def test_call_sheet_rejects_cross_organization(booking, other_organization):
     sheet = CallSheet(organization=other_organization, booking=booking)
     with pytest.raises(ValidationError):
@@ -414,3 +424,36 @@ def test_admin_protects_history(call_sheet):
     assert len(version_admin.get_readonly_fields(None, version)) == len(version._meta.fields)
     entry = CallSheetTeamEntry(version=version, name_snapshot="Snapshot")
     assert not child_admin.has_change_permission(request, entry)
+
+@pytest.mark.django_db(transaction=True)
+def test_postgresql_concurrent_generation_returns_one_canonical_sheet(owner, booking):
+    if connection.vendor != "postgresql":
+        pytest.skip("PostgreSQL concurrency regression")
+    barrier = Barrier(2)
+    results = []
+    errors = []
+
+    def generate():
+        close_old_connections()
+        try:
+            actor = User.objects.get(pk=owner.pk)
+            thread_booking = Booking.objects.get(pk=booking.pk)
+            barrier.wait()
+            sheet, version = create_call_sheet(actor=actor, booking=thread_booking)
+            results.append((sheet.pk, version.pk))
+        except Exception as error:  # pragma: no cover - asserted below
+            errors.append(error)
+        finally:
+            close_old_connections()
+
+    threads = [Thread(target=generate) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=10)
+
+    assert not any(thread.is_alive() for thread in threads)
+    assert errors == []
+    assert len(set(results)) == 1
+    assert CallSheet.objects.filter(booking=booking).count() == 1
+    assert CallSheetVersion.objects.filter(call_sheet__booking=booking).count() == 1

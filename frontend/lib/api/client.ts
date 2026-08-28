@@ -1,5 +1,18 @@
 const CSRF_COOKIE = "csrftoken";
 
+type ErrorPayload = Record<string, unknown> | null;
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly fields: Record<string, string[]>,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 function cookieValue(name: string): string | null {
   const prefix = `${name}=`;
   const cookie = document.cookie.split("; ").find((item) => item.startsWith(prefix));
@@ -11,6 +24,35 @@ async function csrfToken(): Promise<string> {
   const token = cookieValue(CSRF_COOKIE);
   if (!token) throw new Error("Unable to initialize a secure request.");
   return token;
+}
+
+function messages(value: unknown): string[] {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(messages);
+  return [];
+}
+
+function responseError(status: number, data: ErrorPayload): ApiError {
+  const fields: Record<string, string[]> = {};
+  if (data) {
+    for (const [field, value] of Object.entries(data)) {
+      if (field !== "detail" && field !== "non_field_errors") {
+        const fieldMessages = messages(value);
+        if (fieldMessages.length) fields[field] = fieldMessages;
+      }
+    }
+  }
+  const detail = messages(data?.detail)[0] ?? messages(data?.non_field_errors)[0];
+  const fallback: Record<number, string> = {
+    400: "Review the highlighted values and try again.",
+    401: "Your session has expired. Sign in again.",
+    403: "You do not have permission to perform this action.",
+    404: "The requested record was not found.",
+    409: "This record changed. Reload it before trying again.",
+    422: "The submitted values could not be processed.",
+    500: "The service could not complete the request. Try again safely.",
+  };
+  return new ApiError(detail ?? Object.values(fields).flat()[0] ?? fallback[status] ?? "The request could not be completed.", status, fields);
 }
 
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -28,16 +70,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     cache: method === "GET" ? "no-store" : init.cache,
   });
   if (response.status === 204) return undefined as T;
-  const data = await response.json().catch(() => null);
-  if (!response.ok) {
-    const detail = data?.detail;
-    throw new Error(
-      Array.isArray(detail)
-        ? detail.join(" ")
-        : typeof detail === "string"
-          ? detail
-          : "The request could not be completed.",
-    );
-  }
+  const data = (await response.json().catch(() => null)) as ErrorPayload;
+  if (!response.ok) throw responseError(response.status, data);
   return data as T;
 }
