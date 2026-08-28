@@ -130,42 +130,6 @@ UNFOLD = {
         "show_all_applications": False,
         "navigation": [
             {
-                "title": "Rights & Royalties",
-                "collapsible": True,
-                "items": [
-                    {
-                        "title": "Works",
-                        "icon": "library_music",
-                        "link": reverse_lazy("admin:rights_work_changelist"),
-                    },
-                    {
-                        "title": "Rights Parties",
-                        "icon": "groups",
-                        "link": reverse_lazy("admin:rights_rightsparty_changelist"),
-                    },
-                    {
-                        "title": "Master Rights",
-                        "icon": "copyright",
-                        "link": reverse_lazy("admin:rights_masterright_changelist"),
-                    },
-                    {
-                        "title": "Publishing Rights",
-                        "icon": "edit_note",
-                        "link": reverse_lazy("admin:rights_publishingright_changelist"),
-                    },
-                    {
-                        "title": "Royalty Statements",
-                        "icon": "receipt_long",
-                        "link": reverse_lazy("admin:rights_royaltystatement_changelist"),
-                    },
-                    {
-                        "title": "Royalty Allocations",
-                        "icon": "account_tree",
-                        "link": reverse_lazy("admin:rights_royaltyallocation_changelist"),
-                    },
-                ],
-            },
-            {
                 "title": "Overview",
                 "collapsible": True,
                 "items": [
@@ -396,19 +360,64 @@ UNFOLD = {
                 "collapsible": True,
                 "items": [
                     {
+                        "title": "Finance overview",
+                        "icon": "account_balance_wallet",
+                        "link": reverse_lazy("admin:app_list", kwargs={"app_label": "finance"}),
+                        "permission": "config.admin_navigation.finance_overview",
+                    },
+                    {
                         "title": "Invoices",
                         "icon": "receipt_long",
                         "link": reverse_lazy("admin:finance_invoice_changelist"),
+                        "permission": "config.admin_navigation.finance_invoices",
                     },
                     {
                         "title": "Payments",
                         "icon": "payments",
                         "link": reverse_lazy("admin:finance_payment_changelist"),
+                        "permission": "config.admin_navigation.finance_payments",
                     },
                     {
                         "title": "Payment allocations",
                         "icon": "account_balance",
                         "link": reverse_lazy("admin:finance_paymentallocation_changelist"),
+                        "permission": "config.admin_navigation.finance_allocations",
+                    },
+                    {
+                        "title": "Rights & Royalties / Works",
+                        "icon": "library_music",
+                        "link": reverse_lazy("admin:rights_work_changelist"),
+                        "permission": "config.admin_navigation.rights_works",
+                    },
+                    {
+                        "title": "Rights Parties",
+                        "icon": "groups",
+                        "link": reverse_lazy("admin:rights_rightsparty_changelist"),
+                        "permission": "config.admin_navigation.rights_parties",
+                    },
+                    {
+                        "title": "Master Rights",
+                        "icon": "copyright",
+                        "link": reverse_lazy("admin:rights_masterright_changelist"),
+                        "permission": "config.admin_navigation.master_rights",
+                    },
+                    {
+                        "title": "Publishing Rights",
+                        "icon": "edit_note",
+                        "link": reverse_lazy("admin:rights_publishingright_changelist"),
+                        "permission": "config.admin_navigation.publishing_rights",
+                    },
+                    {
+                        "title": "Royalty Statements",
+                        "icon": "receipt_long",
+                        "link": reverse_lazy("admin:rights_royaltystatement_changelist"),
+                        "permission": "config.admin_navigation.royalty_statements",
+                    },
+                    {
+                        "title": "Royalty Allocations",
+                        "icon": "account_tree",
+                        "link": reverse_lazy("admin:rights_royaltyallocation_changelist"),
+                        "permission": "config.admin_navigation.royalty_allocations",
                     },
                 ],
             },

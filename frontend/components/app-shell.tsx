@@ -305,11 +305,29 @@ export function AppShell({
           ],
         },
         {
-          label: "Rights & royalties",
+          label: "Finance",
           items: [
             {
+              href: "/platform/finance",
+              label: "Overview",
+              icon: WalletCards,
+              show: superuser,
+            },
+            {
+              href: "/platform/finance/invoices",
+              label: "Invoices",
+              icon: WalletCards,
+              show: superuser,
+            },
+            {
+              href: "/platform/finance/payments",
+              label: "Payments",
+              icon: CircleDollarSign,
+              show: superuser,
+            },
+            {
               href: "/platform/rights/works",
-              label: "Works",
+              label: "Rights",
               icon: Scale,
               show: superuser,
             },
@@ -322,23 +340,6 @@ export function AppShell({
             {
               href: "/platform/royalties/statements",
               label: "Royalty Statements",
-              icon: CircleDollarSign,
-              show: superuser,
-            },
-          ],
-        },
-        {
-          label: "Finance",
-          items: [
-            {
-              href: "/platform/finance/invoices",
-              label: "Invoices",
-              icon: WalletCards,
-              show: superuser,
-            },
-            {
-              href: "/platform/finance/payments",
-              label: "Payments",
               icon: CircleDollarSign,
               show: superuser,
             },
@@ -518,29 +519,6 @@ export function AppShell({
         ],
       },
       {
-        label: "Rights & royalties",
-        items: [
-          {
-            href: "/workspace/rights/works",
-            label: "Works",
-            icon: Scale,
-            show: can("rights.view"),
-          },
-          {
-            href: "/workspace/rights",
-            label: "Rights",
-            icon: Scale,
-            show: can("rights.view"),
-          },
-          {
-            href: "/workspace/royalties/statements",
-            label: "Royalty Statements",
-            icon: CircleDollarSign,
-            show: can("royalties.view"),
-          },
-        ],
-      },
-      {
         label: "Finance",
         items: [
           {
@@ -560,6 +538,18 @@ export function AppShell({
             label: "Payments",
             icon: CircleDollarSign,
             show: can("finance.view"),
+          },
+          {
+            href: "/workspace/rights",
+            label: "Rights",
+            icon: Scale,
+            show: can("rights.view"),
+          },
+          {
+            href: "/workspace/royalties/statements",
+            label: "Royalty Statements",
+            icon: CircleDollarSign,
+            show: can("royalties.view"),
           },
         ],
       },
