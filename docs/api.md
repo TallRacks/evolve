@@ -78,3 +78,7 @@ Workspace endpoints under `/api/travel/` provide scoped itinerary, traveller, se
 ## Production
 
 Workspace APIs are rooted at `/api/production/advances/` with explicit status and requirement, contact, schedule, and checklist actions. `/api/artist/production/` is curated read-only data. `/api/platform/production/` requires platform superuser access. `/api/developer/production/advances/` requires the read-only `production.read` scope and excludes notes, Contact details, checklist, Documents, and audit data.
+
+## Contracts API
+
+Workspace endpoints under `/api/contracts/` provide scoped list, detail, child, approval, signing-state, lifecycle, Document-link, and Booking-create workflows. `/api/artist/contracts/` is curated executed-only data; `/api/platform/contracts/` requires superuser; `/api/developer/contracts/` requires `contract.read` and excludes legal text, values, parties, approvals, Documents, and internal notes.

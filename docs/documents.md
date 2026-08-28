@@ -32,3 +32,8 @@ See `docs/travel.md` for the implemented Travel integration and its authorizatio
 ## Production links
 
 Document links may target one Production Advance through the typed `production_advance` relationship. Organization compatibility and exact-one-target validation apply. Production does not enable binary uploads or sensitive identity documents.
+
+
+## Contract links
+
+Contracts link existing same-organization external-reference Documents through explicit ContractDocument records. Contract execution does not require a Document, and existing binary-upload and sensitive-document restrictions remain unchanged.

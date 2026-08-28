@@ -9,6 +9,7 @@ from artists.selectors import portal_artists_for_user
 from bookings.models import Booking
 from callsheets.models import CallSheetVersion
 from campaigns.models import Campaign, RolloutMilestone, RolloutTask
+from contracts.models import Contract
 from music.models import Release
 from organizations.permissions import user_has_organization_permission
 from production.models import ProductionAdvance, ProductionScheduleItem
@@ -292,6 +293,33 @@ def get_calendar_items(user, organization, start, end, filters=None, portal=Fals
                     o.itinerary.artist,
                     o.status,
                     f"/workspace/travel/{o.itinerary_id}",
+                )
+            )
+
+    contract_allowed = not portal and user_has_organization_permission(
+        user, organization, "contract.view"
+    )
+    if contract_allowed and include("contract"):
+        contracts = (
+            Contract.objects.filter(
+                organization=organization,
+                expiry_date__range=(start.date(), end.date()),
+            )
+            .exclude(status=Contract.Status.ARCHIVED)
+            .select_related("artist")
+        )
+        contracts = artist_filter(contracts, "artist_id")
+        for contract in contracts:
+            items.append(
+                _item(
+                    "contract",
+                    contract,
+                    f"Contract expiry: {contract.reference}",
+                    contract.expiry_date,
+                    artist=contract.artist,
+                    status=contract.status,
+                    url=f"/workspace/contracts/{contract.pk}",
+                    all_day=True,
                 )
             )
 

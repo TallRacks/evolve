@@ -11,6 +11,7 @@ import {
   Code2,
   ContactRound,
   FileText,
+  FileSignature,
   Globe2,
   HardHat,
   LayoutDashboard,
@@ -346,6 +347,17 @@ export function AppShell({
           ],
         },
         {
+          label: "Content & records",
+          items: [
+            {
+              href: "/platform/contracts",
+              label: "Contracts",
+              icon: FileSignature,
+              show: superuser,
+            },
+          ],
+        },
+        {
           label: "Platform services",
           items: [
             {
@@ -395,6 +407,12 @@ export function AppShell({
               href: "/artist/production",
               label: "Production",
               icon: HardHat,
+              show: true,
+            },
+            {
+              href: "/artist/contracts",
+              label: "Contracts",
+              icon: FileSignature,
               show: true,
             },
             {
@@ -556,6 +574,12 @@ export function AppShell({
       {
         label: "Content & records",
         items: [
+          {
+            href: "/workspace/contracts",
+            label: "Contracts",
+            icon: FileSignature,
+            show: can("contract.view"),
+          },
           {
             href: "/workspace/documents",
             label: "Documents",

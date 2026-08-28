@@ -49,3 +49,8 @@ See `docs/travel.md` for the implemented Travel integration and its authorizatio
 ## Production Advance
 
 Booking detail can explicitly create or open its one canonical Production Advance. Production derives organization and Artist from Booking and reports progress, blocked requirements, checklist progress, and the next operational schedule item without duplicating those records on Booking.
+
+
+## Contract integration
+
+Booking detail can explicitly create a Draft Contract with Booking, Artist, Promoter, date, currency, and an optional fee term when commercial permission exists. This does not change Booking terms, execute the Contract, or create an Invoice.

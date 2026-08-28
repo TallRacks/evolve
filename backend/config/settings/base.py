@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "rights",
     "travel",
     "production",
+    "contracts",
     "contacts",
     "promoters",
     "venues",
@@ -343,6 +344,21 @@ UNFOLD = {
                 "title": "Content & Documents",
                 "collapsible": True,
                 "items": [
+                    {
+                        "title": "Contracts",
+                        "icon": "contract",
+                        "link": reverse_lazy("admin:contracts_contract_changelist"),
+                    },
+                    {
+                        "title": "Contract parties",
+                        "icon": "groups",
+                        "link": reverse_lazy("admin:contracts_contractparty_changelist"),
+                    },
+                    {
+                        "title": "Contract approvals",
+                        "icon": "approval",
+                        "link": reverse_lazy("admin:contracts_contractapproval_changelist"),
+                    },
                     {
                         "title": "Documents",
                         "icon": "folder",

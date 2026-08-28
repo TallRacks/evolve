@@ -142,3 +142,8 @@ The Travel Django app owns itineraries, traveller assignments, transport segment
 ## Production advancing
 
 `production` is the mutable preparation layer between Booking and Call Sheet. It references Booking, Artist, Venue, Promoter, Contact, and Travel records without taking ownership of them. Explicit draft-only import copies a safe Production snapshot into an existing Call Sheet version; published Call Sheets remain immutable.
+
+
+## Contracts domain
+
+`contracts` references Artist, Booking, Promoter, Contact, RightsParty, Document, Membership, User, and Organization without taking ownership. Explicit Django services own lifecycle, approval, signing-state, execution, termination, and immutable-history rules. No e-signature, PDF, upload, queue, or external legal service is introduced.

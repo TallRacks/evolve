@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { ArtistContractsSection } from "@/components/contract-pages";
 import { ArtistMusicSection } from "@/components/music-pages";
 import { ArtistCampaignSection } from "@/components/campaign-pages";
 import {
@@ -1067,6 +1068,7 @@ export function ArtistPortalPage() {
             )}
             {artist && <ArtistMusicSection artistId={artist.id} />}
             {artist && <ArtistCampaignSection artistId={artist.id} />}
+            {artist && <ArtistContractsSection artistId={artist.id} />}
             {artist && <ArtistScheduleSection artistId={artist.id} />}
             {artist && <ArtistDocumentsSection artistId={artist.id} />}
           </>

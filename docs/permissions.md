@@ -120,3 +120,8 @@ Frontend navigation and commands mirror this matrix for usability only. Backend 
 ## Production permissions
 
 Production uses `production.view`, `production.manage`, `production.status.manage`, `production.requirements.manage`, `production.schedule.manage`, `production.checklist.manage`, and `production.contacts.manage`. Workspace access is organization scoped, Artist access is curated read-only, platform access requires a Django superuser, and `is_staff` is never a bypass.
+
+
+## Contract permissions
+
+Contract access uses `contract.view`, `contract.manage`, `contract.approve`, `contract.status.manage`, `contract.sensitive.view`, and `contract.signature.manage`. Owners and administrators receive all; managers receive view, manage, status, and signing-state access; members receive none by default. Artist reads use a separate executed-only attributed endpoint. Staff status alone grants nothing.

@@ -15,3 +15,8 @@ See `docs/travel.md` for the implemented Travel integration and its authorizatio
 ## Production
 
 Authorized global search includes Production Advance title, Artist, Booking reference, Venue, and Promoter. It does not index Production notes, requirement descriptions, checklist content, security details, or Contact information.
+
+
+## Contracts
+
+Users with `contract.view` may search Contract reference, title, Artist, Booking reference, and Promoter. Results contain safe identity, type, and status only; terms, sections, values, parties, approval comments, and internal notes are never searched or returned.

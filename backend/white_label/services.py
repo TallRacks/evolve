@@ -41,6 +41,7 @@ ALLOWED_SCOPES = (
     "rights.read",
     "travel.read",
     "production.read",
+    "contract.read",
 )
 
 

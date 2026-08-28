@@ -222,3 +222,12 @@ their requirements are defined.
 - Requirements describe what must be agreed or provided. Advance checklist items describe actions the internal team must perform.
 - Production lifecycle, requirement/schedule status, checklist completion, removal, and reordering use centralized services and audit without note or contact contents.
 - Artist and developer responses are curated. Never expose security/management notes, internal checklists, private Contact details, or audit metadata.
+
+
+## Contract invariants
+
+- Contracts are organization-owned legal/operational records separate from Documents, Bookings, Finance, and Rights. Contract values never create ledger activity and contract terms never mutate ownership.
+- Contract lifecycle, approvals, manual signing status, execution, termination, and child mutation use centralized services. Executed content is immutable and Contracts are archived rather than deleted.
+- Party snapshots preserve historical identity. Artist responses and developer APIs are curated; never expose legal text, addresses, approval comments, monetary terms, signing notes, or internal notes broadly.
+- Contract access requires explicit backend permissions. Artist visibility is executed-only and attributed; `is_staff` is never a bypass; platform superusers retain explicit cross-organization access.
+- Manual signing status is not an electronic signature. Do not claim cryptographic verification or add signature images, PDF infrastructure, binary uploads, automatic invoices, or automatic Rights mutation.

@@ -67,6 +67,12 @@ ROLE_PERMISSIONS = {
         "royalties.view",
         "royalties.manage",
         "royalties.statement.finalize",
+        "contract.view",
+        "contract.manage",
+        "contract.approve",
+        "contract.status.manage",
+        "contract.sensitive.view",
+        "contract.signature.manage",
     },
     Membership.Role.MANAGER: {
         "organization.view",
@@ -113,6 +119,10 @@ ROLE_PERMISSIONS = {
         "document.view",
         "document.manage",
         "document.restricted.view",
+        "contract.view",
+        "contract.manage",
+        "contract.status.manage",
+        "contract.signature.manage",
     },
     Membership.Role.MEMBER: {
         "organization.view",

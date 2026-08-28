@@ -15,3 +15,8 @@ See `docs/travel.md` for the implemented Travel integration and its authorizatio
 ## Production
 
 Production is a canonical item in the Live & Operations group, with a permission-aware create command. Platform and Artist navigation expose their respective superuser and curated read-only routes.
+
+
+## Contracts
+
+Contracts appears under Content & records in the workspace and platform navigation, and as an executed-only Artist portal destination. Visibility mirrors backend permission state for usability only; Django remains authoritative. Existing URLs remain stable.

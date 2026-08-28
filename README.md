@@ -140,3 +140,8 @@ Milestone 17 adds organization-scoped Travel itineraries, travellers, ordered tr
 ## Production advancing
 
 Milestone 18 adds the organization-scoped Production Advance workflow at `/workspace/production`, the curated Artist view at `/artist/production`, and platform oversight at `/platform/production`. See `docs/production.md` for lifecycle, privacy, Call Sheet snapshot, and integration rules.
+
+
+## Contracts
+
+Milestone 19 adds organization-scoped Contract lifecycle, parties, terms, sections, approvals, manual signing status, Booking and Document links, Artist-safe views, platform oversight, and the `contract.read` API scope. See `docs/contracts.md`.

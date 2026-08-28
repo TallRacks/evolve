@@ -7,6 +7,7 @@ from artists.models import Artist
 from bookings.models import Booking
 from campaigns.models import Campaign
 from contacts.models import Contact
+from contracts.models import Contract
 from documents.models import Document
 from documents.selectors import documents_for_user
 from finance.models import Invoice
@@ -318,6 +319,39 @@ def global_search(user, query, organization_id=None):
             ),
         )
 
+    contract_orgs = permitted_organizations(user, "contract.view", organization_id)
+    if contract_orgs:
+        rows = (
+            Contract.objects.filter(organization__in=contract_orgs)
+            .filter(
+                Q(reference__icontains=query)
+                | Q(title__icontains=query)
+                | Q(artist__stage_name__icontains=query)
+                | Q(booking__reference__icontains=query)
+                | Q(promoter__name__icontains=query)
+            )
+            .select_related("artist", "booking", "promoter")
+            .distinct()
+        )
+        add(
+            "contract",
+            "Contracts",
+            (
+                result(
+                    row,
+                    "contract",
+                    f"{row.reference} / {row.title}",
+                    (
+                        f"{row.get_contract_type_display()} / "
+                        f"{row.artist.stage_name if row.artist else 'No Artist'}"
+                    ),
+                    f"/workspace/contracts/{row.id}",
+                    row.status,
+                )
+                for row in rows[: RESULT_LIMIT + 1]
+            ),
+        )
+
     document_orgs = permitted_organizations(user, "document.view", organization_id)
     if document_orgs:
         document_ids = []
@@ -412,6 +446,33 @@ def dashboard(user, organization_id=None):
             }
             for x in bookings
         ]
+    if user_has_organization_permission(user, organization, "contract.view"):
+        counts["contracts_needing_review"] = Contract.objects.filter(
+            organization=organization, status=Contract.Status.IN_REVIEW
+        ).count()
+        counts["pending_contract_approvals"] = (
+            Contract.objects.filter(
+                organization=organization,
+                approvals__status="pending",
+                approvals__membership__user=user,
+            )
+            .distinct()
+            .count()
+        )
+        counts["unsigned_contracts"] = (
+            Contract.objects.filter(
+                organization=organization,
+                status__in=(
+                    Contract.Status.APPROVED,
+                    Contract.Status.SENT,
+                    Contract.Status.PARTIALLY_SIGNED,
+                ),
+                parties__is_signatory=True,
+            )
+            .exclude(parties__signing_status="signed")
+            .distinct()
+            .count()
+        )
     if user_has_organization_permission(user, organization, "membership.manage"):
         counts["pending_invitations"] = Invitation.objects.filter(
             organization=organization,

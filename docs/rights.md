@@ -36,3 +36,8 @@ summaries. It omits contacts, notes, contracts, audit data, and all royalty earn
 
 Work and RoyaltyStatement may reference a same-organization external-reference Document. Binary
 upload and sensitive-document storage remain disabled.
+
+
+## Contract boundary
+
+Licensing and publishing Contracts may reference Rights context, but legal agreement records never mutate MasterRight, PublishingRight, royalty statements, or allocations. Applying legal terms to ownership remains a separate future workflow.

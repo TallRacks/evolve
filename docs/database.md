@@ -85,3 +85,8 @@ Travel uses UUID identities and PostgreSQL constraints for one itinerary per opt
 ## Production schema
 
 `ProductionAdvance` is organization owned and unique per Booking. Its requirement, contact assignment, schedule, and checklist children are explicit foreign-key models. Constraints enforce one active primary Production Contact per role and valid schedule ranges. Document links can target a Production Advance through the typed nullable foreign key and exact-one-target constraint.
+
+
+## Contracts schema
+
+`contracts.0001_initial` creates UUID-backed Contract, ContractParty, ContractTerm, ContractSection, ContractApproval, and ContractDocument records. References and active approval constraints are database-backed; Django validation enforces organization compatibility and immutable executed content.

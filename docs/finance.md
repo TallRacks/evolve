@@ -54,3 +54,8 @@ gateways, bank feeds, FX, payroll, royalties, invoice emails, and PDF infrastruc
 
 Royalty earnings attribution now lives in the separate Rights domain. A RoyaltyAllocation is not
 a Payment, payout, receivable, Invoice, or accounting-ledger entry.
+
+
+## Contract boundary
+
+Contract values and terms describe obligations only. They do not create Invoices, Payments, allocations, balances, or ledger entries. Finance actions remain explicit and independently permissioned.

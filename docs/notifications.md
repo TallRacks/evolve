@@ -25,3 +25,8 @@ See `docs/travel.md` for the implemented Travel integration and its authorizatio
 ## Production notifications
 
 Production lifecycle and assignment services may create sparse in-app notifications for relevant active Booking team members or the assigned member. Content uses safe identifiers and excludes notes, security detail, Contact details, and other private operational data.
+
+
+## Contract notifications
+
+Approval requests create sparse synchronous in-app notifications containing only the Contract reference and internal action URL. Legal text, values, party addresses, comments, and signing details are excluded. Scheduled expiry reminders remain deferred.
