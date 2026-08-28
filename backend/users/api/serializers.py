@@ -56,3 +56,12 @@ class SessionBootstrapSerializer(serializers.Serializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(trim_whitespace=False, write_only=True)
+
+
+class PasswordSerializer(serializers.Serializer):
+    password = serializers.CharField(trim_whitespace=False, write_only=True)
+
+
+class PasswordChangeSerializer(serializers.Serializer):
+    current_password = serializers.CharField(trim_whitespace=False, write_only=True)
+    new_password = serializers.CharField(trim_whitespace=False, write_only=True, min_length=12)

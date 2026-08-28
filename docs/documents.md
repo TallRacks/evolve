@@ -37,3 +37,7 @@ Document links may target one Production Advance through the typed `production_a
 ## Contract links
 
 Contracts link existing same-organization external-reference Documents through explicit ContractDocument records. Contract execution does not require a Document, and existing binary-upload and sensitive-document restrictions remain unchanged.
+
+## Generated documents
+
+Backend-managed templates and generated plain-text Documents are described in `docs/document-templates.md`. A generated Document stores rendered content and the exact template version as a historical snapshot, alongside its typed entity link.

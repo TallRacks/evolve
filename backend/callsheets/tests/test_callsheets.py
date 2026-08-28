@@ -425,6 +425,7 @@ def test_admin_protects_history(call_sheet):
     entry = CallSheetTeamEntry(version=version, name_snapshot="Snapshot")
     assert not child_admin.has_change_permission(request, entry)
 
+
 @pytest.mark.django_db(transaction=True)
 def test_postgresql_concurrent_generation_returns_one_canonical_sheet(owner, booking):
     if connection.vendor != "postgresql":

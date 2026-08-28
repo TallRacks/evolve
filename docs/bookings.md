@@ -54,3 +54,7 @@ Booking detail can explicitly create or open its one canonical Production Advanc
 ## Contract integration
 
 Booking detail can explicitly create a Draft Contract with Booking, Artist, Promoter, date, currency, and an optional fee term when commercial permission exists. This does not change Booking terms, execute the Contract, or create an Invoice.
+
+## Operational setup
+
+Booking creation can atomically create the selected Production Advance, draft Call Sheet, and optional Travel Itinerary. Initial team and contact assignments are persisted before Call Sheet generation, so the first operational snapshot includes them. Setup is centralized, permission checked, audited, and idempotent; Contract and Invoice creation remain explicit actions.

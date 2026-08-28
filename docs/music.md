@@ -41,3 +41,7 @@ values onto Track. See rights.md and royalties.md.
 ## Calendar and documents
 
 Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. Binary upload, external calendar sync, and notification delivery remain deferred. See `docs/calendar.md` and `docs/documents.md`.
+
+## Release tasks
+
+Release detail displays reusable Tasks linked through the typed Release context. Checklist progress is derived from each Task. This does not merge Release workflow with RolloutTask or alter Music lifecycle rules.

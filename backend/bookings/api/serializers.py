@@ -167,8 +167,27 @@ class BookingWriteSerializer(serializers.ModelSerializer):
 
 
 class BookingCreateSerializer(BookingWriteSerializer):
+    prepare_production = serializers.BooleanField(default=True, write_only=True)
+    prepare_call_sheet = serializers.BooleanField(default=True, write_only=True)
+    prepare_travel = serializers.BooleanField(default=False, write_only=True)
+    initial_membership_id = serializers.UUIDField(required=False, allow_null=True, write_only=True)
+    initial_contact_id = serializers.UUIDField(required=False, allow_null=True, write_only=True)
+
     class Meta(BookingWriteSerializer.Meta):
-        fields = BookingWriteSerializer.Meta.fields + ("status",)
+        fields = BookingWriteSerializer.Meta.fields + (
+            "status",
+            "prepare_production",
+            "prepare_call_sheet",
+            "prepare_travel",
+            "initial_membership_id",
+            "initial_contact_id",
+        )
+
+
+class BookingSetupSerializer(serializers.Serializer):
+    create_production = serializers.BooleanField(default=False)
+    create_call_sheet = serializers.BooleanField(default=False)
+    create_travel = serializers.BooleanField(default=False)
 
 
 class StatusTransitionSerializer(serializers.Serializer):

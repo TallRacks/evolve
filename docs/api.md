@@ -82,3 +82,7 @@ Workspace APIs are rooted at `/api/production/advances/` with explicit status an
 ## Contracts API
 
 Workspace endpoints under `/api/contracts/` provide scoped list, detail, child, approval, signing-state, lifecycle, Document-link, and Booking-create workflows. `/api/artist/contracts/` is curated executed-only data; `/api/platform/contracts/` requires superuser; `/api/developer/contracts/` requires `contract.read` and excludes legal text, values, parties, approvals, Documents, and internal notes.
+
+## Milestone 21 internal APIs
+
+Authenticated same-origin APIs now cover Tasks and checklists under `/api/tasks/`, curated activity at `/api/activity/`, reauthentication and security activity under `/api/auth/`, Booking setup at `/api/bookings/{id}/setup/`, draft Call Sheet source refresh, and scoped document-template preview/generation. These internal records are not exposed through the developer API.

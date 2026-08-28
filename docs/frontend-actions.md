@@ -69,3 +69,7 @@ Presence in source code does not count as frontend action completeness. Actions 
 - Primary actions remain visible at mobile sizes. Secondary actions may collapse without removing the only route to an operation.
 - `frontend/action-manifest.json` and `npm run test:actions` enforce the major list-action label, destination, permission, dashboard, and superuser/staff contract.
 - Production verification must confirm the rebuilt frontend image is active. Source inspection and a successful build alone are not visual verification.
+
+## Milestone 21 actions
+
+Workspace navigation exposes Tasks, Notifications, Activity, template management, and Account Security. Task create/edit/assignment/lifecycle/checklist controls, Release tasks, Booking setup choices, Call Sheet Refresh All, template lifecycle/section/preview/generate controls, notification state controls, password change, and reauthentication all call authoritative Django endpoints.

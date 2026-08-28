@@ -14,7 +14,9 @@ from bookings.services import (
     assign_contact,
     assign_team_member,
     create_booking,
+    create_booking_with_setup,
     require_booking_permission,
+    setup_booking_operations,
     transition_booking,
     update_booking,
     update_contact_assignment,
@@ -33,6 +35,7 @@ from .serializers import (
     BookingCreateSerializer,
     BookingDetailSerializer,
     BookingListSerializer,
+    BookingSetupSerializer,
     BookingStatusHistorySerializer,
     BookingTeamAssignmentSerializer,
     BookingTeamCreateSerializer,
@@ -150,15 +153,62 @@ class BookingListView(APIView):
         require_booking_permission(request.user, organization, "booking.manage")
         serializer = BookingCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        booking = validation_call(
-            lambda: create_booking(
+        values = dict(serializer.validated_data)
+        setup = {
+            "create_production": values.pop("prepare_production"),
+            "create_call_sheet": values.pop("prepare_call_sheet"),
+            "create_travel": values.pop("prepare_travel"),
+        }
+        membership_id = values.pop("initial_membership_id", None)
+        contact_id = values.pop("initial_contact_id", None)
+        initial_membership = None
+        initial_contact = None
+        if membership_id:
+            initial_membership = get_object_or_404(
+                Membership.objects.select_related("user"),
+                pk=membership_id,
+                organization=organization,
+                is_active=True,
+                user__is_active=True,
+            )
+        if contact_id:
+            initial_contact = get_object_or_404(
+                Contact, pk=contact_id, organization=organization, is_active=True
+            )
+        booking, operations = validation_call(
+            lambda: create_booking_with_setup(
                 actor=request.user,
                 organization=organization,
-                data=serializer.validated_data,
+                data=values,
+                initial_membership=initial_membership,
+                initial_contact=initial_contact,
+                **setup,
                 request=request,
             )
         )
-        return Response(detail_data(request.user, booking), status=status.HTTP_201_CREATED)
+        data = detail_data(request.user, booking)
+        data["operations"] = {
+            key: str(value.pk) if value else None for key, value in operations.items()
+        }
+        return Response(data, status=status.HTTP_201_CREATED)
+
+
+class BookingSetupView(APIView):
+    def post(self, request, booking_id):
+        booking = scoped_booking(request.user, booking_id)
+        serializer = BookingSetupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        operations = validation_call(
+            lambda: setup_booking_operations(
+                actor=request.user,
+                booking=booking,
+                **serializer.validated_data,
+                request=request,
+            )
+        )
+        return Response(
+            {key: str(value.pk) if value else None for key, value in operations.items()}
+        )
 
 
 class BookingDetailView(APIView):

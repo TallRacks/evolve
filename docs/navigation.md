@@ -20,3 +20,7 @@ Production is a canonical item in the Live & Operations group, with a permission
 ## Contracts
 
 Contracts appears under Content & records in the workspace and platform navigation, and as an executed-only Artist portal destination. Visibility mirrors backend permission state for usability only; Django remains authoritative. Existing URLs remain stable.
+
+## Workflow destinations
+
+The workspace shell includes `/workspace/tasks`, `/workspace/notifications`, `/workspace/activity`, and `/workspace/settings/templates`; Account Security is `/profile/security`. Password freshness failures use `/reauthenticate`. Existing domain URLs and deep links remain unchanged.

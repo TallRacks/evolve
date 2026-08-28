@@ -47,6 +47,9 @@ class DocumentSerializer(serializers.ModelSerializer):
             "document_type",
             "description",
             "external_url",
+            "rendered_content",
+            "template",
+            "template_version",
             "original_filename",
             "content_type",
             "file_size",
@@ -63,6 +66,9 @@ class DocumentSerializer(serializers.ModelSerializer):
         read_only_fields = (
             "id",
             "organization",
+            "rendered_content",
+            "template",
+            "template_version",
             "version_number",
             "parent_document",
             "status",
@@ -73,7 +79,11 @@ class DocumentSerializer(serializers.ModelSerializer):
         )
 
     def validate(self, attrs):
-        if self.instance is None and not attrs.get("external_url"):
+        if (
+            self.instance is None
+            and not attrs.get("external_url")
+            and not attrs.get("rendered_content")
+        ):
             raise serializers.ValidationError(
                 {"external_url": "An HTTPS external reference is required."}
             )

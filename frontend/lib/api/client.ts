@@ -71,6 +71,14 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   });
   if (response.status === 204) return undefined as T;
   const data = (await response.json().catch(() => null)) as ErrorPayload;
+  if (
+    response.status === 401 &&
+    data?.code === "reauthentication_required" &&
+    typeof window !== "undefined" &&
+    !window.location.pathname.startsWith("/reauthenticate")
+  ) {
+    globalThis.location.replace(`/reauthenticate?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+  }
   if (!response.ok) throw responseError(response.status, data);
   return data as T;
 }

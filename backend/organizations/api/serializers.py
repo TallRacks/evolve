@@ -101,9 +101,7 @@ class MembershipUpdateSerializer(serializers.ModelSerializer):
 
 
 class InvitationSerializer(serializers.ModelSerializer):
-    invited_by = serializers.EmailField(
-        source="invited_by.email", read_only=True, allow_null=True
-    )
+    invited_by = serializers.EmailField(source="invited_by.email", read_only=True, allow_null=True)
     status = serializers.SerializerMethodField()
 
     class Meta:

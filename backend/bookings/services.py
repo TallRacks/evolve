@@ -88,6 +88,115 @@ def create_booking(*, actor, organization, data, request=None):
 
 
 @transaction.atomic
+def setup_booking_operations(
+    *,
+    actor,
+    booking,
+    create_production=False,
+    create_call_sheet=False,
+    create_travel=False,
+    request=None,
+):
+    from callsheets.models import CallSheet
+    from callsheets.services import create_call_sheet as create_call_sheet_record
+    from production.models import ProductionAdvance
+    from production.services import create_advance
+    from travel.models import TravelItinerary
+    from travel.services import create_itinerary
+
+    require_booking_permission(actor, booking.organization, "booking.manage")
+    locked = Booking.objects.select_for_update().get(pk=booking.pk)
+    result = {"production": None, "call_sheet": None, "travel": None}
+    if create_production:
+        production = ProductionAdvance.objects.filter(booking=locked).first()
+        if not production:
+            production = create_advance(
+                actor=actor,
+                organization=locked.organization,
+                data={"booking": locked},
+                request=request,
+            )
+        result["production"] = production
+    if create_travel:
+        itinerary = TravelItinerary.objects.filter(booking=locked).first()
+        if not itinerary:
+            itinerary = create_itinerary(
+                actor=actor,
+                organization=locked.organization,
+                data={
+                    "artist": locked.artist,
+                    "booking": locked,
+                    "title": f"{locked.title} travel",
+                    "starts_at": locked.event_start_datetime,
+                    "ends_at": locked.event_end_datetime,
+                    "timezone": locked.timezone,
+                    "purpose": "Booking operations",
+                },
+                request=request,
+            )
+        result["travel"] = itinerary
+    if create_call_sheet:
+        call_sheet = CallSheet.objects.filter(booking=locked).first()
+        if call_sheet:
+            version = call_sheet.versions.filter(status__in=("draft", "ready")).first()
+        else:
+            call_sheet, version = create_call_sheet_record(
+                actor=actor, booking=locked, request=request
+            )
+        result["call_sheet"] = version
+    record_event(
+        actor=actor,
+        organization=locked.organization,
+        action="booking.operations_initialized",
+        resource=locked,
+        description=f"Prepared selected operations for booking {locked.reference}.",
+        request=request,
+    )
+    return result
+
+
+@transaction.atomic
+def create_booking_with_setup(
+    *,
+    actor,
+    organization,
+    data,
+    initial_membership=None,
+    initial_contact=None,
+    create_production=True,
+    create_call_sheet=True,
+    create_travel=False,
+    request=None,
+):
+    booking = create_booking(actor=actor, organization=organization, data=data, request=request)
+    if initial_membership:
+        assign_team_member(
+            actor=actor,
+            booking=booking,
+            membership=initial_membership,
+            data={"responsibility": "manager", "is_primary": True},
+            request=request,
+        )
+    if initial_contact:
+        assign_contact(
+            actor=actor,
+            booking=booking,
+            contact=initial_contact,
+            data={"responsibility": "booking", "is_primary": True},
+            request=request,
+        )
+    operations = setup_booking_operations(
+        actor=actor,
+        booking=booking,
+        create_production=create_production,
+        create_call_sheet=create_call_sheet,
+        create_travel=create_travel,
+        request=request,
+    )
+    return booking, operations
+
+
+@transaction.atomic
 def update_booking(*, actor, booking, data, request=None):
     require_booking_permission(actor, booking.organization, "booking.manage")
     if "status" in data:

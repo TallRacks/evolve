@@ -231,3 +231,12 @@ their requirements are defined.
 - Party snapshots preserve historical identity. Artist responses and developer APIs are curated; never expose legal text, addresses, approval comments, monetary terms, signing notes, or internal notes broadly.
 - Contract access requires explicit backend permissions. Artist visibility is executed-only and attributed; `is_staff` is never a bypass; platform superusers retain explicit cross-organization access.
 - Manual signing status is not an electronic signature. Do not claim cryptographic verification or add signature images, PDF infrastructure, binary uploads, automatic invoices, or automatic Rights mutation.
+
+## Workflow, security, and template invariants
+
+- A Task is operational work and a checklist item is its sub-step; do not merge reusable Tasks with RolloutTask or Production checklist records.
+- Notification, AuditEvent, and SecurityEvent are distinct. Never copy secrets, credentials, session material, sensitive amounts, or private source metadata into any of them.
+- Password freshness is enforced by Django at a maximum of 14 days and never extends the stricter session lifetime. The browser clock and frontend route guards are not authorization controls.
+- Template rendering is deterministic plain text using the explicit allowlist. Never enable arbitrary expressions, object traversal, template filters/tags, raw HTML rendering, or environment access.
+- Generated Document content and template version are historical snapshots. Template edits never mutate existing generated Documents.
+- Booking operational setup is centralized, transactional where creation must be atomic, permission checked, organization scoped, idempotent, and must not create Contracts or Invoices implicitly.

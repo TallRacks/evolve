@@ -29,7 +29,14 @@ export async function fetchCurrentUser(): Promise<SessionBootstrap | null> {
     headers: { Accept: "application/json" },
     cache: "no-store",
   });
-  if (response.status === 401 || response.status === 403) {
+  if (response.status === 401) {
+    const data = (await response.json().catch(() => null)) as { code?: string } | null;
+    if (data?.code === "reauthentication_required" && !window.location.pathname.startsWith("/reauthenticate")) {
+      globalThis.location.replace(`/reauthenticate?next=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+    }
+    return null;
+  }
+  if (response.status === 403) {
     return null;
   }
   if (!response.ok) {

@@ -90,3 +90,7 @@ Travel uses UUID identities and PostgreSQL constraints for one itinerary per opt
 ## Contracts schema
 
 `contracts.0001_initial` creates UUID-backed Contract, ContractParty, ContractTerm, ContractSection, ContractApproval, and ContractDocument records. References and active approval constraints are database-backed; Django validation enforces organization compatibility and immutable executed content.
+
+## Milestone 21 schema
+
+`tasks.Task` and `tasks.TaskChecklistItem` use UUID keys, explicit organization relationships, typed context foreign keys, lifecycle completion metadata, and semantic removal/archive fields. `users.SecurityEvent` is an immutable authentication-event record. `documents.DocumentTemplate` and `DocumentTemplateSection` store versioned structured blueprints; generated `Document` rows store rendered content and template version snapshots. These changes are introduced through normal Django migrations only.

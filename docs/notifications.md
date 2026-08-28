@@ -30,3 +30,7 @@ Production lifecycle and assignment services may create sparse in-app notificati
 ## Contract notifications
 
 Approval requests create sparse synchronous in-app notifications containing only the Contract reference and internal action URL. Legal text, values, party addresses, comments, and signing details are excluded. Scheduled expiry reminders remain deferred.
+
+## Milestone 21 Hub
+
+The workspace Notifications Hub retains the existing per-recipient read, unread, archive, filter, and mark-all-read semantics. Mark-all-read is scoped to the authenticated user. The shell bell shows an unread count and a short recent list; notifications remain immutable messages and never grant access to their action destination. Task assignment and selected lifecycle changes emit sparse notifications rather than mirroring every audit event.

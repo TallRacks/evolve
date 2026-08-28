@@ -14,6 +14,7 @@ from bookings.services import (
     assign_contact,
     assign_team_member,
     create_booking,
+    create_booking_with_setup,
     transition_booking,
     update_booking,
 )
@@ -358,3 +359,35 @@ def test_booking_admin_prevents_deletion_and_history_is_read_only(booking):
     assert not history_admin.has_add_permission(None)
     assert not history_admin.has_change_permission(None)
     assert not history_admin.has_delete_permission(None)
+
+
+def test_create_booking_with_setup_is_atomic_and_snapshots_initial_people(
+    monkeypatch, owner, org, artist
+):
+    membership = Membership.objects.get(user=owner, organization=org)
+    contact = Contact.objects.create(organization=org, first_name="Initial", last_name="Contact")
+    booking, operations = create_booking_with_setup(
+        actor=owner,
+        organization=org,
+        data={"title": "Automated", "artist": artist, "event_date": date(2026, 12, 20)},
+        initial_membership=membership,
+        initial_contact=contact,
+        create_production=True,
+        create_call_sheet=True,
+    )
+    assert operations["production"].booking_id == booking.id
+    version = operations["call_sheet"]
+    assert version.team_entries.filter(membership=membership).exists()
+    assert version.contact_entries.filter(source_contact=contact).exists()
+
+    def fail_setup(**kwargs):
+        raise ValidationError("setup failed")
+
+    monkeypatch.setattr("bookings.services.setup_booking_operations", fail_setup)
+    with pytest.raises(ValidationError):
+        create_booking_with_setup(
+            actor=owner,
+            organization=org,
+            data={"title": "Rollback", "artist": artist, "event_date": date(2026, 12, 21)},
+        )
+    assert not Booking.objects.filter(title="Rollback").exists()

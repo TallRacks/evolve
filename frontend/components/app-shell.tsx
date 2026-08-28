@@ -464,10 +464,22 @@ export function AppShell({
             show: can("calendar.view"),
           },
           {
-            href: "/notifications",
+            href: "/workspace/tasks",
+            label: "Tasks",
+            icon: ClipboardList,
+            show: can("task.view"),
+          },
+          {
+            href: "/workspace/notifications",
             label: "Notifications",
             icon: Bell,
             show: true,
+          },
+          {
+            href: "/workspace/activity",
+            label: "Activity",
+            icon: ShieldCheck,
+            show: can("activity.view"),
           },
         ],
       },
@@ -596,6 +608,12 @@ export function AppShell({
             icon: FileText,
             show: can("document.view"),
           },
+          {
+            href: "/workspace/settings/templates",
+            label: "Document Templates",
+            icon: ClipboardList,
+            show: can("document_template.view"),
+          },
         ],
       },
       {
@@ -643,6 +661,12 @@ export function AppShell({
         label: "Account",
         items: [
           { href: "/profile", label: "Profile", icon: UserRound, show: true },
+          {
+            href: "/profile/security",
+            label: "Security",
+            icon: ShieldCheck,
+            show: true,
+          },
           {
             href: "/platform",
             label: "Platform",

@@ -23,6 +23,7 @@ from callsheets.services import (
     import_travel_from_itinerary,
     mark_ready,
     publish_call_sheet_version,
+    refresh_all_sources,
     refresh_from_booking,
     remove_child,
     require_callsheet_permission,
@@ -152,6 +153,7 @@ class LifecycleView(APIView):
             "refresh": refresh_from_booking,
             "import-travel": import_travel_from_itinerary,
             "import-production": import_production_from_advance,
+            "refresh-all": refresh_all_sources,
         }
         version = validated(
             lambda: operations[self.operation](actor=request.user, version=version, request=request)

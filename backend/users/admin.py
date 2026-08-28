@@ -5,7 +5,7 @@ from unfold.admin import ModelAdmin
 from core.admin import PlatformSuperuserAdminMixin
 
 from .admin_forms import OwnerSafeUserChangeForm
-from .models import User
+from .models import SecurityEvent, User
 
 
 @admin.register(User)
@@ -36,6 +36,23 @@ class UserAdmin(PlatformSuperuserAdminMixin, DjangoUserAdmin, ModelAdmin):
             },
         ),
     )
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(SecurityEvent)
+class SecurityEventAdmin(PlatformSuperuserAdminMixin, ModelAdmin):
+    list_display = ("event_type", "user", "success", "ip_address", "occurred_at")
+    list_filter = ("event_type", "success")
+    search_fields = ("user__email",)
+    readonly_fields = ("user", "event_type", "success", "ip_address", "user_agent", "occurred_at")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
     def has_delete_permission(self, request, obj=None):
         return False

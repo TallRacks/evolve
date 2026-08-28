@@ -45,6 +45,10 @@ urlpatterns = [
         LifecycleView.as_view(operation="refresh"),
     ),
     path(
+        "call-sheet-versions/<uuid:version_id>/refresh-all/",
+        LifecycleView.as_view(operation="refresh-all"),
+    ),
+    path(
         "call-sheet-versions/<uuid:version_id>/import-travel/",
         LifecycleView.as_view(operation="import-travel"),
     ),

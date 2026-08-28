@@ -125,3 +125,7 @@ Production uses `production.view`, `production.manage`, `production.status.manag
 ## Contract permissions
 
 Contract access uses `contract.view`, `contract.manage`, `contract.approve`, `contract.status.manage`, `contract.sensitive.view`, and `contract.signature.manage`. Owners and administrators receive all; managers receive view, manage, status, and signing-state access; members receive none by default. Artist reads use a separate executed-only attributed endpoint. Staff status alone grants nothing.
+
+## Workflow and templates
+
+Task and document-template permissions are resolved by the centralized organization policy. Owners, administrators, and managers may manage them; members receive the configured view permissions. A protected Task context still requires its source-domain permission. Platform defaults and cross-organization operations require an active platform superuser. `is_staff` alone is never sufficient.

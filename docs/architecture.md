@@ -147,3 +147,7 @@ The Travel Django app owns itineraries, traveller assignments, transport segment
 ## Contracts domain
 
 `contracts` references Artist, Booking, Promoter, Contact, RightsParty, Document, Membership, User, and Organization without taking ownership. Explicit Django services own lifecycle, approval, signing-state, execution, termination, and immutable-history rules. No e-signature, PDF, upload, queue, or external legal service is introduced.
+
+## Workflow and security
+
+The `tasks` app owns reusable operational Tasks and checklists while existing domain-specific rollout and production work models remain distinct. Notifications communicate selected events, AuditEvent provides organization governance history, and SecurityEvent separately records authentication activity. The `documents` app owns allowlisted templates and immutable generated-content snapshots. Django services remain authoritative for every mutation and permission decision.

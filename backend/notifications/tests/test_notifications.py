@@ -77,9 +77,12 @@ def test_access_isolation_preferences_and_inactive(client):
     client.force_login(first)
     response = client.get("/api/notifications/")
     assert response.status_code == 200 and response.json()["count"] == 1
-    assert client.post(
-        f"/api/notifications/{item.id}/read/", {"read": "not-a-boolean"}, format="json"
-    ).status_code == 400
+    assert (
+        client.post(
+            f"/api/notifications/{item.id}/read/", {"read": "not-a-boolean"}, format="json"
+        ).status_code
+        == 400
+    )
     client.force_login(second)
     assert client.get("/api/notifications/").json()["count"] == 0
     assert client.post(f"/api/notifications/{item.id}/read/").status_code == 404
@@ -108,3 +111,23 @@ def test_actor_suppression_and_platform_authorization(client):
     root = User.objects.create_superuser(email="root-notify@example.invalid", password=PASSWORD)
     client.force_login(root)
     assert client.get("/api/platform/notifications/").status_code == 200
+
+
+def test_inactive_membership_cannot_read_stale_organization_notification(client):
+    org = Organization.objects.create(name="Stale notify", slug="stale-notify")
+    recipient = user(org, "stale-notify@example.invalid")
+    create_notification(
+        organization=org,
+        notification_type="task.assigned",
+        category="team",
+        title="Assigned",
+        message="Task",
+        users=[recipient],
+    )
+    membership = Membership.objects.get(user=recipient, organization=org)
+    membership.is_active = False
+    membership.save()
+    client.force_login(recipient)
+    response = client.get("/api/notifications/")
+    assert response.status_code == 200
+    assert response.json()["count"] == 0

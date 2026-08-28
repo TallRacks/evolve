@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "tasks",
     "users",
     "organizations",
     "artists",
@@ -108,6 +109,7 @@ SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_AGE = 8 * 60 * 60
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+MAX_PASSWORD_AUTH_AGE_SECONDS = 14 * 24 * 60 * 60
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -365,6 +367,18 @@ UNFOLD = {
                         "link": reverse_lazy("admin:documents_document_changelist"),
                     },
                     {
+                        "title": "Document templates",
+                        "icon": "article",
+                        "link": reverse_lazy("admin:documents_documenttemplate_changelist"),
+                        "permission": "config.admin_navigation.document_templates",
+                    },
+                    {
+                        "title": "Template sections",
+                        "icon": "view_agenda",
+                        "link": reverse_lazy("admin:documents_documenttemplatesection_changelist"),
+                        "permission": "config.admin_navigation.document_template_sections",
+                    },
+                    {
                         "title": "Document links",
                         "icon": "link",
                         "link": reverse_lazy("admin:documents_documentlink_changelist"),
@@ -447,6 +461,18 @@ UNFOLD = {
                         "link": reverse_lazy("admin:notifications_notification_changelist"),
                     },
                     {
+                        "title": "Tasks",
+                        "icon": "task_alt",
+                        "link": reverse_lazy("admin:tasks_task_changelist"),
+                        "permission": "config.admin_navigation.workflow_tasks",
+                    },
+                    {
+                        "title": "Task checklist items",
+                        "icon": "checklist",
+                        "link": reverse_lazy("admin:tasks_taskchecklistitem_changelist"),
+                        "permission": "config.admin_navigation.workflow_checklists",
+                    },
+                    {
                         "title": "Preferences",
                         "icon": "tune",
                         "link": reverse_lazy(
@@ -463,6 +489,12 @@ UNFOLD = {
                         "title": "Audit events",
                         "icon": "policy",
                         "link": reverse_lazy("admin:audit_auditevent_changelist"),
+                    },
+                    {
+                        "title": "Security events",
+                        "icon": "security",
+                        "link": reverse_lazy("admin:users_securityevent_changelist"),
+                        "permission": "config.admin_navigation.security_events",
                     },
                 ],
             },

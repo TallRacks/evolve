@@ -165,6 +165,15 @@ function PlatformFrame({ children }: { children: React.ReactNode }) {
 
 export function DashboardPage() {
   const { session, activeOrganizationId } = useAuth();
+  const [myTasks, setMyTasks] = useState<{id:string;title:string;status:string;due_at:string|null;is_overdue:boolean}[]>([]);
+  const [recentActivity, setRecentActivity] = useState<{id:string;description:string;created_at:string;destination:string|null}[]>([]);
+  useEffect(() => {
+    if (!activeOrganizationId) return;
+    if (hasOrganizationPermission(session, activeOrganizationId, "task.view"))
+      void apiRequest<typeof myTasks>(`/api/tasks/?organization_id=${activeOrganizationId}&mine=true`).then(setMyTasks);
+    if (hasOrganizationPermission(session, activeOrganizationId, "activity.view"))
+      void apiRequest<typeof recentActivity>(`/api/activity/?organization_id=${activeOrganizationId}`).then(items => setRecentActivity(items.slice(0, 5)));
+  }, [activeOrganizationId, session]);
   const membership = session?.memberships.find(
     (item) => item.organization.id === activeOrganizationId,
   );
@@ -272,6 +281,24 @@ export function DashboardPage() {
                   </details>
                 )}
               </section>
+            )}
+            {activeOrganizationId && (
+              <div className="mt-8 grid gap-6 lg:grid-cols-2">
+                <section>
+                  <div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">My Tasks</h2><Link href="/workspace/tasks">View all</Link></div>
+                  <div className="grid gap-3">
+                    {myTasks.filter(item => !["done","cancelled"].includes(item.status)).slice(0,5).map(item => <Link className="rounded-md border border-neutral-800 bg-neutral-900 p-4" href={`/workspace/tasks/${item.id}`} key={item.id}><span>{item.title}</span><span className={item.is_overdue?"ml-3 text-sm text-red-300":"ml-3 text-sm text-neutral-500"}>{item.is_overdue?"Overdue":item.status.replaceAll("_"," ")}</span></Link>)}
+                    {!myTasks.length && <p className="text-sm text-neutral-500">No assigned tasks.</p>}
+                  </div>
+                </section>
+                <section>
+                  <div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">Recent Activity</h2><Link href="/workspace/activity">View all</Link></div>
+                  <div className="grid gap-3">
+                    {recentActivity.map(item => item.destination ? <Link className="rounded-md border border-neutral-800 bg-neutral-900 p-4" href={item.destination} key={item.id}><span>{item.description}</span><time className="mt-1 block text-xs text-neutral-500">{new Date(item.created_at).toLocaleString()}</time></Link> : <div className="rounded-md border border-neutral-800 bg-neutral-900 p-4" key={item.id}><span>{item.description}</span><time className="mt-1 block text-xs text-neutral-500">{new Date(item.created_at).toLocaleString()}</time></div>)}
+                    {!recentActivity.length && <p className="text-sm text-neutral-500">No recent activity.</p>}
+                  </div>
+                </section>
+              </div>
             )}
             {data.upcoming_bookings.length > 0 && (
               <section className="mt-8">

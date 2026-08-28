@@ -284,6 +284,10 @@ def create_call_sheet_version(*, actor, call_sheet, source_version=None, request
         _copy_children(source_version, version)
     else:
         _populate_booking_people(version)
+        if hasattr(booking, "production_advance"):
+            import_production_from_advance(actor=actor, version=version, request=request)
+        if hasattr(booking, "travel_itinerary"):
+            import_travel_from_itinerary(actor=actor, version=version, request=request)
     record_event(
         actor=actor,
         organization=locked.organization,
@@ -537,7 +541,8 @@ def import_travel_from_itinerary(*, actor, version, request=None):
         .select_related("call_sheet__booking", "call_sheet__organization")
         .get(pk=version.pk)
     )
-    ensure_editable(locked)
+    if locked.status != CallSheetVersion.Status.DRAFT:
+        raise ValidationError("Only draft Call Sheet versions can refresh from Travel.")
     itinerary = TravelItinerary.objects.filter(booking=locked.call_sheet.booking).first()
     if not itinerary:
         raise ValidationError("This Booking has no linked Travel itinerary.")
@@ -556,12 +561,10 @@ def import_travel_from_itinerary(*, actor, version, request=None):
             sequence=segment.sequence,
             type=type_map[segment.segment_type],
             provider=segment.airline or segment.provider,
-            reference=segment.flight_number or segment.service_number,
             departure_location=segment.departure_location,
             arrival_location=segment.arrival_location,
             departure_datetime=segment.departure_at,
             arrival_datetime=segment.arrival_at,
-            traveler_notes=segment.seat_or_vehicle_info,
         )
     for stay in itinerary.stays.exclude(status="cancelled"):
         CallSheetAccommodationItem.objects.create(
@@ -571,9 +574,6 @@ def import_travel_from_itinerary(*, actor, version, request=None):
             address=", ".join(filter(None, (stay.address, stay.city, stay.country))),
             check_in_datetime=stay.check_in_at,
             check_out_datetime=stay.check_out_at,
-            confirmation_reference=stay.confirmation_reference,
-            contact_name=stay.contact_name,
-            contact_phone=stay.contact_phone,
         )
     record_event(
         actor=actor,
@@ -606,7 +606,6 @@ def import_production_from_advance(*, actor, version, request=None):
         raise ValidationError("This Booking has no Production Advance.")
 
     locked.schedule_items.all().delete()
-    locked.contact_entries.all().delete()
     for item in advance.schedule_items.filter(is_active=True).exclude(status="cancelled"):
         zone = ZoneInfo(item.timezone)
         local_start = item.starts_at.astimezone(zone)
@@ -624,6 +623,8 @@ def import_production_from_advance(*, actor, version, request=None):
         advance.contact_assignments.filter(is_active=True).select_related("contact"), start=1
     ):
         contact = assignment.contact
+        if locked.contact_entries.filter(source_contact=contact).exists():
+            continue
         CallSheetContactEntry.objects.create(
             version=locked,
             sequence=index,
@@ -671,4 +672,35 @@ def import_production_from_advance(*, actor, version, request=None):
         description="Production Advance imported into draft Call Sheet snapshots.",
         request=request,
     )
+    return locked
+
+
+@transaction.atomic
+def refresh_all_sources(*, actor, version, request=None):
+    require_callsheet_permission(actor, version.call_sheet.organization, "callsheet.manage")
+    locked = (
+        CallSheetVersion.objects.select_for_update()
+        .select_related("call_sheet__booking", "call_sheet__organization")
+        .get(pk=version.pk)
+    )
+    if locked.status != CallSheetVersion.Status.DRAFT:
+        raise ValidationError("Only draft Call Sheet versions can refresh source data.")
+    refresh_from_booking(actor=actor, version=locked, request=request)
+    from production.models import ProductionAdvance
+    from travel.models import TravelItinerary
+
+    booking = locked.call_sheet.booking
+    if ProductionAdvance.objects.filter(booking=booking).exists():
+        import_production_from_advance(actor=actor, version=locked, request=request)
+    if TravelItinerary.objects.filter(booking=booking).exists():
+        import_travel_from_itinerary(actor=actor, version=locked, request=request)
+    record_event(
+        actor=actor,
+        organization=locked.call_sheet.organization,
+        action="callsheet.sources_refreshed",
+        resource=locked,
+        description="Refreshed draft Call Sheet from available sources.",
+        request=request,
+    )
+    locked.refresh_from_db()
     return locked

@@ -1,5 +1,15 @@
 from django.urls import path
 
+from documents.template_api import (
+    TemplateActionView,
+    TemplateDetailView,
+    TemplateGenerateView,
+    TemplateListView,
+    TemplatePreviewView,
+    TemplateSectionDetailView,
+    TemplateSectionView,
+)
+
 from .views import (
     ArchiveView,
     DeveloperDocumentsView,
@@ -15,6 +25,16 @@ from .views import (
 
 urlpatterns = [
     path("documents/", DocumentListView.as_view()),
+    path("document-templates/", TemplateListView.as_view()),
+    path("document-templates/<uuid:template_id>/", TemplateDetailView.as_view()),
+    path("document-templates/<uuid:template_id>/sections/", TemplateSectionView.as_view()),
+    path(
+        "document-templates/<uuid:template_id>/sections/<uuid:section_id>/",
+        TemplateSectionDetailView.as_view(),
+    ),
+    path("document-templates/<uuid:template_id>/preview/", TemplatePreviewView.as_view()),
+    path("document-templates/<uuid:template_id>/generate/", TemplateGenerateView.as_view()),
+    path("document-templates/<uuid:template_id>/<slug:action>/", TemplateActionView.as_view()),
     path("documents/<uuid:document_id>/", DocumentDetailView.as_view()),
     path("documents/<uuid:document_id>/archive/", ArchiveView.as_view()),
     path("documents/<uuid:document_id>/versions/", VersionView.as_view()),

@@ -46,3 +46,7 @@ Draft versions can explicitly import linked Travel itinerary transport/accommoda
 ## Action and print standard
 
 See `docs/frontend-actions.md` for editor, confirmation, immutable-state, preview, and browser print conventions.
+
+## Automatic source snapshot
+
+A first draft snapshots safe Booking fields and people, then available Production and Travel information. Restricted Travel references and private operational contact values are excluded. Refresh from Booking, Production, Travel, or all sources is draft-only. `Refresh All Sources` updates the current draft transactionally; published versions remain immutable.

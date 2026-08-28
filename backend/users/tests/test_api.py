@@ -1,9 +1,13 @@
+from datetime import timedelta
+
 import pytest
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 
 from organizations.models import Membership, Organization
-from users.models import User
+from users.authentication import PASSWORD_AUTHENTICATED_AT
+from users.models import SecurityEvent, User
 
 pytestmark = pytest.mark.django_db
 
@@ -44,6 +48,9 @@ def test_valid_login_establishes_and_rotates_session(user):
     assert response.json()["memberships"] == []
     assert client.session.session_key != previous_session_key
     assert client.session["_auth_user_id"] == str(user.pk)
+    assert SecurityEvent.objects.filter(
+        user=user, event_type="login.success", success=True
+    ).exists()
     assert client.get(reverse("users_api:me")).status_code == 200
 
 
@@ -64,6 +71,7 @@ def test_login_rejects_invalid_credentials_generically(user, email, password):
     )
     assert response.status_code == 400
     assert response.json() == {"detail": "Invalid email or password."}
+    assert SecurityEvent.objects.filter(event_type="login.failure", success=False).exists()
 
 
 def test_login_rejects_inactive_user_generically():
@@ -88,6 +96,7 @@ def test_logout_requires_authentication_and_invalidates_session(user):
     assert response.status_code == 204
     assert client.get(reverse("users_api:me")).status_code == 401
     assert "_auth_user_id" not in client.session
+    assert SecurityEvent.objects.filter(user=user, event_type="logout", success=True).exists()
 
 
 def test_me_requires_authentication(client):
@@ -171,3 +180,46 @@ def test_me_represents_multiple_active_organizations(client, user):
         "first",
         "second",
     }
+
+
+def test_password_freshness_accepts_before_and_rejects_at_fourteen_days(client, user, settings):
+    settings.ALLOW_TEST_FORCE_LOGIN_WITHOUT_PASSWORD_FRESHNESS = False
+    client.force_login(user)
+    session = client.session
+    session[PASSWORD_AUTHENTICATED_AT] = (
+        timezone.now() - timedelta(days=14) + timedelta(minutes=1)
+    ).isoformat()
+    session.save()
+    assert client.get(reverse("users_api:me")).status_code == 200
+
+    session = client.session
+    session[PASSWORD_AUTHENTICATED_AT] = (timezone.now() - timedelta(days=14)).isoformat()
+    session.save()
+    response = client.get(reverse("users_api:me"))
+    assert response.status_code == 401
+    assert response.json()["code"] == "reauthentication_required"
+
+
+def test_reauthentication_records_safe_events_and_renews_freshness(user):
+    client, csrf_token = csrf_client()
+    client.force_login(user)
+    failed = client.post(
+        reverse("users_api:reauthenticate"),
+        {"password": "wrong-password"},
+        content_type="application/json",
+        HTTP_X_CSRFTOKEN=csrf_token,
+    )
+    assert failed.status_code == 400
+    succeeded = client.post(
+        reverse("users_api:reauthenticate"),
+        {"password": "Correct-Horse-123"},
+        content_type="application/json",
+        HTTP_X_CSRFTOKEN=csrf_token,
+    )
+    assert succeeded.status_code == 200
+    assert PASSWORD_AUTHENTICATED_AT in client.session
+    assert SecurityEvent.objects.filter(user=user, event_type="reauth.failure").exists()
+    assert SecurityEvent.objects.filter(user=user, event_type="reauth.success").exists()
+    serialized = str(list(SecurityEvent.objects.values()))
+    assert "Correct-Horse-123" not in serialized
+    assert "wrong-password" not in serialized

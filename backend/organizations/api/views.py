@@ -40,9 +40,7 @@ from .serializers import (
 def organization_queryset():
     now = timezone.now()
     return Organization.objects.annotate(
-        member_count=Count(
-            "memberships", filter=Q(memberships__is_active=True), distinct=True
-        ),
+        member_count=Count("memberships", filter=Q(memberships__is_active=True), distinct=True),
         pending_invitation_count=Count(
             "invitations",
             filter=Q(
@@ -53,9 +51,7 @@ def organization_queryset():
             distinct=True,
         ),
         artist_count=Count("artists", distinct=True),
-        active_artist_count=Count(
-            "artists", filter=Q(artists__status="active"), distinct=True
-        ),
+        active_artist_count=Count("artists", filter=Q(artists__status="active"), distinct=True),
         inactive_artist_count=Count(
             "artists",
             filter=Q(artists__status__in=("inactive", "archived")),
@@ -111,9 +107,7 @@ def organization_queryset():
 
 def scoped_organization(user, organization_id):
     return get_object_or_404(
-        organization_queryset().filter(
-            pk__in=organizations_for_user(user).values("pk")
-        ),
+        organization_queryset().filter(pk__in=organizations_for_user(user).values("pk")),
         pk=organization_id,
     )
 
@@ -134,17 +128,13 @@ class OrganizationListView(APIView):
 class OrganizationDetailView(APIView):
     def get(self, request, organization_id):
         return Response(
-            OrganizationSerializer(
-                scoped_organization(request.user, organization_id)
-            ).data
+            OrganizationSerializer(scoped_organization(request.user, organization_id)).data
         )
 
     def patch(self, request, organization_id):
         organization = scoped_organization(request.user, organization_id)
         require_permission(request.user, organization, "organization.manage")
-        serializer = OrganizationUpdateSerializer(
-            organization, data=request.data, partial=True
-        )
+        serializer = OrganizationUpdateSerializer(organization, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         record_event(
@@ -176,16 +166,12 @@ class OrganizationMemberListView(APIView):
             pk=membership_id,
             organization=organization,
         )
-        serializer = MembershipUpdateSerializer(
-            membership, data=request.data, partial=True
-        )
+        serializer = MembershipUpdateSerializer(membership, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         next_role = serializer.validated_data.get("role", membership.role)
         next_active = serializer.validated_data.get("is_active", membership.is_active)
         try:
-            validate_membership_owner_change(
-                membership, role=next_role, is_active=next_active
-            )
+            validate_membership_owner_change(membership, role=next_role, is_active=next_active)
         except DjangoValidationError as error:
             raise ValidationError(error.messages) from error
         serializer.save()
@@ -297,9 +283,7 @@ class PlatformOverviewView(APIView):
         return Response(
             {
                 "organizations": Organization.objects.count(),
-                "active_organizations": Organization.objects.filter(
-                    is_active=True
-                ).count(),
+                "active_organizations": Organization.objects.filter(is_active=True).count(),
                 "users": User.objects.count(),
                 "active_users": User.objects.filter(is_active=True).count(),
                 "memberships": Membership.objects.count(),
@@ -348,9 +332,7 @@ class PlatformOrganizationListView(APIView):
             request=request,
         )
         return Response(
-            OrganizationSerializer(
-                organization_queryset().get(pk=organization.pk)
-            ).data,
+            OrganizationSerializer(organization_queryset().get(pk=organization.pk)).data,
             status=status.HTTP_201_CREATED,
         )
 
@@ -371,9 +353,7 @@ class PlatformOrganizationDetailView(APIView):
 
     def patch(self, request, organization_id):
         organization = get_object_or_404(Organization, pk=organization_id)
-        serializer = OrganizationSerializer(
-            organization, data=request.data, partial=True
-        )
+        serializer = OrganizationSerializer(organization, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         record_event(

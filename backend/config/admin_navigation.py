@@ -49,3 +49,23 @@ def royalty_statements(request):
 
 def royalty_allocations(request):
     return _can_view(request, "rights", "RoyaltyAllocation")
+
+
+def workflow_tasks(request):
+    return _can_view(request, "tasks", "Task")
+
+
+def workflow_checklists(request):
+    return _can_view(request, "tasks", "TaskChecklistItem")
+
+
+def document_templates(request):
+    return _can_view(request, "documents", "DocumentTemplate")
+
+
+def document_template_sections(request):
+    return _can_view(request, "documents", "DocumentTemplateSection")
+
+
+def security_events(request):
+    return _can_view(request, "users", "SecurityEvent")
