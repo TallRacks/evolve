@@ -22,4 +22,5 @@ export interface AuthUser {
 export interface SessionBootstrap {
   user: AuthUser;
   memberships: Membership[];
+  organizations: Organization[];
 }

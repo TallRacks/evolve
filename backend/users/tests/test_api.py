@@ -140,17 +140,21 @@ def test_me_returns_safe_profile_and_only_active_memberships(client, user):
                 "permissions": ["organization.view", "portal.artist"],
             }
         ],
+        "organizations": [],
     }
     assert "password" not in str(response.json()).lower()
 
 
 def test_me_identifies_superuser_without_fabricating_memberships(client, superuser):
-    Organization.objects.create(name="Unrelated", slug="unrelated")
+    organization = Organization.objects.create(name="Unrelated", slug="unrelated")
     client.force_login(superuser)
     response = client.get(reverse("users_api:me"))
     assert response.status_code == 200
     assert response.json()["user"]["is_superuser"] is True
     assert response.json()["memberships"] == []
+    assert response.json()["organizations"] == [
+        {"id": str(organization.id), "name": "Unrelated", "slug": "unrelated"}
+    ]
 
 
 def test_me_represents_multiple_active_organizations(client, user):

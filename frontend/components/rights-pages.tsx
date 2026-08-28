@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/components/auth/auth-provider";
+import { hasOrganizationPermission } from "@/lib/auth/access";
 import { RouteGuard } from "@/components/auth/route-guard";
 import {
   buttonClass,
@@ -85,7 +86,8 @@ export function RightsOverviewPage({
 }: {
   platform?: boolean;
 }) {
-  const o = useAuth().activeOrganizationId;
+  const { activeOrganizationId: o, session } = useAuth();
+  const canManage = hasOrganizationPermission(session, o, "rights.manage");
   const [d, setD] = useState<{
     works: number;
     parties: number;
@@ -104,7 +106,7 @@ export function RightsOverviewPage({
         eyebrow={platform ? "Platform" : "Rights & royalties"}
         title="Rights overview"
         actions={
-          !platform ? (
+          !platform && canManage ? (
             <Link className={buttonClass} href="/workspace/rights/works/new">
               Create Work
             </Link>
@@ -147,7 +149,8 @@ export function RightsOverviewPage({
   return platform ? <P>{b}</P> : <W>{b}</W>;
 }
 export function WorkListPage({ platform = false }: { platform?: boolean }) {
-  const o = useAuth().activeOrganizationId;
+  const { activeOrganizationId: o, session } = useAuth();
+  const canManage = hasOrganizationPermission(session, o, "rights.manage");
   const [x, setX] = useState<Work[]>([]);
   useEffect(() => {
     const u = platform
@@ -161,7 +164,7 @@ export function WorkListPage({ platform = false }: { platform?: boolean }) {
         eyebrow="Rights"
         title="Works"
         actions={
-          !platform ? (
+          !platform && canManage ? (
             <Link className={buttonClass} href="/workspace/rights/works/new">
               New Work
             </Link>
@@ -205,8 +208,9 @@ export function NewWorkPage() {
   const r = useRouter();
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const element = e.currentTarget;
     const data = {
-      ...Object.fromEntries(new FormData(e.currentTarget)),
+      ...Object.fromEntries(new FormData(element)),
       organization,
     };
     const x = await apiRequest<Work>("/api/rights/works/", {
@@ -276,11 +280,12 @@ export function WorkDetailPage({ platform = false }: { platform?: boolean }) {
   }, [load, platform, o]);
   async function add(path: string, e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const element = e.currentTarget;
     await apiRequest(path, {
       method: "POST",
-      body: JSON.stringify(Object.fromEntries(new FormData(e.currentTarget))),
+      body: JSON.stringify(Object.fromEntries(new FormData(element))),
     });
-    e.currentTarget.reset();
+    element.reset();
     await load();
   }
   const total = Number(d?.publishing_total || 0);
@@ -431,15 +436,16 @@ export function PartiesPage({ platform = false }: { platform?: boolean }) {
     if (platform || organization) void load();
   }, [load, organization, platform]);
   async function save(e: FormEvent<HTMLFormElement>) {
+    const element = e.currentTarget;
     e.preventDefault();
     await apiRequest("/api/rights/parties/", {
       method: "POST",
       body: JSON.stringify({
-        ...Object.fromEntries(new FormData(e.currentTarget)),
+        ...Object.fromEntries(new FormData(element)),
         organization,
       }),
     });
-    e.currentTarget.reset();
+    element.reset();
     await load();
   }
   const b = (
@@ -494,7 +500,8 @@ export function RoyaltiesOverviewPage({
 }: {
   platform?: boolean;
 }) {
-  const o = useAuth().activeOrganizationId;
+  const { activeOrganizationId: o, session } = useAuth();
+  const canManage = hasOrganizationPermission(session, o, "royalties.manage");
   const [x, setX] = useState<Statement[]>([]);
   useEffect(() => {
     const u = platform
@@ -518,7 +525,7 @@ export function RoyaltiesOverviewPage({
         eyebrow="Rights & royalties"
         title="Royalty overview"
         actions={
-          !platform ? (
+          !platform && canManage ? (
             <Link
               className={buttonClass}
               href="/workspace/royalties/statements/new"
@@ -564,7 +571,8 @@ export function StatementListPage({
 }: {
   platform?: boolean;
 }) {
-  const o = useAuth().activeOrganizationId;
+  const { activeOrganizationId: o, session } = useAuth();
+  const canManage = hasOrganizationPermission(session, o, "royalties.manage");
   const [x, setX] = useState<Statement[]>([]);
   useEffect(() => {
     const u = platform
@@ -574,7 +582,7 @@ export function StatementListPage({
   }, [o, platform]);
   const b = (
     <>
-      <PageHeader eyebrow="Royalties" title="Statements" />
+      <PageHeader eyebrow="Royalties" title="Statements" actions={!platform && canManage ? <Link className={buttonClass} href="/workspace/royalties/statements/new">New statement</Link> : undefined} />
       <div className="mt-7">
         {x.map((i) => (
           <Link
@@ -605,8 +613,9 @@ export function NewStatementPage() {
   const r = useRouter();
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    const element = e.currentTarget;
     const d: { [key: string]: FormDataEntryValue | string | null } = {
-      ...Object.fromEntries(new FormData(e.currentTarget)),
+      ...Object.fromEntries(new FormData(element)),
       organization,
     };
     if (!d.declared_total) d.declared_total = null;
@@ -740,16 +749,17 @@ export function StatementDetailPage({
               className="mt-4 grid gap-3 sm:grid-cols-4"
               onSubmit={async (e) => {
                 e.preventDefault();
+                const element = e.currentTarget;
                 await apiRequest(
                   "/api/royalties/statements/" + id + "/lines/",
                   {
                     method: "POST",
                     body: JSON.stringify(
-                      Object.fromEntries(new FormData(e.currentTarget)),
+                      Object.fromEntries(new FormData(element)),
                     ),
                   },
                 );
-                e.currentTarget.reset();
+                element.reset();
                 await load();
               }}
             >
@@ -845,12 +855,13 @@ export function StatementDetailPage({
                     className="flex gap-2"
                     onSubmit={async (e) => {
                       e.preventDefault();
+                      const element = e.currentTarget;
                       await apiRequest(
                         "/api/royalties/lines/" + line.id + "/allocations/",
                         {
                           method: "POST",
                           body: JSON.stringify(
-                            Object.fromEntries(new FormData(e.currentTarget)),
+                            Object.fromEntries(new FormData(element)),
                           ),
                         },
                       );

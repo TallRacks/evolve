@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from organizations.models import Membership
+from organizations.models import Membership, Organization
 from organizations.permissions import permissions_for_role
 
 
@@ -34,6 +34,7 @@ class CurrentUserSerializer(serializers.Serializer):
 class SessionBootstrapSerializer(serializers.Serializer):
     user = serializers.SerializerMethodField()
     memberships = serializers.SerializerMethodField()
+    organizations = serializers.SerializerMethodField()
 
     def get_user(self, user):
         return CurrentUserSerializer(user).data
@@ -41,6 +42,15 @@ class SessionBootstrapSerializer(serializers.Serializer):
     def get_memberships(self, user):
         memberships = user.memberships.active().select_related("organization")
         return ActiveMembershipSerializer(memberships, many=True).data
+
+    def get_organizations(self, user):
+        if not user.is_superuser:
+            return []
+        return list(
+            Organization.objects.filter(is_active=True)
+            .order_by("name", "id")
+            .values("id", "name", "slug")
+        )
 
 
 class LoginSerializer(serializers.Serializer):

@@ -186,7 +186,11 @@ export function AppShell({
     brandingState?.organizationId === activeOrganizationId
       ? brandingState.data
       : defaultBranding;
-  const can = (permission: string) => permissions.includes(permission);
+  const can = (permission: string) =>
+    (superuser && activeOrganizationId !== null) || permissions.includes(permission);
+  const organizations = superuser
+    ? (session?.organizations ?? [])
+    : (session?.memberships.map((item) => item.organization) ?? []);
   const groups: NavGroup[] = (() => {
     if (platform)
       return [
@@ -198,6 +202,12 @@ export function AppShell({
               label: "Platform",
               icon: LayoutDashboard,
               show: superuser,
+            },
+            {
+              href: "/workspace",
+              label: "Selected workspace",
+              icon: Building2,
+              show: superuser && activeOrganizationId !== null,
             },
           ],
         },
@@ -841,7 +851,7 @@ export function AppShell({
             <span className="truncate">Search or open a command</span>
             <kbd className="ml-auto hidden text-xs sm:block">⌘K</kbd>
           </button>
-          {organizationScoped && session && session.memberships.length > 1 && (
+          {organizationScoped && session && organizations.length > 0 && (
             <label className="relative">
               <span className="sr-only">Current organization</span>
               <select
@@ -849,9 +859,9 @@ export function AppShell({
                 value={activeOrganizationId ?? ""}
                 onChange={(event) => selectOrganization(event.target.value)}
               >
-                {session.memberships.map((item) => (
-                  <option key={item.id} value={item.organization.id}>
-                    {item.organization.name}
+                {organizations.map((organization) => (
+                  <option key={organization.id} value={organization.id}>
+                    {organization.name}
                   </option>
                 ))}
               </select>

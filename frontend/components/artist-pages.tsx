@@ -1,5 +1,6 @@
 "use client";
 
+import { hasOrganizationPermission } from "@/lib/auth/access";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -269,10 +270,7 @@ export function ArtistDirectoryPage() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
-  const membership = session?.memberships.find(
-    (item) => item.organization.id === activeOrganizationId,
-  );
-  const canManage = membership?.permissions.includes("artist.manage");
+  const canManage = hasOrganizationPermission(session, activeOrganizationId, "artist.manage");
   useEffect(() => {
     if (!activeOrganizationId) return;
     void apiRequest<Artist[]>(
@@ -432,13 +430,10 @@ function ArtistDetailContent({
   const [members, setMembers] = useState<Member[]>([]);
   const [overview, setOverview] = useState<ArtistOverview | null>(null);
   const [message, setMessage] = useState("");
-  const membership = session?.memberships.find(
-    (item) => item.organization.id === activeOrganizationId,
-  );
   const canManage =
-    platform || membership?.permissions.includes("artist.manage");
+    platform || hasOrganizationPermission(session, activeOrganizationId, "artist.manage");
   const canManageTeam =
-    platform || membership?.permissions.includes("artist.team.manage");
+    platform || hasOrganizationPermission(session, activeOrganizationId, "artist.team.manage");
   useEffect(() => {
     if (!organizationId || !canManageTeam) return;
     void apiRequest<Member[]>(
@@ -482,7 +477,7 @@ function ArtistDetailContent({
   }
   async function assign(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const element = event.currentTarget; const form = new FormData(element);
     await apiRequest(`/api/artists/${data.id}/team/`, {
       method: "POST",
       body: JSON.stringify({
@@ -491,7 +486,7 @@ function ArtistDetailContent({
         is_primary: form.get("is_primary") === "on",
       }),
     });
-    event.currentTarget.reset();
+    element.reset();
     await reload();
   }
   async function remove(assignment: Assignment) {
@@ -504,7 +499,7 @@ function ArtistDetailContent({
   }
   async function link(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const element = event.currentTarget; const form = new FormData(element);
     const selected = members.find(
       (item) => item.id === form.get("membership_id"),
     );

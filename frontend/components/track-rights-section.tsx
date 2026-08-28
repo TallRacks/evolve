@@ -63,14 +63,15 @@ export function TrackRightsSection({
           className="mt-4 grid gap-2 sm:grid-cols-4"
           onSubmit={async (e) => {
             e.preventDefault();
+            const element = e.currentTarget;
             await apiRequest("/api/rights/masters/", {
               method: "POST",
               body: JSON.stringify({
-                ...Object.fromEntries(new FormData(e.currentTarget)),
+                ...Object.fromEntries(new FormData(element)),
                 track: trackId,
               }),
             });
-            e.currentTarget.reset();
+            element.reset();
             location.reload();
           }}
         >

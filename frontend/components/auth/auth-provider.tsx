@@ -18,12 +18,16 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function availableOrganizations(session: SessionBootstrap) {
+  return session.user.is_superuser
+    ? session.organizations
+    : session.memberships.map((item) => item.organization);
+}
+
 function validOrganization(session: SessionBootstrap, candidate: string | null): string | null {
-  if (session.user.is_superuser) return null;
-  if (candidate && session.memberships.some((item) => item.organization.id === candidate)) {
-    return candidate;
-  }
-  return session.memberships[0]?.organization.id ?? null;
+  const organizations = availableOrganizations(session);
+  if (candidate && organizations.some((item) => item.id === candidate)) return candidate;
+  return organizations[0]?.id ?? null;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -83,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const selectOrganization = useCallback(
     (organizationId: string) => {
-      if (!session?.memberships.some((item) => item.organization.id === organizationId)) return;
+      if (!session || !availableOrganizations(session).some((item) => item.id === organizationId)) return;
       sessionStorage.setItem(ORGANIZATION_KEY, organizationId);
       setActiveOrganizationId(organizationId);
     },

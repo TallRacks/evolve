@@ -54,3 +54,18 @@ A draft can explicitly refresh Booking snapshot fields and import current Produc
 The read route is both draft preview and historical/published view. Draft, superseded, and cancelled states are visibly labelled. Empty sections are omitted. Published output includes organization, artist, event, date, venue, version, publication metadata, and populated operational sections.
 
 Print / Save PDF invokes the browser print dialog. Print CSS removes application navigation and controls, uses print-safe contrast and margins, and avoids splitting operational sections where practical. There is no server-side PDF renderer.
+
+## Rendered discoverability standard
+
+Presence in source code does not count as frontend action completeness. Actions must be discoverable and rendered for an authorized user.
+
+- Major list pages place their permission-aware primary create action in the page header; an authorized empty state repeats a useful CTA where practical.
+- Mutable detail pages keep Edit and the principal workflow action visible in the header. Lower-frequency lifecycle actions may use a More menu.
+- Related-record sections expose local Add or Link controls instead of requiring navigation to a global menu.
+- The workspace dashboard provides a concise, permission-aware Quick actions grid backed by real routes and forms.
+- Forms use labeled inputs, required states, safe inline or form-level errors, disabled submission while saving, explicit Cancel, success refresh or redirect, and organization-scoped selectors.
+- Removal uses domain semantics such as archive, deactivate, revoke, cancel, void, or terminate; historical records are not offered generic deletion.
+- Frontend visibility mirrors the authenticated organization's permission names. A selected platform superuser workspace is explicit and does not create a fake membership; `is_staff` alone never enables actions.
+- Primary actions remain visible at mobile sizes. Secondary actions may collapse without removing the only route to an operation.
+- `frontend/action-manifest.json` and `npm run test:actions` enforce the major list-action label, destination, permission, dashboard, and superuser/staff contract.
+- Production verification must confirm the rebuilt frontend image is active. Source inspection and a successful build alone are not visual verification.

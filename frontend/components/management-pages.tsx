@@ -1,5 +1,6 @@
 "use client";
 
+import { hasOrganizationPermission } from "@/lib/auth/access";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -186,6 +187,22 @@ export function DashboardPage() {
       status: string;
     }[];
   }>(path);
+  const quickActions = [
+    ["New Booking", "/workspace/bookings/new", "booking.manage"],
+    ["New Artist", "/workspace/artists/new", "artist.manage"],
+    ["New Contact", "/workspace/contacts", "contact.manage"],
+    ["New Production Advance", "/workspace/production/new", "production.manage"],
+    ["New Travel Itinerary", "/workspace/travel/new", "travel.manage"],
+    ["New Release", "/workspace/music/releases/new", "music.manage"],
+    ["New Campaign", "/workspace/campaigns/new", "campaign.manage"],
+    ["New Document", "/workspace/documents/new", "document.manage"],
+    ["New Invoice", "/workspace/finance/invoices/new", "finance.manage"],
+    ["New Work", "/workspace/rights/works/new", "rights.manage"],
+    ["New Royalty Statement", "/workspace/royalties/statements/new", "royalties.manage"],
+    ["New Contract", "/workspace/contracts/new", "contract.manage"],
+  ].filter(([, , permission]) =>
+    hasOrganizationPermission(session, activeOrganizationId, permission),
+  );
   if (membership?.role === "artist") {
     return (
       <RouteGuard portal="dashboard">
@@ -210,7 +227,7 @@ export function DashboardPage() {
           title={data?.organization?.name ?? "Dashboard"}
           description="A permission-aware operational summary."
           actions={
-            membership?.permissions.includes("booking.manage") ? (
+            hasOrganizationPermission(session, activeOrganizationId, "booking.manage") ? (
               <Link className={buttonClass} href="/workspace/bookings/new">
                 Create booking
               </Link>
@@ -229,6 +246,33 @@ export function DashboardPage() {
                 />
               ))}
             </div>
+            {quickActions.length > 0 && (
+              <section className="mt-8">
+                <div className="mb-4 flex items-center justify-between">
+                  <h2 className="font-semibold">Quick actions</h2>
+                  <Link className="text-sm text-neutral-400 hover:text-white" href="/workspace">
+                    Open workspace
+                  </Link>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {quickActions.slice(0, 6).map(([label, href]) => (
+                    <Link className={label === "New Booking" ? buttonClass : secondaryButtonClass} href={href} key={href}>
+                      + {label}
+                    </Link>
+                  ))}
+                </div>
+                {quickActions.length > 6 && (
+                  <details className="mt-3">
+                    <summary className="cursor-pointer text-sm text-neutral-400">More actions</summary>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {quickActions.slice(6).map(([label, href]) => (
+                        <Link className={secondaryButtonClass} href={href} key={href}>+ {label}</Link>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </section>
+            )}
             {data.upcoming_bookings.length > 0 && (
               <section className="mt-8">
                 <div className="mb-4 flex items-center justify-between">
@@ -266,11 +310,11 @@ export function DashboardPage() {
 
 export function WorkspaceOverviewPage() {
   const { activeOrganizationId, session } = useAuth();
-  const { data, error } = useResource<Organization>(
-    activeOrganizationId ? `/api/organizations/${activeOrganizationId}/` : null,
-  );
   const membership = session?.memberships.find(
     (item) => item.organization.id === activeOrganizationId,
+  );
+  const { data, error } = useResource<Organization>(
+    activeOrganizationId ? `/api/organizations/${activeOrganizationId}/` : null,
   );
   return (
     <WorkspaceFrame>
@@ -283,7 +327,7 @@ export function WorkspaceOverviewPage() {
       {data ? (
         <>
           <div className="mt-7 grid gap-4 sm:grid-cols-3">
-            <StatCard label="Your role" value={membership?.role ?? "-"} />
+            <StatCard label="Your role" value={session?.user.is_superuser ? "platform superuser" : membership?.role ?? "-"} />
             <StatCard
               label="Upcoming bookings"
               value={data.upcoming_booking_count}
@@ -294,12 +338,12 @@ export function WorkspaceOverviewPage() {
             />
           </div>
           <div className="mt-7 flex flex-wrap gap-3">
-            {membership?.permissions.includes("booking.manage") && (
+            {hasOrganizationPermission(session, activeOrganizationId, "booking.manage") && (
               <Link className={buttonClass} href="/workspace/bookings/new">
                 Create booking
               </Link>
             )}
-            {membership?.permissions.includes("artist.view") && (
+            {hasOrganizationPermission(session, activeOrganizationId, "artist.manage") && (
               <Link
                 className={secondaryButtonClass}
                 href="/workspace/artists/new"
@@ -307,7 +351,7 @@ export function WorkspaceOverviewPage() {
                 Add artist
               </Link>
             )}
-            {membership?.permissions.includes("promoter.manage") && (
+            {hasOrganizationPermission(session, activeOrganizationId, "promoter.manage") && (
               <Link
                 className={secondaryButtonClass}
                 href="/workspace/promoters/new"
@@ -315,7 +359,7 @@ export function WorkspaceOverviewPage() {
                 Add promoter
               </Link>
             )}
-            {membership?.permissions.includes("venue.manage") && (
+            {hasOrganizationPermission(session, activeOrganizationId, "venue.manage") && (
               <Link
                 className={secondaryButtonClass}
                 href="/workspace/venues/new"
@@ -359,10 +403,7 @@ export function TeamPage() {
   const [role, setRole] = useState("");
   const [status, setStatus] = useState("");
   const [message, setMessage] = useState("");
-  const membership = session?.memberships.find(
-    (item) => item.organization.id === activeOrganizationId,
-  );
-  const canManage = membership?.permissions.includes("membership.manage");
+  const canManage = hasOrganizationPermission(session, activeOrganizationId, "membership.manage");
   const filtered = useMemo(
     () =>
       (data ?? []).filter(
@@ -523,10 +564,7 @@ export function InvitationsPage() {
   const [role, setRole] = useState("member");
   const [message, setMessage] = useState("");
   const [token, setToken] = useState("");
-  const current = session?.memberships.find(
-    (item) => item.organization.id === activeOrganizationId,
-  );
-  const canManage = current?.permissions.includes("membership.manage");
+    const canManage = hasOrganizationPermission(session, activeOrganizationId, "membership.manage");
   async function create(event: FormEvent) {
     event.preventDefault();
     if (!path) return;
@@ -662,14 +700,11 @@ export function OrganizationPage() {
     : null;
   const { data, error, load } = useResource<Organization>(path);
   const [message, setMessage] = useState("");
-  const membership = session?.memberships.find(
-    (item) => item.organization.id === activeOrganizationId,
-  );
-  const canManage = membership?.permissions.includes("organization.manage");
+  const canManage = hasOrganizationPermission(session, activeOrganizationId, "organization.manage");
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!path) return;
-    const form = new FormData(event.currentTarget);
+    const element = event.currentTarget; const form = new FormData(element);
     try {
       await apiRequest(path, {
         method: "PATCH",
@@ -748,7 +783,7 @@ export function ProfilePage() {
   const [message, setMessage] = useState("");
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const element = event.currentTarget; const form = new FormData(element);
     try {
       await apiRequest("/api/profile/", {
         method: "PATCH",
