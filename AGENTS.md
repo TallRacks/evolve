@@ -240,3 +240,11 @@ their requirements are defined.
 - Template rendering is deterministic plain text using the explicit allowlist. Never enable arbitrary expressions, object traversal, template filters/tags, raw HTML rendering, or environment access.
 - Generated Document content and template version are historical snapshots. Template edits never mutate existing generated Documents.
 - Booking operational setup is centralized, transactional where creation must be atomic, permission checked, organization scoped, idempotent, and must not create Contracts or Invoices implicitly.
+
+## Reporting and provider configuration invariants
+
+- Reporting requires both `reporting.view` and source-domain permission; authorize and scope source querysets before aggregation or export.
+- CSV exports are backend generated, audit bulk extraction without content, and neutralize spreadsheet formula prefixes. Never combine currencies.
+- Email and storage records contain safe metadata and controlled `EVOLVE_...` secret references only. Secret values remain external and never enter APIs, models, admin, logs, or audit.
+- Platform connector/storage configuration requires an active superuser; `is_staff` is not authorization. General uploads and automatic email delivery remain disabled.
+- Storage is private by default. Connectivity probes use unique server-generated keys, verify write/read/delete, reject traversal and non-public endpoints, and clean up test objects.

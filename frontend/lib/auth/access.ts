@@ -17,7 +17,7 @@ export function hasOrganizationPermission(
 }
 
 export function landingPath(session: SessionBootstrap): string {
-  if (session.user.is_superuser) return "/platform";
+  if (session.user.is_superuser) return "/dashboard";
   if (session.memberships.some((membership) => membership.permissions.includes("portal.artist"))) {
     return "/artist";
   }

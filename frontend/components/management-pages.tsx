@@ -187,6 +187,7 @@ export function DashboardPage() {
     mode: "platform" | "workspace";
     organization?: { id: string; name: string };
     counts: Record<string, number>;
+    configuration?: Record<string, string>;
     upcoming_bookings: {
       id: string;
       reference: string;
@@ -255,6 +256,16 @@ export function DashboardPage() {
                 />
               ))}
             </div>
+            {data.configuration && (
+              <section className="mt-8">
+                <h2 className="font-semibold">System configuration</h2>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                  {Object.entries(data.configuration).map(([key, value]) => (
+                    <StatCard key={key} label={key} value={value.replaceAll("_", " ")} />
+                  ))}
+                </div>
+              </section>
+            )}
             {quickActions.length > 0 && (
               <section className="mt-8">
                 <div className="mb-4 flex items-center justify-between">

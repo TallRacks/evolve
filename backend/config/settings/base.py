@@ -23,6 +23,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "reporting",
+    "integrations",
     "tasks",
     "users",
     "organizations",
@@ -187,6 +189,18 @@ UNFOLD = {
                         "title": "API clients",
                         "icon": "key",
                         "link": reverse_lazy("admin:white_label_apiclient_changelist"),
+                    },
+                    {
+                        "title": "Email connectors",
+                        "icon": "mail",
+                        "link": reverse_lazy("admin:integrations_emailconnector_changelist"),
+                        "permission": "config.admin_navigation.email_connectors",
+                    },
+                    {
+                        "title": "Storage providers",
+                        "icon": "cloud",
+                        "link": reverse_lazy("admin:integrations_storageprovider_changelist"),
+                        "permission": "config.admin_navigation.storage_providers",
                     },
                     {
                         "title": "API keys",
@@ -478,6 +492,18 @@ UNFOLD = {
                         "link": reverse_lazy(
                             "admin:notifications_notificationpreference_changelist"
                         ),
+                    },
+                ],
+            },
+            {
+                "title": "Insights",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Saved report views",
+                        "icon": "analytics",
+                        "link": reverse_lazy("admin:reporting_savedreportview_changelist"),
+                        "permission": "config.admin_navigation.saved_reports",
                     },
                 ],
             },

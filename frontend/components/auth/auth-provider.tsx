@@ -13,7 +13,7 @@ interface AuthContextValue {
   refresh: () => Promise<void>;
   login: (email: string, password: string) => Promise<SessionBootstrap>;
   logout: () => Promise<void>;
-  selectOrganization: (organizationId: string) => void;
+  selectOrganization: (organizationId: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -26,6 +26,7 @@ function availableOrganizations(session: SessionBootstrap) {
 
 function validOrganization(session: SessionBootstrap, candidate: string | null): string | null {
   const organizations = availableOrganizations(session);
+  if (session.user.is_superuser && (!candidate || candidate === "platform")) return null;
   if (candidate && organizations.some((item) => item.id === candidate)) return candidate;
   return organizations[0]?.id ?? null;
 }
@@ -45,6 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const selected = validOrganization(next, sessionStorage.getItem(ORGANIZATION_KEY));
     setActiveOrganizationId(selected);
     if (selected) sessionStorage.setItem(ORGANIZATION_KEY, selected);
+    else if (next.user.is_superuser) sessionStorage.setItem(ORGANIZATION_KEY, "platform");
     else sessionStorage.removeItem(ORGANIZATION_KEY);
   }, []);
 
@@ -86,8 +88,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [applySession]);
 
   const selectOrganization = useCallback(
-    (organizationId: string) => {
-      if (!session || !availableOrganizations(session).some((item) => item.id === organizationId)) return;
+    (organizationId: string | null) => {
+      if (!session) return;
+      if (organizationId === null && session.user.is_superuser) {
+        sessionStorage.setItem(ORGANIZATION_KEY, "platform");
+        setActiveOrganizationId(null);
+        return;
+      }
+      if (!organizationId || !availableOrganizations(session).some((item) => item.id === organizationId)) return;
       sessionStorage.setItem(ORGANIZATION_KEY, organizationId);
       setActiveOrganizationId(organizationId);
     },

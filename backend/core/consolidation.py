@@ -11,6 +11,7 @@ from contracts.models import Contract
 from documents.models import Document
 from documents.selectors import documents_for_user
 from finance.models import Invoice
+from integrations.models import EmailConnector, StorageProvider
 from music.models import Release, Track
 from notifications.models import NotificationRecipient
 from organizations.models import Invitation, Organization
@@ -25,6 +26,7 @@ from production.models import (
 from promoters.models import Promoter
 from rights.models import Work
 from travel.models import TravelItinerary, TravelSegment
+from users.models import User
 from venues.models import Venue
 
 RESULT_LIMIT = 6
@@ -409,6 +411,20 @@ def dashboard(user, organization_id=None):
                 "organizations": Organization.objects.count(),
                 "artists": Artist.objects.count(),
                 "bookings": Booking.objects.count(),
+                "active_users": User.objects.filter(is_active=True).count(),
+                "production_activity": ProductionAdvance.objects.exclude(
+                    status__in=("completed", "cancelled", "archived")
+                ).count(),
+            },
+            "configuration": {
+                "email": EmailConnector.objects.filter(is_active=True, is_default=True)
+                .values_list("connection_status", flat=True)
+                .first()
+                or "not_configured",
+                "storage": StorageProvider.objects.filter(is_active=True, is_default=True)
+                .values_list("connection_status", flat=True)
+                .first()
+                or "not_configured",
             },
             "upcoming_bookings": [],
         }

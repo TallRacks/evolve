@@ -69,3 +69,15 @@ def document_template_sections(request):
 
 def security_events(request):
     return _can_view(request, "users", "SecurityEvent")
+
+
+def email_connectors(request):
+    return _can_view(request, "integrations", "EmailConnector")
+
+
+def storage_providers(request):
+    return _can_view(request, "integrations", "StorageProvider")
+
+
+def saved_reports(request):
+    return _can_view(request, "reporting", "SavedReportView")

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BarChart3,
   Bell,
   BookOpen,
   Building2,
@@ -16,6 +17,7 @@ import {
   HardHat,
   LayoutDashboard,
   LogOut,
+  Mail,
   MapPin,
   Menu,
   Megaphone,
@@ -23,6 +25,7 @@ import {
   Palette,
   Plane,
   Search,
+  Server,
   Scale,
   ShieldCheck,
   UserRound,
@@ -192,216 +195,6 @@ export function AppShell({
     ? (session?.organizations ?? [])
     : (session?.memberships.map((item) => item.organization) ?? []);
   const groups: NavGroup[] = (() => {
-    if (platform)
-      return [
-        {
-          label: "Overview",
-          items: [
-            {
-              href: "/platform",
-              label: "Platform",
-              icon: LayoutDashboard,
-              show: superuser,
-            },
-            {
-              href: "/workspace",
-              label: "Selected workspace",
-              icon: Building2,
-              show: superuser && activeOrganizationId !== null,
-            },
-          ],
-        },
-        {
-          label: "Identity & access",
-          items: [
-            {
-              href: "/platform/organizations",
-              label: "Organizations",
-              icon: Building2,
-              show: superuser,
-            },
-            {
-              href: "/platform/users",
-              label: "Users",
-              icon: UsersRound,
-              show: superuser,
-            },
-          ],
-        },
-        {
-          label: "Artist operations",
-          items: [
-            {
-              href: "/platform/artists",
-              label: "Artists",
-              icon: UserRound,
-              show: superuser,
-            },
-            {
-              href: "/platform/bookings",
-              label: "Bookings",
-              icon: BookOpen,
-              show: superuser,
-            },
-            {
-              href: "/platform/production",
-              label: "Production",
-              icon: HardHat,
-              show: superuser,
-            },
-            {
-              href: "/platform/call-sheets",
-              label: "Call Sheets",
-              icon: ClipboardList,
-              show: superuser,
-            },
-            {
-              href: "/platform/travel",
-              label: "Travel",
-              icon: Plane,
-              show: superuser,
-            },
-          ],
-        },
-        {
-          label: "Industry directory",
-          items: [
-            {
-              href: "/platform/promoters",
-              label: "Promoters",
-              icon: UsersRound,
-              show: superuser,
-            },
-            {
-              href: "/platform/venues",
-              label: "Venues",
-              icon: MapPin,
-              show: superuser,
-            },
-            {
-              href: "/platform/contacts",
-              label: "Contacts",
-              icon: ContactRound,
-              show: superuser,
-            },
-          ],
-        },
-        {
-          label: "Music",
-          items: [
-            {
-              href: "/platform/music/releases",
-              label: "Releases",
-              icon: Music2,
-              show: superuser,
-            },
-            {
-              href: "/platform/music/tracks",
-              label: "Tracks",
-              icon: Music2,
-              show: superuser,
-            },
-            {
-              href: "/platform/campaigns",
-              label: "Campaigns",
-              icon: Megaphone,
-              show: superuser,
-            },
-            {
-              href: "/platform/rollouts",
-              label: "Rollouts",
-              icon: ClipboardList,
-              show: superuser,
-            },
-          ],
-        },
-        {
-          label: "Finance",
-          items: [
-            {
-              href: "/platform/finance",
-              label: "Overview",
-              icon: WalletCards,
-              show: superuser,
-            },
-            {
-              href: "/platform/finance/invoices",
-              label: "Invoices",
-              icon: WalletCards,
-              show: superuser,
-            },
-            {
-              href: "/platform/finance/payments",
-              label: "Payments",
-              icon: CircleDollarSign,
-              show: superuser,
-            },
-            {
-              href: "/platform/rights/works",
-              label: "Rights",
-              icon: Scale,
-              show: superuser,
-            },
-            {
-              href: "/platform/rights/parties",
-              label: "Rights Parties",
-              icon: UsersRound,
-              show: superuser,
-            },
-            {
-              href: "/platform/royalties/statements",
-              label: "Royalty Statements",
-              icon: CircleDollarSign,
-              show: superuser,
-            },
-          ],
-        },
-        {
-          label: "Content & records",
-          items: [
-            {
-              href: "/platform/contracts",
-              label: "Contracts",
-              icon: FileSignature,
-              show: superuser,
-            },
-          ],
-        },
-        {
-          label: "Platform services",
-          items: [
-            {
-              href: "/platform/branding",
-              label: "Branding",
-              icon: Palette,
-              show: superuser,
-            },
-            {
-              href: "/platform/domains",
-              label: "Domains",
-              icon: Globe2,
-              show: superuser,
-            },
-            {
-              href: "/developer",
-              label: "Developer / API",
-              icon: Code2,
-              show: superuser,
-            },
-          ],
-        },
-        {
-          label: "Governance",
-          items: [
-            {
-              href: "/platform/audit",
-              label: "Audit",
-              icon: ShieldCheck,
-              show: superuser,
-            },
-          ],
-        },
-      ];
     if (artistPortal)
       return [
         {
@@ -480,6 +273,12 @@ export function AppShell({
             label: "Activity",
             icon: ShieldCheck,
             show: can("activity.view"),
+          },
+          {
+            href: "/workspace/reports",
+            label: "Reports",
+            icon: BarChart3,
+            show: can("reporting.view"),
           },
         ],
       },
@@ -658,6 +457,16 @@ export function AppShell({
         ],
       },
       {
+        label: "Platform",
+        items: [
+          { href: "/platform/organizations", label: "Organizations", icon: Building2, show: superuser },
+          { href: "/platform/users", label: "Users", icon: UsersRound, show: superuser },
+          { href: "/platform/connectors", label: "Connectors", icon: Mail, show: superuser },
+          { href: "/platform/storage", label: "Storage", icon: Server, show: superuser },
+          { href: "/platform/audit", label: "Audit", icon: ShieldCheck, show: superuser },
+        ],
+      },
+      {
         label: "Account",
         items: [
           { href: "/profile", label: "Profile", icon: UserRound, show: true },
@@ -666,12 +475,6 @@ export function AppShell({
             label: "Security",
             icon: ShieldCheck,
             show: true,
-          },
-          {
-            href: "/platform",
-            label: "Platform",
-            icon: ShieldCheck,
-            show: superuser,
           },
         ],
       },
@@ -763,9 +566,7 @@ export function AppShell({
       <div className="flex h-16 items-center justify-between border-b border-neutral-800 px-5">
         <Link
           className="flex min-w-0 items-center gap-3 text-lg font-semibold"
-          href={
-            platform ? "/platform" : artistPortal ? "/artist" : "/dashboard"
-          }
+          href={artistPortal ? "/artist" : "/dashboard"}
           style={{ color: branding.primary }}
         >
           {branding.logo_url && (
@@ -875,14 +676,15 @@ export function AppShell({
             <span className="truncate">Search or open a command</span>
             <kbd className="ml-auto hidden text-xs sm:block">⌘K</kbd>
           </button>
-          {organizationScoped && session && organizations.length > 0 && (
+          {session && (superuser || (organizationScoped && organizations.length > 0)) && (
             <label className="relative">
-              <span className="sr-only">Current organization</span>
+              <span className="sr-only">Current application context</span>
               <select
                 className="h-10 max-w-48 appearance-none rounded-md border border-neutral-700 bg-neutral-900 pl-3 pr-9 text-sm"
-                value={activeOrganizationId ?? ""}
-                onChange={(event) => selectOrganization(event.target.value)}
+                value={activeOrganizationId ?? "platform"}
+                onChange={(event) => selectOrganization(event.target.value === "platform" ? null : event.target.value)}
               >
+                {superuser && <option value="platform">Platform</option>}
                 {organizations.map((organization) => (
                   <option key={organization.id} value={organization.id}>
                     {organization.name}

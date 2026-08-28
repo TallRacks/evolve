@@ -1,2 +1,2 @@
-import { PlatformOverviewPage } from "@/components/management-pages";
-export default PlatformOverviewPage;
+import { redirect } from "next/navigation";
+export default function PlatformPage() { redirect("/dashboard"); }

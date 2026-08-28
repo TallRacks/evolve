@@ -43,6 +43,7 @@ ROLE_PERMISSIONS = {
         "rollout.task.manage",
         "task.view",
         "activity.view",
+        "reporting.view",
         "task.manage",
         "task.assign",
         "task.status.manage",
@@ -112,6 +113,7 @@ ROLE_PERMISSIONS = {
         "rollout.task.manage",
         "task.view",
         "activity.view",
+        "reporting.view",
         "task.manage",
         "task.assign",
         "task.status.manage",
@@ -156,6 +158,7 @@ ROLE_PERMISSIONS = {
         "document.view",
         "task.view",
         "activity.view",
+        "reporting.view",
     },
     Membership.Role.ARTIST: {"organization.view", "portal.artist"},
 }

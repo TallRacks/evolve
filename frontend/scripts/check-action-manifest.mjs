@@ -52,6 +52,18 @@ for (const entry of readdirSync(join(root, "components"), { recursive: true })) 
   }
 }
 
+const shell = readFileSync(join(root, "components/app-shell.tsx"), "utf8");
+if ((shell.match(/label: "Dashboard"/g) ?? []).length !== 1) failures.push("unified shell must render exactly one Dashboard entry");
+for (const label of ["Reports", "Organizations", "Users", "Connectors", "Storage", "Audit"]) {
+  if (!shell.includes(`label: "${label}"`)) failures.push(`unified shell is missing ${label}`);
+}
+if (!shell.includes(`label: "Platform"`) || !shell.includes("show: superuser")) failures.push("Platform group must remain superuser-only");
+if (shell.includes("Selected workspace") || shell.includes(`label: "Platform",\n              icon: LayoutDashboard`)) failures.push("legacy duplicate platform navigation remains");
+const reporting = readFileSync(join(root, "components/reporting-pages.tsx"), "utf8");
+for (const label of ["Save view", "Export CSV", "Rename / update", "Delete"]) if (!reporting.includes(label)) failures.push(`reporting action ${label} is missing`);
+const integrations = readFileSync(join(root, "components/integration-pages.tsx"), "utf8");
+for (const label of ["New connector", "Edit", "Activate", "Deactivate", "Set default", "Test connection", "Send test email", "New storage provider", "Test configuration"]) if (!integrations.includes(label)) failures.push(`integration action ${label} is missing`);
+
 if (failures.length) {
   console.error(failures.join("\n"));
   process.exit(1);

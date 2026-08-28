@@ -24,3 +24,15 @@ Contracts appears under Content & records in the workspace and platform navigati
 ## Workflow destinations
 
 The workspace shell includes `/workspace/tasks`, `/workspace/notifications`, `/workspace/activity`, and `/workspace/settings/templates`; Account Security is `/profile/security`. Password freshness failures use `/reauthenticate`. Existing domain URLs and deep links remain unchanged.
+
+## Unified shell
+
+The authenticated application uses one `AppShell` and one canonical `/dashboard`. Platform is a
+superuser-only context and capability group, not a duplicate application. The context selector stores
+only `platform` or an allowed organization UUID in session storage for presentation; Django validates
+every request and no membership is created or changed by switching context. Existing `/platform/...`
+deep links remain stable, while `/platform` redirects to the canonical Dashboard.
+
+In Platform context organization workflows are hidden and platform configuration/governance is shown.
+In organization context the same shell applies organization branding and permission-aware workflows;
+platform superusers additionally retain the Platform group. `is_staff` has no platform capability.
