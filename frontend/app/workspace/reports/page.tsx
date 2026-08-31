@@ -1,2 +1,2 @@
-import { ReportsPage } from "@/components/reporting-pages";
-export default ReportsPage;
+import { ReportsHubPage } from "@/components/reporting-pages";
+export default ReportsHubPage;

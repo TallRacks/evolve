@@ -151,3 +151,11 @@ The Travel Django app owns itineraries, traveller assignments, transport segment
 ## Workflow and security
 
 The `tasks` app owns reusable operational Tasks and checklists while existing domain-specific rollout and production work models remain distinct. Notifications communicate selected events, AuditEvent provides organization governance history, and SecurityEvent separately records authentication activity. The `documents` app owns allowlisted templates and immutable generated-content snapshots. Django services remain authoritative for every mutation and permission decision.
+
+## Reporting and provider configuration
+
+The `reporting` app projects authorized organization data at request time; it does not copy domain
+records or provide arbitrary ORM access. Django authorizes `reporting.view` and the source-domain
+permission before filtering, aggregation, pagination, or export. The `integrations` app stores only
+safe platform-level SMTP and S3-compatible metadata plus external environment secret references.
+Connector and storage APIs are platform-superuser only; `is_staff` is not sufficient.

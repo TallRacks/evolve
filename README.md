@@ -150,7 +150,7 @@ Milestone 19 adds organization-scoped Contract lifecycle, parties, terms, sectio
 
 Evolve now includes reusable Tasks and checklists, Release task progress, the Notifications and curated Activity hubs, immutable account Security Events with explicit 14-day password freshness, transactional Booking operational setup, automatic draft Call Sheet source snapshots, and safe backend-managed document templates. See [`docs/tasks.md`](docs/tasks.md), [`docs/security.md`](docs/security.md), and [`docs/document-templates.md`](docs/document-templates.md).
 
-## Milestone 22 workspaces
+## Milestone 23: Reporting and integration settings
 
 - `/dashboard` is the single context-aware dashboard; `/platform` redirects there.
 - `/workspace/reports` provides permission-filtered reports, private saved views, and safe CSV.

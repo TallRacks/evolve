@@ -1,3 +1,7 @@
+import math
+import uuid
+from datetime import date
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.http import HttpResponse
@@ -11,9 +15,22 @@ from audit.services import record_event
 from organizations.permissions import user_has_organization_permission
 from organizations.selectors import organizations_for_user
 from reporting.models import SavedReportView
-from reporting.services import REPORTS, report_data, safe_csv
+from reporting.services import REPORT_COLUMNS, REPORT_FILTERS, REPORTS, report_data, safe_csv
 
 from .serializers import SavedReportViewSerializer
+
+FILTER_KEYS = {
+    "status",
+    "priority",
+    "artist",
+    "promoter",
+    "venue",
+    "assignee",
+    "date_from",
+    "date_to",
+}
+UUID_FILTERS = {"artist", "promoter", "venue", "assignee"}
+MAX_PAGE_SIZE = 100
 
 
 def scoped(request):
@@ -33,6 +50,45 @@ def authorize(request, organization, report_key):
             raise PermissionDenied("You do not have permission for this report.")
 
 
+def validated_filters(params, report_key):
+    supplied = {key for key in FILTER_KEYS if params.get(key)}
+    unsupported = supplied - REPORT_FILTERS[report_key]
+    if unsupported:
+        raise ValidationError(
+            {key: "Filter is not supported for this report." for key in unsupported}
+        )
+    filters = {key: params.get(key) for key in supplied}
+    errors = {}
+    for key in UUID_FILTERS & filters.keys():
+        try:
+            uuid.UUID(filters[key])
+        except (ValueError, TypeError, AttributeError):
+            errors[key] = "Use a valid UUID."
+    for key in {"date_from", "date_to"} & filters.keys():
+        try:
+            date.fromisoformat(filters[key])
+        except (ValueError, TypeError):
+            errors[key] = "Use an ISO date in YYYY-MM-DD format."
+    if not errors and filters.get("date_from") and filters.get("date_to"):
+        if filters["date_from"] > filters["date_to"]:
+            errors["date_to"] = "End date must not precede start date."
+    if errors:
+        raise ValidationError(errors)
+    return filters
+
+
+def pagination(params, total):
+    try:
+        page = max(1, int(params.get("page", 1)))
+        page_size = min(MAX_PAGE_SIZE, max(1, int(params.get("page_size", 25))))
+    except (TypeError, ValueError):
+        raise ValidationError({"page": "Page and page_size must be integers."}) from None
+    pages = max(1, math.ceil(total / page_size))
+    if page > pages and total:
+        raise ValidationError({"page": "Page exceeds the available result set."})
+    return page, page_size, pages
+
+
 class ReportingAPIView(APIView):
     def handle_exception(self, exc):
         if isinstance(exc, DjangoValidationError):
@@ -41,48 +97,41 @@ class ReportingAPIView(APIView):
 
 
 class ReportView(ReportingAPIView):
-    def get(self, request):
+    def get(self, request, report_key=None):
         organization = scoped(request)
-        report_key = request.query_params.get("report_key", "bookings")
+        report_key = report_key or request.query_params.get("report_key", "bookings")
         authorize(request, organization, report_key)
-        filters = {
-            key: request.query_params.get(key)
-            for key in (
-                "status",
-                "priority",
-                "artist",
-                "promoter",
-                "venue",
-                "assignee",
-                "date_from",
-                "date_to",
+        filters = validated_filters(request.query_params, report_key)
+        report = report_data(organization, report_key, filters)
+        sort = request.query_params.get("sort", "")
+        sort_key = sort.removeprefix("-")
+        if sort_key and sort_key not in REPORT_COLUMNS[report_key]:
+            raise ValidationError({"sort": "Unsupported sort field."})
+        if sort_key:
+            report["rows"].sort(
+                key=lambda row: str(row.get(sort_key, "")).lower(), reverse=sort.startswith("-")
             )
-            if request.query_params.get(key)
+        total = len(report["rows"])
+        page, page_size, pages = pagination(request.query_params, total)
+        start = (page - 1) * page_size
+        report["rows"] = report["rows"][start : start + page_size]
+        report["pagination"] = {
+            "page": page,
+            "page_size": page_size,
+            "pages": pages,
+            "total": total,
         }
-        return Response(report_data(organization, report_key, filters))
+        report["filters"] = filters
+        return Response(report)
 
 
 class ReportExportView(ReportingAPIView):
-    def get(self, request):
+    def get(self, request, report_key=None):
         organization = scoped(request)
-        report_key = request.query_params.get("report_key", "bookings")
+        report_key = report_key or request.query_params.get("report_key", "bookings")
         authorize(request, organization, report_key)
-        filters = {
-            key: request.query_params.get(key)
-            for key in (
-                "status",
-                "priority",
-                "artist",
-                "promoter",
-                "venue",
-                "assignee",
-                "date_from",
-                "date_to",
-            )
-            if request.query_params.get(key)
-        }
+        filters = validated_filters(request.query_params, report_key)
         report = report_data(organization, report_key, filters)
-        filter_names = ", ".join(sorted(filters)) or "none"
         record_event(
             actor=request.user,
             organization=organization,
@@ -90,7 +139,7 @@ class ReportExportView(ReportingAPIView):
             resource=organization,
             description=(
                 f"Exported {report_key} report with {len(report['rows'])} rows; "
-                f"filters: {filter_names}."
+                f"filter keys: {', '.join(sorted(filters)) or 'none'}."
             ),
             request=request,
         )
@@ -164,6 +213,7 @@ class SavedViewDetail(ReportingAPIView):
         )
         return Response(SavedReportViewSerializer(item).data)
 
+    @transaction.atomic
     def delete(self, request, pk):
         item = self.item(request, pk)
         authorize(request, item.organization, item.report_key)

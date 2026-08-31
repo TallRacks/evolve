@@ -1,8 +1,8 @@
 # Navigation and product consolidation
 
-The application shell separates tenant workspace, Artist portal, and platform administration. Navigation groups are permission-aware UX; Django remains authoritative for every destination and API.
+The application uses one authenticated shell and canonical Dashboard. Platform administration is a superuser-only capability/context within that shell; the Artist portal remains a deliberately limited experience. Navigation groups are permission-aware UX; Django remains authoritative for every destination and API.
 
-Workspace groups cover Overview, Artists, Live & Operations, Music, Rights & Royalties, Finance, Content & Records, Organization, and Account. Platform superusers receive a separate cross-organization structure. Artist-linked users receive only the limited Artist portal structure.
+Workspace groups cover Overview, Artists, Live & Operations, Music, Finance with nested Rights/Royalties, Content & Records, Organization, and Account. Platform superusers receive an additional Platform capability group without duplicate primary domain destinations. Artist-linked users receive only the limited Artist portal structure.
 
 Groups are keyboard-operable and collapsible. Collapse preferences may be stored in browser local storage because they are presentation preferences only. Organization choice remains UX context and never grants access.
 

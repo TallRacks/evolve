@@ -94,3 +94,12 @@ Travel uses UUID identities and PostgreSQL constraints for one itinerary per opt
 ## Milestone 21 schema
 
 `tasks.Task` and `tasks.TaskChecklistItem` use UUID keys, explicit organization relationships, typed context foreign keys, lifecycle completion metadata, and semantic removal/archive fields. `users.SecurityEvent` is an immutable authentication-event record. `documents.DocumentTemplate` and `DocumentTemplateSection` store versioned structured blueprints; generated `Document` rows store rendered content and template version snapshots. These changes are introduced through normal Django migrations only.
+
+## Reporting and provider records
+
+`reporting.SavedReportView` stores private per-user, per-organization allowlisted report preferences,
+with a conditional uniqueness constraint for one default per report. `integrations.EmailConnector`
+and `integrations.StorageProvider` store configuration metadata, lifecycle state, last explicit test
+state, and `EVOLVE_EMAIL_...` or `EVOLVE_STORAGE_...` references. Credential values are never database
+fields. The existing normal forward migrations `reporting.0001_initial` and
+`integrations.0001_initial`/`0002_...` own this schema.

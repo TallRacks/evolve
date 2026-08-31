@@ -5,6 +5,7 @@ from rest_framework.test import APIClient
 
 from artists.models import Artist
 from bookings.models import Booking
+from music.models import Release
 from organizations.models import Membership, Organization
 from reporting.models import SavedReportView
 from reporting.services import _safe_cell
@@ -147,5 +148,119 @@ def test_malformed_report_filter_returns_400(context):
             "report_key": "bookings",
             "artist": "not-a-uuid",
         },
+    )
+    assert response.status_code == 400
+
+
+def test_summary_uses_full_filtered_dataset_and_rows_are_paginated(context):
+    client, _, organization = context
+    artist = Artist.objects.get(organization=organization)
+    Booking.objects.bulk_create(
+        [
+            Booking(
+                organization=organization,
+                artist=artist,
+                title=f"Booking {index}",
+                event_date=date(2030, 1, 2),
+            )
+            for index in range(30)
+        ]
+    )
+    response = client.get(
+        "/api/reports/bookings/",
+        {"organization_id": organization.id, "page_size": 10, "page": 2},
+    )
+    assert response.status_code == 200
+    assert response.json()["summary"]["total"] == 31
+    assert response.json()["pagination"] == {
+        "page": 2,
+        "page_size": 10,
+        "pages": 4,
+        "total": 31,
+    }
+    assert len(response.json()["rows"]) == 10
+
+
+def test_report_rejects_invalid_date_range_and_sort(context):
+    client, _, organization = context
+    invalid_range = client.get(
+        "/api/reports/bookings/",
+        {
+            "organization_id": organization.id,
+            "date_from": "2030-02-01",
+            "date_to": "2030-01-01",
+        },
+    )
+    assert invalid_range.status_code == 400
+    invalid_sort = client.get(
+        "/api/reports/bookings/",
+        {"organization_id": organization.id, "sort": "artist__organization"},
+    )
+    assert invalid_sort.status_code == 400
+
+
+def test_empty_export_has_allowlisted_headers(context):
+    client, _, organization = context
+    response = client.get(
+        "/api/reports/bookings/export/",
+        {"organization_id": organization.id, "status": "does-not-exist"},
+    )
+    assert response.status_code == 200
+    assert response.content.decode().startswith("reference,title,artist,date,status,priority")
+
+
+def test_saved_view_is_not_accessible_to_another_user(context):
+    client, _, organization = context
+    created = client.post(
+        "/api/reports/saved-views/",
+        {
+            "organization_id": str(organization.id),
+            "report_key": "bookings",
+            "name": "Private",
+            "filters": {},
+        },
+        format="json",
+    )
+    other = User.objects.create_user("other@example.test", "Test-only-report-password-123")
+    Membership.objects.create(user=other, organization=organization, role=Membership.Role.OWNER)
+    client.force_authenticate(other)
+    assert (
+        client.patch(
+            f"/api/reports/saved-views/{created.json()['id']}/",
+            {"name": "Taken"},
+            format="json",
+        ).status_code
+        == 404
+    )
+
+
+def test_music_report_uses_planned_release_date(context):
+    client, _, organization = context
+    artist = Artist.objects.get(organization=organization)
+    Release.objects.create(
+        organization=organization,
+        primary_artist=artist,
+        title="Scheduled release",
+        slug="scheduled-release",
+        release_type=Release.Type.SINGLE,
+        planned_release_date=date(2030, 3, 1),
+    )
+    response = client.get(
+        "/api/reports/music/",
+        {
+            "organization_id": organization.id,
+            "date_from": "2030-01-01",
+            "date_to": "2030-12-31",
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["rows"][0]["release_date"] == "2030-03-01"
+
+
+def test_report_rejects_filter_not_registered_for_report(context):
+    client, _, organization = context
+    response = client.get(
+        "/api/reports/finance/",
+        {"organization_id": organization.id, "priority": "urgent"},
     )
     assert response.status_code == 400

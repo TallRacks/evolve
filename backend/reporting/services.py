@@ -19,6 +19,47 @@ from tasks.models import Task
 from travel.models import TravelItinerary
 from venues.models import Venue
 
+REPORT_COLUMNS = {
+    "bookings": ("reference", "title", "artist", "date", "status", "priority", "promoter", "venue"),
+    "artists": ("artist", "status", "bookings", "releases", "tasks"),
+    "promoters": ("promoter", "status", "bookings"),
+    "venues": ("venue", "city", "status", "bookings"),
+    "production": ("production", "artist", "booking", "status", "event_date"),
+    "travel": ("itinerary", "artist", "booking", "status"),
+    "tasks": ("task", "assignee", "status", "priority", "due_at", "overdue"),
+    "finance": ("record", "kind", "status", "currency", "amount"),
+    "contracts": ("reference", "title", "type", "status", "expiry_date", "expired"),
+    "music": ("release", "artist", "status", "release_date", "identifier_complete"),
+    "campaigns": ("campaign", "artist", "status"),
+    "rights": ("work", "status", "iswc", "track_links", "publishing_rights", "complete"),
+    "royalties": ("reference", "status", "currency", "period_start", "period_end"),
+}
+
+REPORT_FILTERS = {
+    "bookings": {
+        "status",
+        "priority",
+        "artist",
+        "promoter",
+        "venue",
+        "assignee",
+        "date_from",
+        "date_to",
+    },
+    "artists": {"status"},
+    "promoters": {"status"},
+    "venues": {"status"},
+    "production": {"status", "date_from", "date_to"},
+    "travel": {"status", "date_from", "date_to"},
+    "tasks": {"status", "priority", "artist", "assignee", "date_from", "date_to"},
+    "finance": set(),
+    "contracts": {"status", "artist", "promoter", "date_from", "date_to"},
+    "music": {"status", "artist", "date_from", "date_to"},
+    "campaigns": {"status", "artist", "date_from", "date_to"},
+    "rights": {"status"},
+    "royalties": {"status", "date_from", "date_to"},
+}
+
 REPORTS = {
     "bookings": ("Booking Pipeline", "booking.view"),
     "artists": ("Artist Activity", "artist.view"),
@@ -41,6 +82,14 @@ def _apply_filters(queryset, filters, allowed):
         value = filters.get(key)
         if value not in (None, ""):
             queryset = queryset.filter(**{lookup: value})
+    return queryset
+
+
+def _apply_date_filters(queryset, filters, field):
+    if filters.get("date_from"):
+        queryset = queryset.filter(**{f"{field}__gte": filters["date_from"]})
+    if filters.get("date_to"):
+        queryset = queryset.filter(**{f"{field}__lte": filters["date_to"]})
     return queryset
 
 
@@ -78,10 +127,12 @@ def report_data(organization, report_key, filters):
                 "promoter": x.promoter.name if x.promoter else x.promoter_name_snapshot,
                 "venue": x.venue.name if x.venue else x.venue_name_snapshot,
             }
-            for x in qs[:1000]
+            for x in qs
         ]
     elif report_key == "artists":
-        qs = Artist.objects.filter(organization=organization).annotate(
+        qs = _apply_filters(
+            Artist.objects.filter(organization=organization), filters, {"status": "status"}
+        ).annotate(
             bookings_count=Count("bookings", distinct=True),
             releases_count=Count("music_releases", distinct=True),
             tasks_count=Count("tasks", distinct=True),
@@ -94,23 +145,20 @@ def report_data(organization, report_key, filters):
                 "releases": x.releases_count,
                 "tasks": x.tasks_count,
             }
-            for x in qs[:1000]
+            for x in qs
         ]
     elif report_key == "promoters":
-        qs = Promoter.objects.filter(organization=organization).annotate(
-            bookings_count=Count("bookings", distinct=True)
-        )
-        rows = [
-            {"promoter": x.name, "status": x.status, "bookings": x.bookings_count}
-            for x in qs[:1000]
-        ]
+        qs = _apply_filters(
+            Promoter.objects.filter(organization=organization), filters, {"status": "status"}
+        ).annotate(bookings_count=Count("bookings", distinct=True))
+        rows = [{"promoter": x.name, "status": x.status, "bookings": x.bookings_count} for x in qs]
     elif report_key == "venues":
-        qs = Venue.objects.filter(organization=organization).annotate(
-            bookings_count=Count("bookings", distinct=True)
-        )
+        qs = _apply_filters(
+            Venue.objects.filter(organization=organization), filters, {"status": "status"}
+        ).annotate(bookings_count=Count("bookings", distinct=True))
         rows = [
             {"venue": x.name, "city": x.city, "status": x.status, "bookings": x.bookings_count}
-            for x in qs[:1000]
+            for x in qs
         ]
     elif report_key == "production":
         qs = _apply_filters(
@@ -118,6 +166,7 @@ def report_data(organization, report_key, filters):
             filters,
             {"status": "status"},
         ).select_related("artist", "booking")
+        qs = _apply_date_filters(qs, filters, "booking__event_date")
         rows = [
             {
                 "production": x.production_title,
@@ -126,12 +175,13 @@ def report_data(organization, report_key, filters):
                 "status": x.status,
                 "event_date": x.booking.event_date.isoformat(),
             }
-            for x in qs[:1000]
+            for x in qs
         ]
     elif report_key == "travel":
         qs = _apply_filters(
             TravelItinerary.objects.filter(organization=organization), filters, {"status": "status"}
         ).select_related("artist", "booking")
+        qs = _apply_date_filters(qs, filters, "starts_at__date")
         rows = [
             {
                 "itinerary": x.title,
@@ -139,7 +189,7 @@ def report_data(organization, report_key, filters):
                 "booking": x.booking.reference if x.booking else "",
                 "status": x.status,
             }
-            for x in qs[:1000]
+            for x in qs
         ]
     elif report_key == "tasks":
         qs = _apply_filters(
@@ -152,6 +202,7 @@ def report_data(organization, report_key, filters):
                 "artist": "artist_id",
             },
         ).select_related("assigned_membership__user")
+        qs = _apply_date_filters(qs, filters, "due_at__date")
         rows = [
             {
                 "task": x.title,
@@ -163,12 +214,15 @@ def report_data(organization, report_key, filters):
                 "due_at": x.due_at.isoformat() if x.due_at else "",
                 "overdue": x.is_overdue,
             }
-            for x in qs[:1000]
+            for x in qs
         ]
     elif report_key == "contracts":
         qs = _apply_filters(
-            Contract.objects.filter(organization=organization), filters, {"status": "status"}
+            Contract.objects.filter(organization=organization),
+            filters,
+            {"status": "status", "artist": "artist_id", "promoter": "promoter_id"},
         )
+        qs = _apply_date_filters(qs, filters, "expiry_date")
         rows = [
             {
                 "reference": x.reference,
@@ -178,30 +232,35 @@ def report_data(organization, report_key, filters):
                 "expiry_date": x.expiry_date.isoformat() if x.expiry_date else "",
                 "expired": x.is_expired,
             }
-            for x in qs[:1000]
+            for x in qs
         ]
     elif report_key == "music":
         qs = _apply_filters(
-            Release.objects.filter(organization=organization), filters, {"status": "status"}
+            Release.objects.filter(organization=organization),
+            filters,
+            {"status": "status", "artist": "primary_artist_id"},
         ).select_related("primary_artist")
+        qs = _apply_date_filters(qs, filters, "planned_release_date")
         rows = [
             {
                 "release": x.title,
                 "artist": x.primary_artist.stage_name,
                 "status": x.status,
-                "release_date": x.release_date.isoformat() if x.release_date else "",
+                "release_date": x.planned_release_date.isoformat()
+                if x.planned_release_date
+                else "",
                 "identifier_complete": bool(x.upc_ean),
             }
-            for x in qs[:1000]
+            for x in qs
         ]
     elif report_key == "campaigns":
         qs = _apply_filters(
-            Campaign.objects.filter(organization=organization), filters, {"status": "status"}
+            Campaign.objects.filter(organization=organization),
+            filters,
+            {"status": "status", "artist": "artist_id"},
         ).select_related("artist")
-        rows = [
-            {"campaign": x.name, "artist": x.artist.stage_name, "status": x.status}
-            for x in qs[:1000]
-        ]
+        qs = _apply_date_filters(qs, filters, "start_date")
+        rows = [{"campaign": x.name, "artist": x.artist.stage_name, "status": x.status} for x in qs]
     elif report_key == "rights":
         qs = _apply_filters(
             Work.objects.filter(organization=organization), filters, {"status": "status"}
@@ -218,7 +277,7 @@ def report_data(organization, report_key, filters):
                 "publishing_rights": x.publishing_count,
                 "complete": bool(x.iswc and x.track_count and x.publishing_count),
             }
-            for x in qs[:1000]
+            for x in qs
         ]
     elif report_key == "royalties":
         qs = _apply_filters(
@@ -226,6 +285,7 @@ def report_data(organization, report_key, filters):
             filters,
             {"status": "status"},
         )
+        qs = _apply_date_filters(qs, filters, "period_end")
         rows = [
             {
                 "reference": x.statement_reference,
@@ -234,7 +294,7 @@ def report_data(organization, report_key, filters):
                 "period_start": x.period_start.isoformat(),
                 "period_end": x.period_end.isoformat(),
             }
-            for x in qs[:1000]
+            for x in qs
         ]
     elif report_key == "finance":
         currencies = defaultdict(
@@ -323,9 +383,8 @@ def report_data(organization, report_key, filters):
 def safe_csv(report):
     output = io.StringIO()
     rows = report["rows"]
-    if not rows:
-        return ""
-    writer = csv.DictWriter(output, fieldnames=list(rows[0]))
+    fieldnames = list(rows[0]) if rows else list(REPORT_COLUMNS[report["report_key"]])
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
     writer.writeheader()
     for row in rows:
         writer.writerow({key: _safe_cell(value) for key, value in row.items()})

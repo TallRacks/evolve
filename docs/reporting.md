@@ -10,5 +10,4 @@ authorized backend query, omit hidden fields, prefix spreadsheet formula charact
 privacy-safe `report.exported` audit event containing only the report key, row count, and filter keys.
 
 Finance and royalty reporting retains Decimal values and groups each currency independently. No
-currency conversion or cross-currency total is produced. Report row limits prevent unbounded
-responses; larger export/pagination infrastructure can be introduced when measured demand requires it.
+currency conversion or cross-currency total is produced. Interactive report responses are paginated to 100 rows per page at most, while summaries and CSV exports are regenerated from the full authorized filtered dataset. Filters, date ranges, page values, and sort fields are allowlisted and validated by Django.

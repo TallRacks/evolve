@@ -86,3 +86,14 @@ Workspace endpoints under `/api/contracts/` provide scoped list, detail, child, 
 ## Milestone 21 internal APIs
 
 Authenticated same-origin APIs now cover Tasks and checklists under `/api/tasks/`, curated activity at `/api/activity/`, reauthentication and security activity under `/api/auth/`, Booking setup at `/api/bookings/{id}/setup/`, draft Call Sheet source refresh, and scoped document-template preview/generation. These internal records are not exposed through the developer API.
+
+## Reports and provider configuration
+
+Reports use explicit allowlisted keys at `GET /api/reports/{key}/` and
+`GET /api/reports/{key}/export/`; the existing query-key endpoints remain compatible. Saved-view
+collection/detail endpoints support authenticated create, apply, update/default, and delete flows.
+All require organization authorization plus reporting and source-domain permissions.
+
+`/api/platform/email-connectors/` and `/api/platform/storage/` expose safe metadata and explicit
+lifecycle/test actions to platform superusers only. APIs return only whether referenced credentials
+are configured, never credential values. SMTP send-test accepts one recipient and uses fixed content.

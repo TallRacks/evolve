@@ -129,3 +129,12 @@ Contract access uses `contract.view`, `contract.manage`, `contract.approve`, `co
 ## Workflow and templates
 
 Task and document-template permissions are resolved by the centralized organization policy. Owners, administrators, and managers may manage them; members receive the configured view permissions. A protected Task context still requires its source-domain permission. Platform defaults and cross-organization operations require an active platform superuser. `is_staff` alone is never sufficient.
+
+## Reporting and platform configuration
+
+A report requires both `reporting.view` and its registered source permission, such as `booking.view`,
+`finance.view`, `rights.view`, or `royalties.view`. Source querysets are organization scoped before
+aggregation and CSV generation. Saved views are private to their user and organization.
+
+Email connector and storage configuration requires an active Django superuser in reusable backend
+permission classes and Django admin rules. Staff status and frontend visibility never grant access.

@@ -73,3 +73,11 @@ Presence in source code does not count as frontend action completeness. Actions 
 ## Milestone 21 actions
 
 Workspace navigation exposes Tasks, Notifications, Activity, template management, and Account Security. Task create/edit/assignment/lifecycle/checklist controls, Release tasks, Booking setup choices, Call Sheet Refresh All, template lifecycle/section/preview/generate controls, notification state controls, password change, and reauthentication all call authoritative Django endpoints.
+
+## Reporting and provider actions
+
+The Reports Hub opens stable per-report routes with URL-backed filters, reset, paginated results,
+backend-generated CSV export, and complete private Saved View create/apply/rename/update/default/delete
+flows. Platform Email and Storage pages provide create, edit, activate/deactivate, default, and explicit
+test actions. SMTP test delivery uses an accessible single-recipient dialog rather than a browser
+prompt. Every action calls a backend-authorized endpoint.
