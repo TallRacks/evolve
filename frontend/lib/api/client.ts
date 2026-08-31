@@ -59,7 +59,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   const method = init.method?.toUpperCase() ?? "GET";
   const headers = new Headers(init.headers);
   headers.set("Accept", "application/json");
-  if (init.body) headers.set("Content-Type", "application/json");
+  if (init.body && !(init.body instanceof FormData)) headers.set("Content-Type", "application/json");
   if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
     headers.set("X-CSRFToken", await csrfToken());
   }

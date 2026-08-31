@@ -1,9 +1,21 @@
 # Evolve Storage Architecture
 
-PostgreSQL stores application records through Django only. Production uses an internal Docker database network and an external persistent volume; port 5432 is not published.
+PostgreSQL stores application records through Django only. Binary Document objects use the configured
+private S3-compatible `StorageProvider`; provider credentials remain external environment secrets.
+Django is the sole authorization and streaming boundary, and no browser receives an object key,
+credential, or permanent public URL.
 
-Configured object storage is private by default. `StorageProvider` stores provider metadata and controlled environment-variable references, never secret values. Connection probes use server-generated objects and verify write/read/delete cleanup.
+Documents distinguish external references, generated text snapshots, and stored binaries. Stored rows
+retain their provider, random organization/document/version-scoped key, normalized display filename,
+detected MIME type, size, SHA-256 checksum, storage status, and upload timestamp. A changed default
+provider applies only to future uploads. Archive retains historical objects; deletion and retention
+policy are deliberate future work.
 
-General binary uploads remain disabled until the selected private storage path and access controls are fully integrated. Documents currently represent metadata, links, generated text snapshots, and version lineage.
+Allowed uploads are PDF, DOCX, XLSX, PPTX, CSV, UTF-8 text, PNG, JPEG, and WebP up to the configured
+limit. Extension, signature/content, filename, and path validation are enforced by Django. HTML, SVG,
+scripts, executables, malformed Office archives, and identity-document travel uploads are rejected.
+This validation does not constitute malware scanning.
 
-The service worker caches only the static offline route, Next.js static build assets encountered by the client, and the generated app icon. It never handles `/api/*` or `/admin/*`, and it does not cache authenticated navigation responses or operational data.
+Downloads and inline PDF/image previews are session-authorized Django streams with private no-store and
+nosniff headers. Domain and organization permissions are evaluated for direct URLs. The service worker
+never handles `/api/*` or `/admin/*`, so it cannot cache private content or upload responses.

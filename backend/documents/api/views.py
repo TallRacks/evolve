@@ -1,13 +1,20 @@
+from django.conf import settings
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
+from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from django.utils.http import content_disposition_header
+from rest_framework.exceptions import APIException, PermissionDenied, ValidationError
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from artists.models import Artist
+from audit.services import record_event
 from bookings.models import Booking
 from callsheets.models import CallSheet
 from campaigns.models import Campaign
+from documents.file_validation import INLINE_TYPES
 from documents.models import Document, DocumentLink
 from documents.selectors import developer_documents, documents_for_user, portal_documents
 from documents.services import (
@@ -17,7 +24,10 @@ from documents.services import (
     link_document,
     unlink_document,
     update_document,
+    upload_document,
+    upload_new_version,
 )
+from documents.storage import DocumentStorageUnavailable, get_storage_backend, storage_status
 from music.models import Release
 from organizations.api.permissions import PlatformSuperuser
 from organizations.selectors import organizations_for_user
@@ -28,9 +38,16 @@ from white_label.services import authenticate_api_key
 from .serializers import (
     DeveloperDocumentSerializer,
     DocumentSerializer,
+    DocumentUploadSerializer,
+    DocumentVersionUploadSerializer,
     PlatformDocumentSummarySerializer,
     PortalDocumentSerializer,
 )
+
+
+class StorageUnavailable(APIException):
+    status_code = 503
+    default_detail = "Private file storage is unavailable."
 
 
 def org_for(user, request):
@@ -41,7 +58,10 @@ def org_for(user, request):
 
 
 def scoped(user, org, pk):
-    return get_object_or_404(documents_for_user(user, org), pk=pk)
+    document = documents_for_user(user, org).filter(pk=pk).first()
+    if document:
+        return document
+    return get_object_or_404(portal_documents(user, org), pk=pk)
 
 
 def filter_documents(qs, request):
@@ -50,6 +70,7 @@ def filter_documents(qs, request):
         qs = qs.filter(Q(title__icontains=search) | Q(original_filename__icontains=search))
     for parameter, field in (
         ("type", "document_type"),
+        ("source", "source_type"),
         ("status", "status"),
         ("visibility", "visibility"),
         ("uploader", "uploaded_by_id"),
@@ -70,11 +91,8 @@ def filter_documents(qs, request):
 class DocumentListView(APIView):
     def get(self, request):
         org = org_for(request.user, request)
-        return Response(
-            DocumentSerializer(
-                filter_documents(documents_for_user(request.user, org), request), many=True
-            ).data
-        )
+        documents = filter_documents(documents_for_user(request.user, org), request)
+        return Response(DocumentSerializer(documents, many=True, context={"request": request}).data)
 
     def post(self, request):
         org = org_for(request.user, request)
@@ -86,13 +104,44 @@ class DocumentListView(APIView):
             )
         except PermissionError as exc:
             raise PermissionDenied(str(exc)) from exc
-        return Response(DocumentSerializer(document).data, status=201)
+        return Response(DocumentSerializer(document, context={"request": request}).data, status=201)
+
+
+class DocumentUploadView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request):
+        org = org_for(request.user, request)
+        serializer = DocumentUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = dict(serializer.validated_data)
+        file = data.pop("file")
+        try:
+            document = upload_document(
+                actor=request.user, organization=org, file=file, request=request, **data
+            )
+        except PermissionError as exc:
+            raise PermissionDenied(str(exc)) from exc
+        except DjangoValidationError as exc:
+            raise ValidationError(getattr(exc, "message_dict", exc.messages)) from exc
+        except DocumentStorageUnavailable as exc:
+            raise StorageUnavailable() from exc
+        return Response(DocumentSerializer(document, context={"request": request}).data, status=201)
+
+
+class StorageStatusView(APIView):
+    def get(self, request):
+        org_for(request.user, request)
+        return Response(
+            {**storage_status(), "maximum_upload_bytes": settings.EVOLVE_MAX_UPLOAD_BYTES}
+        )
 
 
 class DocumentDetailView(APIView):
     def get(self, request, document_id):
         org = org_for(request.user, request)
-        return Response(DocumentSerializer(scoped(request.user, org, document_id)).data)
+        document = scoped(request.user, org, document_id)
+        return Response(DocumentSerializer(document, context={"request": request}).data)
 
     def patch(self, request, document_id):
         org = org_for(request.user, request)
@@ -105,7 +154,7 @@ class DocumentDetailView(APIView):
             )
         except PermissionError as exc:
             raise PermissionDenied(str(exc)) from exc
-        return Response(DocumentSerializer(document).data)
+        return Response(DocumentSerializer(document, context={"request": request}).data)
 
 
 class ArchiveView(APIView):
@@ -117,10 +166,21 @@ class ArchiveView(APIView):
             )
         except PermissionError as exc:
             raise PermissionDenied(str(exc)) from exc
-        return Response(DocumentSerializer(document).data)
+        return Response(DocumentSerializer(document, context={"request": request}).data)
 
 
 class VersionView(APIView):
+    def get(self, request, document_id):
+        org = org_for(request.user, request)
+        document = scoped(request.user, org, document_id)
+        root_id = document.parent_document_id or document.pk
+        lineage = (
+            documents_for_user(request.user, org)
+            .filter(Q(pk=root_id) | Q(parent_document_id=root_id))
+            .order_by("version_number")
+        )
+        return Response(DocumentSerializer(lineage, many=True, context={"request": request}).data)
+
     def post(self, request, document_id):
         org = org_for(request.user, request)
         document = scoped(request.user, org, document_id)
@@ -132,7 +192,89 @@ class VersionView(APIView):
             )
         except PermissionError as exc:
             raise PermissionDenied(str(exc)) from exc
-        return Response(DocumentSerializer(version).data, status=201)
+        return Response(DocumentSerializer(version, context={"request": request}).data, status=201)
+
+
+class VersionUploadView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request, document_id):
+        org = org_for(request.user, request)
+        document = scoped(request.user, org, document_id)
+        serializer = DocumentVersionUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            version = upload_new_version(
+                document=document,
+                actor=request.user,
+                request=request,
+                **serializer.validated_data,
+            )
+        except PermissionError as exc:
+            raise PermissionDenied(str(exc)) from exc
+        except DjangoValidationError as exc:
+            raise ValidationError(getattr(exc, "message_dict", exc.messages)) from exc
+        except DocumentStorageUnavailable as exc:
+            raise StorageUnavailable() from exc
+        return Response(DocumentSerializer(version, context={"request": request}).data, status=201)
+
+
+def _stream_body(body, chunk_size=64 * 1024):
+    try:
+        while chunk := body.read(chunk_size):
+            yield chunk
+    finally:
+        close = getattr(body, "close", None)
+        if close:
+            close()
+
+
+class DocumentContentView(APIView):
+    preview = False
+
+    def get(self, request, document_id):
+        org = org_for(request.user, request)
+        document = scoped(request.user, org, document_id)
+        if document.source_type != Document.SourceType.STORED:
+            raise ValidationError("This Document does not contain a stored file.")
+        if document.storage_status != Document.StorageStatus.AVAILABLE:
+            raise ValidationError("This stored file is not available.")
+        if self.preview and document.detected_content_type not in INLINE_TYPES:
+            raise ValidationError("This file type cannot be previewed safely.")
+        try:
+            stored = get_storage_backend(document.storage_provider).open_stream(
+                document.storage_key
+            )
+        except DocumentStorageUnavailable as exc:
+            raise StorageUnavailable("The stored file is temporarily unavailable.") from exc
+        response = StreamingHttpResponse(
+            _stream_body(stored.body), content_type=document.detected_content_type
+        )
+        response["Content-Disposition"] = content_disposition_header(
+            not self.preview, document.original_filename
+        )
+        response["Cache-Control"] = "private, no-store, max-age=0"
+        response["Pragma"] = "no-cache"
+        response["X-Content-Type-Options"] = "nosniff"
+        if stored.content_length:
+            response["Content-Length"] = stored.content_length
+        record_event(
+            actor=request.user,
+            organization=document.organization,
+            action="document.previewed" if self.preview else "document.downloaded",
+            resource=document,
+            description=f"Document version {document.version_number} accessed.",
+            request=request,
+        )
+        return response
+
+
+class DocumentDownloadView(DocumentContentView):
+    preview = False
+
+
+class DocumentPreviewView(DocumentContentView):
+    preview = True
 
 
 ENTITY_MODELS = {
@@ -190,7 +332,9 @@ class PortalDocumentsView(APIView):
     def get(self, request):
         org = org_for(request.user, request)
         return Response(
-            PortalDocumentSerializer(portal_documents(request.user, org), many=True).data
+            PortalDocumentSerializer(
+                portal_documents(request.user, org), many=True, context={"request": request}
+            ).data
         )
 
 
@@ -198,21 +342,20 @@ class PlatformDocumentListView(APIView):
     permission_classes = [PlatformSuperuser]
 
     def get(self, request):
+        documents = (
+            Document.objects.all()
+            .select_related("organization")
+            .prefetch_related(
+                "links__artist",
+                "links__booking",
+                "links__call_sheet",
+                "links__release",
+                "links__campaign",
+            )
+        )
         return Response(
             PlatformDocumentSummarySerializer(
-                filter_documents(
-                    Document.objects.all()
-                    .select_related("organization")
-                    .prefetch_related(
-                        "links__artist",
-                        "links__booking",
-                        "links__call_sheet",
-                        "links__release",
-                        "links__campaign",
-                    ),
-                    request,
-                ),
-                many=True,
+                filter_documents(documents, request), many=True, context={"request": request}
             ).data
         )
 
@@ -221,11 +364,8 @@ class PlatformDocumentDetailView(APIView):
     permission_classes = [PlatformSuperuser]
 
     def get(self, request, document_id):
-        return Response(
-            DocumentSerializer(
-                get_object_or_404(Document.objects.prefetch_related("links"), pk=document_id)
-            ).data
-        )
+        document = get_object_or_404(Document.objects.prefetch_related("links"), pk=document_id)
+        return Response(DocumentSerializer(document, context={"request": request}).data)
 
 
 class DeveloperDocumentsView(APIView):

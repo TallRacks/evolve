@@ -8,7 +8,7 @@
   {"route":"/workspace/production","label":"New Production Advance","destination":"/workspace/production/new","permission":"production.manage","source":"components/production-pages.tsx"},
   {"route":"/workspace/music/releases","label":"New release","destination":"/workspace/music/releases/new","permission":"music.manage","source":"components/music-pages.tsx"},
   {"route":"/workspace/campaigns","label":"New campaign","destination":"/workspace/campaigns/new","permission":"campaign.manage","source":"components/campaign-pages.tsx"},
-  {"route":"/workspace/documents","label":"Add document","destination":"/workspace/documents/new","permission":"document.manage","source":"components/calendar-document-pages.tsx"},
+  {"route":"/workspace/documents","label":"New Document","destination":"/workspace/documents/new","permission":"document.manage","source":"components/calendar-document-pages.tsx"},
   {"route":"/workspace/finance/invoices","label":"New invoice","destination":"/workspace/finance/invoices/new","permission":"finance.manage","source":"components/finance-pages.tsx"},
   {"route":"/workspace/finance/payments","label":"Record payment","destination":"/workspace/finance/payments/new","permission":"finance.manage","source":"components/finance-pages.tsx"},
   {"route":"/workspace/rights/works","label":"New Work","destination":"/workspace/rights/works/new","permission":"rights.manage","source":"components/rights-pages.tsx"},

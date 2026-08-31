@@ -38,6 +38,7 @@ const detailContracts = [
   ["components/rights-pages.tsx", ["New Work", "New statement"]],
   ["components/campaign-pages.tsx", ["Lead and support by phase", "Assign"]],
   ["components/music-pages.tsx", ["New release", "Add track"]],
+  ["components/calendar-document-pages.tsx", ["New Document", "Upload new version", "Download", "Archive", "Link record"]],
 ];
 for (const [path, labels] of detailContracts) {
   const source = readFileSync(join(root, path), "utf8");

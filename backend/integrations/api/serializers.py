@@ -22,6 +22,15 @@ class EmailConnectorSerializer(serializers.ModelSerializer):
 
 class StorageProviderSerializer(serializers.ModelSerializer):
     credentials_configured = serializers.BooleanField(read_only=True)
+    stored_document_count = serializers.IntegerField(
+        source="stored_documents.count", read_only=True
+    )
+    managed_bytes = serializers.SerializerMethodField()
+
+    def get_managed_bytes(self, obj):
+        from django.db.models import Sum
+
+        return obj.stored_documents.aggregate(total=Sum("file_size"))["total"] or 0
 
     class Meta:
         model = StorageProvider
@@ -34,6 +43,8 @@ class StorageProviderSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "credentials_configured",
+            "stored_document_count",
+            "managed_bytes",
         )
 
 

@@ -5,6 +5,7 @@ import ssl
 from email.message import EmailMessage
 
 import boto3
+from botocore.config import Config
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
@@ -84,6 +85,7 @@ def _storage_client(provider):
         aws_access_key_id=access,
         aws_secret_access_key=secret,
         use_ssl=provider.use_ssl,
+        config=Config(connect_timeout=5, read_timeout=30, retries={"max_attempts": 2}),
     )
 
 

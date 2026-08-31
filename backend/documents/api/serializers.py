@@ -34,7 +34,33 @@ class LinkSerializer(serializers.ModelSerializer):
         return str(obj.entity)
 
 
-class DocumentSerializer(serializers.ModelSerializer):
+class SafeDocumentFieldsMixin(serializers.Serializer):
+    checksum = serializers.SerializerMethodField()
+    download_url = serializers.SerializerMethodField()
+    preview_url = serializers.SerializerMethodField()
+
+    def get_checksum(self, obj):
+        return f"{obj.checksum_sha256[:12]}..." if obj.checksum_sha256 else ""
+
+    def _url(self, obj, action):
+        if obj.source_type != Document.SourceType.STORED:
+            return None
+        request = self.context.get("request")
+        suffix = f"?organization={obj.organization_id}"
+        path = f"/api/documents/{obj.pk}/{action}/{suffix}"
+        return request.build_absolute_uri(path) if request else path
+
+    def get_download_url(self, obj):
+        return self._url(obj, "download")
+
+    def get_preview_url(self, obj):
+        inline_types = {"application/pdf", "image/png", "image/jpeg", "image/webp"}
+        if obj.detected_content_type not in inline_types:
+            return None
+        return self._url(obj, "preview")
+
+
+class DocumentSerializer(SafeDocumentFieldsMixin, serializers.ModelSerializer):
     uploader = serializers.EmailField(source="uploaded_by.email", read_only=True)
     links = LinkSerializer(many=True, read_only=True)
 
@@ -46,13 +72,20 @@ class DocumentSerializer(serializers.ModelSerializer):
             "title",
             "document_type",
             "description",
+            "source_type",
             "external_url",
             "rendered_content",
             "template",
             "template_version",
             "original_filename",
             "content_type",
+            "detected_content_type",
             "file_size",
+            "checksum",
+            "storage_status",
+            "download_url",
+            "preview_url",
+            "uploaded_at",
             "version_number",
             "parent_document",
             "visibility",
@@ -66,9 +99,16 @@ class DocumentSerializer(serializers.ModelSerializer):
         read_only_fields = (
             "id",
             "organization",
+            "source_type",
             "rendered_content",
             "template",
             "template_version",
+            "detected_content_type",
+            "checksum",
+            "storage_status",
+            "download_url",
+            "preview_url",
+            "uploaded_at",
             "version_number",
             "parent_document",
             "status",
@@ -79,18 +119,29 @@ class DocumentSerializer(serializers.ModelSerializer):
         )
 
     def validate(self, attrs):
-        if (
-            self.instance is None
-            and not attrs.get("external_url")
-            and not attrs.get("rendered_content")
-        ):
+        if self.instance is None and not attrs.get("external_url"):
             raise serializers.ValidationError(
                 {"external_url": "An HTTPS external reference is required."}
             )
         return attrs
 
 
-class PortalDocumentSerializer(serializers.ModelSerializer):
+class DocumentUploadSerializer(serializers.Serializer):
+    title = serializers.CharField(max_length=220)
+    document_type = serializers.ChoiceField(choices=Document.Type.choices)
+    description = serializers.CharField(max_length=5000, required=False, allow_blank=True)
+    visibility = serializers.ChoiceField(
+        choices=Document.Visibility.choices, default=Document.Visibility.ORGANIZATION
+    )
+    file = serializers.FileField()
+
+
+class DocumentVersionUploadSerializer(serializers.Serializer):
+    file = serializers.FileField()
+    version_note = serializers.CharField(max_length=5000, required=False, allow_blank=True)
+
+
+class PortalDocumentSerializer(SafeDocumentFieldsMixin, serializers.ModelSerializer):
     links = serializers.SerializerMethodField()
 
     def get_links(self, obj):
@@ -106,19 +157,24 @@ class PortalDocumentSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "document_type",
+            "source_type",
             "external_url",
             "original_filename",
             "content_type",
+            "detected_content_type",
             "file_size",
             "version_number",
             "visibility",
             "status",
+            "storage_status",
+            "download_url",
+            "preview_url",
             "links",
             "updated_at",
         )
 
 
-class PlatformDocumentSummarySerializer(serializers.ModelSerializer):
+class PlatformDocumentSummarySerializer(SafeDocumentFieldsMixin, serializers.ModelSerializer):
     organization_name = serializers.CharField(source="organization.name", read_only=True)
     links = LinkSerializer(many=True, read_only=True)
 
@@ -130,10 +186,15 @@ class PlatformDocumentSummarySerializer(serializers.ModelSerializer):
             "organization_name",
             "title",
             "document_type",
+            "source_type",
             "version_number",
             "visibility",
             "status",
+            "storage_status",
             "original_filename",
+            "file_size",
+            "download_url",
+            "preview_url",
             "updated_at",
             "links",
         )
@@ -144,7 +205,15 @@ class DeveloperDocumentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Document
-        fields = ("id", "title", "document_type", "version_number", "status", "linked_entities")
+        fields = (
+            "id",
+            "title",
+            "document_type",
+            "source_type",
+            "version_number",
+            "status",
+            "linked_entities",
+        )
 
     def get_linked_entities(self, obj):
         return [

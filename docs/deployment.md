@@ -82,3 +82,13 @@ a hostname, publishes the generated TXT challenge, a platform superuser approves
 and activation, an operator adds only the approved hostname to the host-side Caddy configuration,
 then validates and reloads Caddy so it can obtain TLS. Unknown, pending, and inactive hostnames
 must not be routed. Automated DNS lookup and Caddy provisioning are deferred.
+
+## Private Document storage
+
+Private uploads use the existing platform Storage Provider configuration. Production must keep the
+referenced `EVOLVE_STORAGE_*` values in `/opt/evolve/secrets/evolve.env`; never add their values to the
+repository. `EVOLVE_MAX_UPLOAD_BYTES` optionally changes the 25 MiB default. Do not configure public
+bucket ACLs or a local web-served upload directory. Deploying the feature while no provider is configured
+is supported: uploads return a sanitized unavailable response while external and generated Documents
+remain operational. After an approved provider is configured, use the platform's explicit write/read/delete
+connection test before enabling operational uploads.

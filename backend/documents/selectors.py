@@ -22,7 +22,13 @@ def documents_for_user(user, organization):
         return qs.none()
     if not user_has_organization_permission(user, organization, "document.restricted.view"):
         qs = qs.exclude(visibility=Document.Visibility.RESTRICTED)
-    return qs
+    if not user_has_organization_permission(user, organization, "contract.view"):
+        qs = qs.exclude(contract_links__isnull=False)
+    if not user_has_organization_permission(user, organization, "rights.view"):
+        qs = qs.exclude(works__isnull=False)
+    if not user_has_organization_permission(user, organization, "royalties.view"):
+        qs = qs.exclude(royalty_statements__isnull=False)
+    return qs.distinct()
 
 
 def portal_documents(user, organization):

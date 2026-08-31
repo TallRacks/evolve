@@ -22,6 +22,17 @@ class Document(TimestampedModel):
         TRAVEL = "travel", "Travel"
         OTHER = "other", "Other"
 
+    class SourceType(models.TextChoices):
+        EXTERNAL = "external", "External reference"
+        STORED = "stored", "Stored file"
+        GENERATED = "generated", "Generated"
+
+    class StorageStatus(models.TextChoices):
+        NOT_APPLICABLE = "not_applicable", "Not applicable"
+        AVAILABLE = "available", "Available"
+        FAILED = "failed", "Failed"
+        ARCHIVED = "archived", "Archived"
+
     class Visibility(models.TextChoices):
         ORGANIZATION = "organization", "Organization"
         RESTRICTED = "restricted", "Restricted"
@@ -38,10 +49,21 @@ class Document(TimestampedModel):
     title = models.CharField(max_length=220)
     document_type = models.CharField(max_length=24, choices=Type.choices)
     description = models.TextField(blank=True, max_length=5000)
+    source_type = models.CharField(
+        max_length=20, choices=SourceType.choices, default=SourceType.EXTERNAL
+    )
     storage_key = models.CharField(max_length=500, blank=True, editable=False)
+    storage_provider = models.ForeignKey(
+        "integrations.StorageProvider",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="stored_documents",
+    )
     external_url = models.URLField(max_length=1000, blank=True)
     original_filename = models.CharField(max_length=255, blank=True)
     content_type = models.CharField(max_length=120, blank=True)
+    detected_content_type = models.CharField(max_length=120, blank=True, editable=False)
     file_size = models.PositiveBigIntegerField(null=True, blank=True)
     checksum_sha256 = models.CharField(max_length=64, blank=True, editable=False)
     rendered_content = models.TextField(blank=True, editable=False)
@@ -61,6 +83,10 @@ class Document(TimestampedModel):
         max_length=20, choices=Visibility.choices, default=Visibility.ORGANIZATION
     )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ACTIVE)
+    storage_status = models.CharField(
+        max_length=20, choices=StorageStatus.choices, default=StorageStatus.NOT_APPLICABLE
+    )
+    uploaded_at = models.DateTimeField(null=True, blank=True, editable=False)
     uploaded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -81,14 +107,52 @@ class Document(TimestampedModel):
         indexes = [models.Index(fields=("organization", "status", "document_type"))]
 
     def clean(self):
-        if self.storage_key:
-            raise ValidationError({"storage_key": "Binary storage is not configured."})
-        if not self.external_url and not self.rendered_content:
-            raise ValidationError({"external_url": "An HTTPS external reference is required."})
-        if self.external_url and self.rendered_content:
-            raise ValidationError("A Document cannot be both external and generated.")
-        if self.external_url and not self.external_url.lower().startswith("https://"):
-            raise ValidationError({"external_url": "Only HTTPS external references are supported."})
+        if self.rendered_content and self.source_type == self.SourceType.EXTERNAL:
+            self.source_type = self.SourceType.GENERATED
+        if self.source_type == self.SourceType.EXTERNAL:
+            if not self.external_url:
+                raise ValidationError({"external_url": "An HTTPS external reference is required."})
+            if self.rendered_content or self.storage_key or self.storage_provider_id:
+                raise ValidationError(
+                    "External Documents cannot contain generated or stored content."
+                )
+            if not self.external_url.lower().startswith("https://"):
+                raise ValidationError(
+                    {"external_url": "Only HTTPS external references are supported."}
+                )
+        elif self.source_type == self.SourceType.GENERATED:
+            if not self.rendered_content or self.external_url or self.storage_key:
+                raise ValidationError("Generated Documents require rendered content only.")
+        elif self.source_type == self.SourceType.STORED:
+            required = {
+                "storage_provider": self.storage_provider_id,
+                "storage_key": self.storage_key,
+                "checksum_sha256": self.checksum_sha256,
+                "detected_content_type": self.detected_content_type,
+            }
+            missing = [field for field, value in required.items() if not value]
+            if missing or self.file_size is None:
+                errors = {field: "Required for stored files." for field in missing}
+                if self.file_size is None:
+                    errors["file_size"] = "Required for stored files."
+                raise ValidationError(errors)
+            if self.external_url or self.rendered_content:
+                raise ValidationError(
+                    "Stored Documents cannot contain external or generated content."
+                )
+            if self.storage_status not in {
+                self.StorageStatus.AVAILABLE,
+                self.StorageStatus.ARCHIVED,
+            }:
+                raise ValidationError(
+                    {"storage_status": "Stored file must be available or archived."}
+                )
+        else:
+            raise ValidationError({"source_type": "Unsupported Document source."})
+        if self.source_type != self.SourceType.STORED and (
+            self.storage_provider_id or self.storage_key or self.checksum_sha256
+        ):
+            raise ValidationError("Only stored Documents may reference binary storage.")
         if self.parent_document_id:
             if self.parent_document.organization_id != self.organization_id:
                 raise ValidationError("Document versions must remain in one organization.")

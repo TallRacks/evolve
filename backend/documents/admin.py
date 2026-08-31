@@ -14,17 +14,24 @@ class DocumentAdmin(PlatformSuperuserAdminMixin, ModelAdmin):
         "title",
         "organization",
         "document_type",
+        "source_type",
         "visibility",
         "status",
         "version_number",
         "uploaded_by",
         "created_at",
     )
-    list_filter = ("organization", "document_type", "visibility", "status")
+    list_filter = ("organization", "document_type", "source_type", "visibility", "status")
     search_fields = ("title", "original_filename")
     readonly_fields = (
-        "storage_key",
-        "checksum_sha256",
+        "source_type",
+        "storage_provider",
+        "storage_status",
+        "detected_content_type",
+        "file_size",
+        "uploaded_at",
+        "version_number",
+        "parent_document",
         "status",
         "uploaded_by",
         "archived_at",
@@ -50,18 +57,27 @@ class DocumentAdmin(PlatformSuperuserAdminMixin, ModelAdmin):
             "External file metadata",
             {
                 "fields": (
+                    "source_type",
                     "external_url",
                     "original_filename",
                     "content_type",
+                    "detected_content_type",
                     "file_size",
-                    "storage_key",
-                    "checksum_sha256",
+                    "storage_provider",
+                    "storage_status",
+                    "uploaded_at",
                 )
             },
         ),
         ("Version", {"fields": ("version_number", "parent_document")}),
         ("Audit", {"fields": ("uploaded_by", "archived_at", "created_at", "updated_at")}),
     )
+
+    def get_readonly_fields(self, request, obj=None):
+        fields = list(super().get_readonly_fields(request, obj))
+        if obj:
+            fields.append("organization")
+        return fields
 
     def has_delete_permission(self, request, obj=None):
         return False

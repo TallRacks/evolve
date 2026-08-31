@@ -158,3 +158,11 @@ Evolve now includes reusable Tasks and checklists, Release task progress, the No
 - Provider credentials are provisioned as external `EVOLVE_...` environment secrets; the UI stores references only.
 
 See `docs/reporting.md`, `docs/email-connectors.md`, `docs/storage.md`, and `docs/navigation.md`.
+
+## Private Documents
+
+Secure Document uploads use the configured private S3-compatible Storage Provider and Django-authorized
+streaming. Local and production setup, accepted file types, version/retention behavior, and the current
+malware-scanning boundary are documented in [`docs/documents.md`](docs/documents.md) and
+[`docs/storage.md`](docs/storage.md). Storage credentials remain external; no local/public fallback is
+used when a provider is unconfigured.
