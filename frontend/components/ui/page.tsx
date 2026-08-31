@@ -10,12 +10,12 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <header className="flex flex-wrap items-end justify-between gap-5 border-b border-neutral-800 pb-7">
+    <header className="flex flex-wrap items-end justify-between gap-5 border-b border-neutral-800 pb-6">
       <div>
         <p className="text-xs font-semibold uppercase text-amber-400">
           {eyebrow}
         </p>
-        <h1 className="mt-2 text-3xl font-semibold text-neutral-100">
+        <h1 className="evolve-display mt-2 text-2xl font-semibold text-neutral-100 sm:text-3xl">
           {title}
         </h1>
         {description && (
@@ -37,7 +37,7 @@ export function StatCard({
   value: React.ReactNode;
 }) {
   return (
-    <div className="rounded-md border border-neutral-800 bg-neutral-900 p-5">
+    <div className="rounded-md border border-neutral-800 bg-neutral-900/70 p-5">
       <p className="text-xs font-semibold uppercase text-neutral-500">
         {label}
       </p>
@@ -78,11 +78,11 @@ export function StatusBadge({
 }
 
 export const fieldClass =
-  "h-10 w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 text-sm text-neutral-100 outline-none focus:border-amber-400 disabled:opacity-50";
+  "min-h-11 w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 text-sm text-neutral-100 outline-none focus:border-amber-400 disabled:opacity-50";
 export const buttonClass =
-  "inline-flex h-10 items-center justify-center rounded-md bg-amber-400 px-4 text-sm font-semibold text-neutral-950 hover:bg-amber-300 disabled:opacity-50";
+  "inline-flex min-h-11 items-center justify-center rounded-md bg-amber-400 px-4 text-sm font-semibold text-neutral-950 hover:bg-amber-300 disabled:opacity-50";
 export const secondaryButtonClass =
-  "inline-flex h-10 items-center justify-center rounded-md border border-neutral-700 px-4 text-sm font-medium text-neutral-200 hover:border-neutral-500";
+  "inline-flex min-h-11 items-center justify-center rounded-md border border-neutral-700 px-4 text-sm font-medium text-neutral-200 hover:border-neutral-500";
 
 export function LoadingState({
   label = "Loading current data...",

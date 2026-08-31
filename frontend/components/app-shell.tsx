@@ -21,6 +21,7 @@ import {
   MapPin,
   Menu,
   Megaphone,
+  MoreHorizontal,
   Music2,
   Palette,
   Plane,
@@ -483,6 +484,15 @@ export function AppShell({
   const commands = groups
     .flatMap((group) => group.items)
     .filter((item) => item.show);
+  const mobilePreferred = artistPortal
+    ? ["Overview", "Production", "Travel", "Notifications"]
+    : platform
+      ? ["Organizations", "Users", "Audit"]
+      : ["Dashboard", "Calendar", "Bookings", "Tasks", "Notifications"];
+  const mobilePrimary = mobilePreferred
+    .map((label) => commands.find((item) => item.label === label))
+    .filter((item): item is NavItem => Boolean(item))
+    .slice(0, 4);
   const actionCommands =
     platform || artistPortal
       ? []
@@ -588,6 +598,21 @@ export function AppShell({
           <X size={20} />
         </button>
       </div>
+      {session && (superuser || (organizationScoped && organizations.length > 0)) && (
+        <label className="border-b border-neutral-800 p-3 lg:hidden">
+          <span className="mb-2 block text-xs font-semibold uppercase text-neutral-500">Current context</span>
+          <select
+            className="min-h-11 w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 text-sm"
+            value={activeOrganizationId ?? "platform"}
+            onChange={(event) => selectOrganization(event.target.value === "platform" ? null : event.target.value)}
+          >
+            {superuser && <option value="platform">Platform</option>}
+            {organizations.map((organization) => (
+              <option key={organization.id} value={organization.id}>{organization.name}</option>
+            ))}
+          </select>
+        </label>
+      )}
       <nav
         className="flex-1 overflow-y-auto p-3"
         aria-label="Application navigation"
@@ -642,7 +667,7 @@ export function AppShell({
     </aside>
   );
   return (
-    <div className="min-h-screen" style={theme}>
+    <div className="evolve-app-shell min-h-screen" style={theme}>
       <div className="fixed inset-y-0 left-0 z-30 hidden lg:block">
         {sidebar}
       </div>
@@ -658,7 +683,7 @@ export function AppShell({
       )}
       <div className="lg:pl-72">
         <header
-          className="sticky top-0 z-20 flex min-h-16 items-center gap-3 border-b border-neutral-800 px-4 backdrop-blur sm:px-7"
+          className="evolve-topbar sticky top-0 z-20 flex min-h-16 items-center gap-3 border-b border-neutral-800 px-4 backdrop-blur sm:px-7"
           style={{ backgroundColor: `${branding.background}F2` }}
         >
           <button
@@ -669,15 +694,15 @@ export function AppShell({
             <Menu size={19} />
           </button>
           <button
-            className="flex min-w-0 flex-1 items-center gap-3 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-left text-sm text-neutral-400 sm:max-w-xl"
+            className="pwa-search flex min-w-0 flex-1 items-center gap-3 rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-left text-sm text-neutral-400 sm:max-w-xl"
             onClick={() => setPaletteOpen(true)}
           >
             <Search size={17} />
-            <span className="truncate">Search or open a command</span>
+            <span className="pwa-desktop-search-label truncate">Search or open a command</span>
             <kbd className="ml-auto hidden text-xs sm:block">⌘K</kbd>
           </button>
           {session && (superuser || (organizationScoped && organizations.length > 0)) && (
-            <label className="relative">
+            <label className="pwa-organization-select relative">
               <span className="sr-only">Current application context</span>
               <select
                 className="h-10 max-w-48 appearance-none rounded-md border border-neutral-700 bg-neutral-900 pl-3 pr-9 text-sm"
@@ -699,16 +724,31 @@ export function AppShell({
           )}
           <NotificationBell />
           <Link
-            className="grid size-10 place-items-center rounded-md border border-neutral-800"
+            className="pwa-profile-link grid size-10 place-items-center rounded-md border border-neutral-800"
             href="/profile"
             aria-label="Profile"
           >
             <UserRound size={18} />
           </Link>
         </header>
-        <main className="mx-auto max-w-7xl px-4 py-7 sm:px-7 sm:py-10">
+        <main className="evolve-content mx-auto max-w-[var(--content-width)] px-4 py-6 sm:px-7 sm:py-9">
           {children}
         </main>
+        <nav aria-label="Installed app navigation" className="pwa-bottom-nav">
+          {mobilePrimary.map(({ href, label, icon: Icon }) => {
+            const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(`${href}/`));
+            return (
+              <Link aria-current={active ? "page" : undefined} className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded px-1 py-1 text-[0.6875rem] font-medium ${active ? "text-amber-300" : "text-neutral-400"}`} href={href} key={href}>
+                <Icon aria-hidden="true" size={20} />
+                <span className="max-w-full truncate">{label}</span>
+              </Link>
+            );
+          })}
+          <button className="flex min-w-0 flex-col items-center justify-center gap-1 rounded px-1 py-1 text-[0.6875rem] font-medium text-neutral-400" onClick={() => setMenuOpen(true)}>
+            <MoreHorizontal aria-hidden="true" size={20} />
+            <span>More</span>
+          </button>
+        </nav>
       </div>
       {paletteOpen && (
         <div
