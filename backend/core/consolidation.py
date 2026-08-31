@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from artists.models import Artist
 from bookings.models import Booking
-from campaigns.models import Campaign
+from campaigns.models import Campaign, RolloutTask
 from contacts.models import Contact
 from contracts.models import Contract
 from documents.models import Document
@@ -21,11 +21,11 @@ from production.models import (
     AdvanceChecklistItem,
     AdvanceRequirement,
     ProductionAdvance,
-    ProductionScheduleItem,
 )
 from promoters.models import Promoter
 from rights.models import Work
-from travel.models import TravelItinerary, TravelSegment
+from tasks.models import Task
+from travel.models import TravelItinerary
 from users.models import User
 from venues.models import Venue
 
@@ -427,163 +427,310 @@ def dashboard(user, organization_id=None):
                 or "not_configured",
             },
             "upcoming_bookings": [],
+            "attention": [],
+            "today": [],
         }
+
     organizations = permitted_organizations(user, "organization.view", organization_id)
     if len(organizations) != 1:
-        return {"mode": "workspace", "counts": {}, "upcoming_bookings": []}
+        return {
+            "mode": "workspace",
+            "counts": {},
+            "upcoming_bookings": [],
+            "attention": [],
+            "today": [],
+        }
+
     organization = organizations[0]
+    now = timezone.now()
     today = timezone.localdate()
+    week = today + timedelta(days=7)
     counts = {}
+    attention = []
+    today_items = []
+
+    def add_attention(severity, domain, title, reason, destination, due=None, owner=None):
+        item = {
+            "severity": severity,
+            "domain": domain,
+            "title": title,
+            "reason": reason,
+            "destination": destination,
+        }
+        if due:
+            item["due"] = due
+        if owner:
+            item["owner"] = owner
+        attention.append(item)
+
     if user_has_organization_permission(user, organization, "artist.view"):
         counts["active_artists"] = Artist.objects.filter(
             organization=organization, status=Artist.Status.ACTIVE
         ).count()
+
     upcoming = []
     if user_has_organization_permission(user, organization, "booking.view"):
-        bookings = (
+        booking_qs = (
             Booking.objects.filter(organization=organization, event_date__gte=today)
             .exclude(status__in=(Booking.Status.CANCELLED, Booking.Status.DECLINED))
             .select_related("artist", "venue")
-            .order_by("event_date")[:6]
         )
-        counts["upcoming_bookings"] = (
-            Booking.objects.filter(organization=organization, event_date__gte=today)
-            .exclude(status__in=(Booking.Status.CANCELLED, Booking.Status.DECLINED))
-            .count()
-        )
+        counts["upcoming_bookings"] = booking_qs.count()
         upcoming = [
             {
-                "id": str(x.id),
-                "reference": x.reference,
-                "artist": x.artist.stage_name,
-                "date": x.event_date,
-                "venue": x.venue.name if x.venue else x.venue_name_snapshot,
-                "status": x.status,
+                "id": str(booking.id),
+                "reference": booking.reference,
+                "artist": booking.artist.stage_name,
+                "date": booking.event_date,
+                "days_out": (booking.event_date - today).days,
+                "venue": booking.venue.name if booking.venue else booking.venue_name_snapshot,
+                "status": booking.status,
+                "priority": booking.priority,
             }
-            for x in bookings
+            for booking in booking_qs.order_by("event_date")[:6]
         ]
-    if user_has_organization_permission(user, organization, "contract.view"):
-        counts["contracts_needing_review"] = Contract.objects.filter(
-            organization=organization, status=Contract.Status.IN_REVIEW
-        ).count()
-        counts["pending_contract_approvals"] = (
-            Contract.objects.filter(
-                organization=organization,
-                approvals__status="pending",
-                approvals__membership__user=user,
+        for booking in booking_qs.filter(event_date=today)[:5]:
+            today_items.append(
+                {
+                    "domain": "Booking",
+                    "title": f"{booking.artist.stage_name} - {booking.title}",
+                    "destination": f"/workspace/bookings/{booking.id}",
+                    "time": booking.event_start_datetime,
+                }
             )
-            .distinct()
-            .count()
+        actionable_bookings = booking_qs.filter(event_date__lte=week).order_by(
+            "event_date", "priority"
         )
-        counts["unsigned_contracts"] = (
-            Contract.objects.filter(
-                organization=organization,
-                status__in=(
-                    Contract.Status.APPROVED,
-                    Contract.Status.SENT,
-                    Contract.Status.PARTIALLY_SIGNED,
-                ),
-                parties__is_signatory=True,
+        for booking in actionable_bookings.filter(priority__in=("urgent", "high"))[:4]:
+            add_attention(
+                "critical" if booking.priority == "urgent" else "high",
+                "Bookings",
+                booking.reference,
+                f"{booking.get_priority_display()} booking is "
+                f"{(booking.event_date - today).days} days out.",
+                f"/workspace/bookings/{booking.id}",
+                booking.event_date,
             )
-            .exclude(parties__signing_status="signed")
-            .distinct()
-            .count()
-        )
-    if user_has_organization_permission(user, organization, "membership.manage"):
-        counts["pending_invitations"] = Invitation.objects.filter(
-            organization=organization,
-            accepted_at__isnull=True,
-            revoked_at__isnull=True,
-            expires_at__gt=timezone.now(),
-        ).count()
-    counts["unread_notifications"] = NotificationRecipient.objects.filter(
-        user=user,
-        notification__organization=organization,
-        read_at__isnull=True,
-        archived_at__isnull=True,
-    ).count()
-    if user_has_organization_permission(user, organization, "travel.view"):
-        next_segment = (
-            TravelSegment.objects.filter(
-                itinerary__organization=organization,
-                departure_at__gte=timezone.now(),
+        for booking in actionable_bookings.filter(call_sheet__isnull=True)[:4]:
+            add_attention(
+                "high",
+                "Call Sheets",
+                booking.reference,
+                "Upcoming booking has no Call Sheet.",
+                f"/workspace/bookings/{booking.id}",
+                booking.event_date,
             )
-            .exclude(status=TravelSegment.Status.CANCELLED)
-            .select_related("itinerary__artist")
-            .order_by("departure_at")
-            .first()
+
+    if user_has_organization_permission(user, organization, "task.view"):
+        open_tasks = Task.objects.filter(organization=organization).exclude(
+            status__in=(Task.Status.DONE, Task.Status.CANCELLED)
         )
-        counts["upcoming_travel"] = TravelItinerary.objects.filter(
-            organization=organization,
-            status__in=(TravelItinerary.Status.CONFIRMED, TravelItinerary.Status.IN_PROGRESS),
-        ).count()
-        if next_segment:
-            counts["next_travel"] = {
-                "itinerary_id": str(next_segment.itinerary_id),
-                "artist": next_segment.itinerary.artist.stage_name,
-                "departure_at": next_segment.departure_at,
-                "destination": next_segment.arrival_location,
-            }
+        counts["open_tasks"] = open_tasks.count()
+        for task in open_tasks.filter(due_at__lt=now).select_related("assigned_membership__user")[
+            :5
+        ]:
+            owner = None
+            if task.assigned_membership:
+                owner = (
+                    task.assigned_membership.user.get_full_name()
+                    or task.assigned_membership.user.email
+                )
+            add_attention(
+                "critical" if task.priority == Task.Priority.URGENT else "high",
+                "Tasks",
+                task.title,
+                "Task is overdue.",
+                f"/workspace/tasks/{task.id}",
+                task.due_at,
+                owner,
+            )
+        for task in open_tasks.filter(due_at__date=today)[:5]:
+            today_items.append(
+                {
+                    "domain": "Task",
+                    "title": task.title,
+                    "destination": f"/workspace/tasks/{task.id}",
+                    "time": task.due_at,
+                }
+            )
+
     if user_has_organization_permission(user, organization, "production.view"):
-        now = timezone.now()
         active_advances = ProductionAdvance.objects.filter(organization=organization).exclude(
             status__in=("completed", "cancelled", "archived")
         )
         counts["production_due_soon"] = active_advances.filter(
-            advance_due_at__gte=now,
-            advance_due_at__lte=now + timedelta(days=7),
+            advance_due_at__gte=now, advance_due_at__lte=now + timedelta(days=7)
         ).count()
         counts["overdue_production"] = active_advances.filter(advance_due_at__lt=now).count()
-        counts["blocked_critical_requirements"] = AdvanceRequirement.objects.filter(
+        blocked = AdvanceRequirement.objects.filter(
             advance__organization=organization,
             is_active=True,
             status="blocked",
             priority="critical",
-        ).count()
+        ).select_related("advance")
+        counts["blocked_critical_requirements"] = blocked.count()
         counts["overdue_production_checklist"] = AdvanceChecklistItem.objects.filter(
             advance__organization=organization,
             is_active=True,
             is_completed=False,
             due_at__lt=now,
         ).count()
-        next_production = (
-            ProductionScheduleItem.objects.filter(
-                advance__organization=organization,
-                is_active=True,
-                starts_at__gte=now,
+        for requirement in blocked[:4]:
+            add_attention(
+                "critical",
+                "Production",
+                requirement.title,
+                "Critical production requirement is blocked.",
+                f"/workspace/production/{requirement.advance_id}",
             )
-            .exclude(status="cancelled")
-            .select_related("advance__artist")
-            .order_by("starts_at")
-            .first()
+
+    if user_has_organization_permission(user, organization, "travel.view"):
+        active_travel = TravelItinerary.objects.filter(organization=organization).exclude(
+            status__in=(TravelItinerary.Status.CANCELLED, TravelItinerary.Status.ARCHIVED)
         )
-        if next_production:
-            counts["next_production"] = {
-                "advance_id": str(next_production.advance_id),
-                "artist": next_production.advance.artist.stage_name,
-                "title": next_production.title,
-                "starts_at": next_production.starts_at,
-            }
-    if user_has_organization_permission(user, organization, "finance.view"):
-        counts["draft_invoices"] = Invoice.objects.filter(
-            organization=organization, status=Invoice.Status.DRAFT
+        counts["upcoming_travel"] = active_travel.filter(
+            status__in=(TravelItinerary.Status.CONFIRMED, TravelItinerary.Status.IN_PROGRESS)
         ).count()
+        for itinerary in active_travel.filter(
+            status=TravelItinerary.Status.DRAFT,
+            starts_at__gte=now,
+            starts_at__lte=now + timedelta(days=14),
+        )[:4]:
+            add_attention(
+                "high",
+                "Travel",
+                itinerary.title,
+                "Upcoming itinerary is not confirmed.",
+                f"/workspace/travel/{itinerary.id}",
+                itinerary.starts_at,
+            )
+
+    if user_has_organization_permission(user, organization, "contract.view"):
+        contracts = Contract.objects.filter(organization=organization)
+        counts["contracts_needing_review"] = contracts.filter(
+            status=Contract.Status.IN_REVIEW
+        ).count()
+        counts["pending_contract_approvals"] = (
+            contracts.filter(approvals__status="pending", approvals__membership__user=user)
+            .distinct()
+            .count()
+        )
+        for contract in contracts.filter(
+            status__in=(Contract.Status.IN_REVIEW, Contract.Status.APPROVED, Contract.Status.SENT)
+        )[:4]:
+            add_attention(
+                "high",
+                "Contracts",
+                contract.reference,
+                f"Contract requires action: {contract.get_status_display()}.",
+                f"/workspace/contracts/{contract.id}",
+                contract.expiry_date,
+            )
+
+    if user_has_organization_permission(user, organization, "finance.view"):
+        invoices = Invoice.objects.filter(organization=organization)
+        counts["draft_invoices"] = invoices.filter(status=Invoice.Status.DRAFT).count()
+        overdue_invoices = invoices.filter(
+            status=Invoice.Status.ISSUED, due_date__lt=today
+        ).order_by("due_date")
+        counts["overdue_invoices"] = overdue_invoices.count()
+        for invoice in overdue_invoices[:4]:
+            add_attention(
+                "critical",
+                "Finance",
+                invoice.invoice_number,
+                "Issued invoice is past its due date.",
+                f"/workspace/finance/invoices/{invoice.id}",
+                invoice.due_date,
+            )
+
+    if user_has_organization_permission(user, organization, "music.view"):
+        upcoming_releases = Release.objects.filter(
+            organization=organization,
+            planned_release_date__gte=today,
+            planned_release_date__lte=today + timedelta(days=30),
+        ).exclude(
+            status__in=(Release.Status.RELEASED, Release.Status.CANCELLED, Release.Status.ARCHIVED)
+        )
+        counts["upcoming_releases"] = upcoming_releases.count()
+        for release in upcoming_releases.filter(
+            tasks__status__in=(Task.Status.TODO, Task.Status.BLOCKED)
+        ).distinct()[:4]:
+            add_attention(
+                "high",
+                "Music",
+                release.title,
+                "Upcoming release has incomplete deliverables.",
+                f"/workspace/music/releases/{release.id}",
+                release.planned_release_date,
+            )
+
+    if user_has_organization_permission(user, organization, "rollout.view"):
+        overdue_rollout_tasks = RolloutTask.objects.filter(
+            rollout__organization=organization,
+            due_date__lt=today,
+            status__in=(
+                RolloutTask.Status.TODO,
+                RolloutTask.Status.IN_PROGRESS,
+                RolloutTask.Status.BLOCKED,
+            ),
+        ).select_related("rollout")
+        for task in overdue_rollout_tasks[:4]:
+            add_attention(
+                "critical" if task.status == RolloutTask.Status.BLOCKED else "high",
+                "Rollouts",
+                task.title,
+                "Rollout task is overdue.",
+                f"/workspace/rollouts/{task.rollout_id}",
+                task.due_date,
+            )
+
     if user_has_organization_permission(user, organization, "rights.view"):
-        counts["incomplete_master_splits"] = (
+        incomplete_master = (
             Track.objects.filter(organization=organization, master_rights__isnull=False)
             .annotate(allocated=Sum("master_rights__ownership_percentage"))
             .filter(allocated__lt=100)
-            .count()
         )
-        counts["incomplete_publishing_splits"] = (
+        incomplete_publishing = (
             Work.objects.filter(organization=organization, publishing_rights__isnull=False)
             .annotate(allocated=Sum("publishing_rights__ownership_percentage"))
             .filter(allocated__lt=100)
-            .count()
         )
+        counts["incomplete_master_splits"] = incomplete_master.count()
+        counts["incomplete_publishing_splits"] = incomplete_publishing.count()
+        for work in incomplete_publishing[:4]:
+            add_attention(
+                "high",
+                "Rights",
+                work.title,
+                "Publishing ownership is incomplete.",
+                f"/workspace/rights/works/{work.id}",
+            )
+
+    if user_has_organization_permission(user, organization, "membership.manage"):
+        counts["pending_invitations"] = Invitation.objects.filter(
+            organization=organization,
+            accepted_at__isnull=True,
+            revoked_at__isnull=True,
+            expires_at__gt=now,
+        ).count()
+
+    counts["unread_notifications"] = NotificationRecipient.objects.filter(
+        user=user,
+        notification__organization=organization,
+        read_at__isnull=True,
+        archived_at__isnull=True,
+    ).count()
+    severity_rank = {"critical": 0, "high": 1, "normal": 2}
+    visible_attention = sorted(
+        attention, key=lambda item: (severity_rank[item["severity"]], str(item.get("due") or ""))
+    )[:12]
+    counts["needs_attention"] = len(attention)
     return {
         "mode": "workspace",
         "organization": {"id": str(organization.id), "name": organization.name},
         "counts": counts,
         "upcoming_bookings": upcoming,
+        "attention": visible_attention,
+        "today": sorted(today_items, key=lambda item: str(item.get("time") or ""))[:10],
     }

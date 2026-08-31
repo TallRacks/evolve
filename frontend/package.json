@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test:actions": "node scripts/check-action-manifest.mjs"
+    "test:actions": "node scripts/check-action-manifest.mjs",
+    "test:pwa": "node --test scripts/check-pwa-connectivity.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.2.3",

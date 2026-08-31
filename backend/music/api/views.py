@@ -46,6 +46,7 @@ from .serializers import (
     DeveloperTrackSerializer,
     ReleaseDetailSerializer,
     ReleaseLinkSerializer,
+    ReleasePipelineSerializer,
     ReleaseSummarySerializer,
     ReleaseTrackSerializer,
     ReleaseWriteSerializer,
@@ -72,8 +73,10 @@ def scoped_organization(user, organization_id):
 
 
 def release_queryset():
-    return Release.objects.select_related("organization", "primary_artist").annotate(
-        track_count=Count("track_placements")
+    return (
+        Release.objects.select_related("organization", "primary_artist")
+        .prefetch_related("tasks", "campaigns")
+        .annotate(track_count=Count("track_placements"))
     )
 
 
@@ -147,7 +150,7 @@ class ReleaseListView(APIView):
         )
         require_music_permission(request.user, organization, "music.view")
         return Response(
-            ReleaseSummarySerializer(
+            ReleasePipelineSerializer(
                 filters(release_queryset().filter(organization=organization), request), many=True
             ).data
         )
@@ -420,7 +423,7 @@ class PlatformReleaseListView(APIView):
 
     def get(self, request):
         return Response(
-            ReleaseSummarySerializer(filters(release_queryset(), request), many=True).data
+            ReleasePipelineSerializer(filters(release_queryset(), request), many=True).data
         )
 
 

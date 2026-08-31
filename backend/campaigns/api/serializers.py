@@ -3,6 +3,7 @@ from rest_framework import serializers
 from campaigns.models import (
     Campaign,
     CampaignChannel,
+    CampaignResponsibility,
     Rollout,
     RolloutMilestone,
     RolloutTask,
@@ -14,6 +15,26 @@ class ChannelSerializer(serializers.ModelSerializer):
         model = CampaignChannel
         exclude = ("campaign",)
         read_only_fields = ("id", "created_at")
+
+
+class CampaignResponsibilitySerializer(serializers.ModelSerializer):
+    membership_id = serializers.UUIDField(read_only=True)
+    name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CampaignResponsibility
+        fields = ("id", "membership_id", "name", "phase", "role", "created_at", "updated_at")
+        read_only_fields = fields
+
+    def get_name(self, obj):
+        user = obj.membership.user
+        return " ".join(filter(None, (user.first_name, user.last_name))) or user.email
+
+
+class CampaignResponsibilityWriteSerializer(serializers.Serializer):
+    membership_id = serializers.UUIDField()
+    phase = serializers.CharField(max_length=80)
+    role = serializers.ChoiceField(choices=CampaignResponsibility.Role.choices)
 
 
 class CampaignSummarySerializer(serializers.ModelSerializer):
@@ -175,6 +196,7 @@ class RolloutDetailSerializer(RolloutSummarySerializer):
 
 
 class CampaignDetailSerializer(CampaignSummarySerializer):
+    responsibilities = CampaignResponsibilitySerializer(many=True, read_only=True)
     channels = ChannelSerializer(many=True)
     rollouts = RolloutSummarySerializer(many=True)
     activity = serializers.ListField()
@@ -188,6 +210,7 @@ class CampaignDetailSerializer(CampaignSummarySerializer):
             "target_audience",
             "summary",
             "channels",
+            "responsibilities",
             "rollouts",
             "activity",
             "allowed_transitions",

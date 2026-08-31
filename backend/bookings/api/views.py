@@ -47,7 +47,19 @@ from .serializers import (
 
 def booking_queryset():
     return Booking.objects.select_related(
-        "organization", "artist", "promoter", "venue", "created_by"
+        "organization",
+        "artist",
+        "promoter",
+        "venue",
+        "created_by",
+        "production_advance",
+        "travel_itinerary",
+        "call_sheet",
+    ).prefetch_related(
+        "team_assignments__membership__user",
+        "call_sheet__versions",
+        "contracts",
+        "invoices",
     )
 
 
@@ -118,6 +130,13 @@ def activity_data(booking):
     ]
 
 
+def serializer_context(user, organization):
+    return {
+        "include_contracts": user_has_organization_permission(user, organization, "contract.view"),
+        "include_finance": user_has_organization_permission(user, organization, "finance.view"),
+    }
+
+
 def detail_data(user, booking):
     include_commercial = user_has_organization_permission(
         user, booking.organization, "booking.commercial.view"
@@ -128,6 +147,7 @@ def detail_data(user, booking):
     return BookingDetailSerializer(
         booking,
         context={
+            **serializer_context(user, booking.organization),
             "include_commercial": include_commercial,
             "allowed_transitions": transitions,
             "activity": activity_data(booking),
@@ -145,6 +165,7 @@ class BookingListView(APIView):
             BookingListSerializer(
                 filtered(booking_queryset().filter(organization=organization), request),
                 many=True,
+                context=serializer_context(request.user, organization),
             ).data
         )
 
@@ -375,7 +396,11 @@ class PlatformBookingListView(APIView):
 
     def get(self, request):
         return Response(
-            BookingListSerializer(filtered(booking_queryset(), request), many=True).data
+            BookingListSerializer(
+                filtered(booking_queryset(), request),
+                many=True,
+                context={"include_contracts": True, "include_finance": True},
+            ).data
         )
 
     def post(self, request):

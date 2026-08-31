@@ -1,6 +1,7 @@
 "use client";
 
 import { hasOrganizationPermission } from "@/lib/auth/access";
+import { AlertTriangle, ArrowUpRight, CalendarClock, CheckSquare2, Plus } from "lucide-react";
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -165,14 +166,22 @@ function PlatformFrame({ children }: { children: React.ReactNode }) {
 
 export function DashboardPage() {
   const { session, activeOrganizationId } = useAuth();
-  const [myTasks, setMyTasks] = useState<{id:string;title:string;status:string;due_at:string|null;is_overdue:boolean}[]>([]);
-  const [recentActivity, setRecentActivity] = useState<{id:string;description:string;created_at:string;destination:string|null}[]>([]);
+  const [myTasks, setMyTasks] = useState<
+    { id: string; title: string; status: string; due_at: string | null; is_overdue: boolean }[]
+  >([]);
+  const [recentActivity, setRecentActivity] = useState<
+    { id: string; description: string; created_at: string; destination: string | null }[]
+  >([]);
   useEffect(() => {
     if (!activeOrganizationId) return;
     if (hasOrganizationPermission(session, activeOrganizationId, "task.view"))
-      void apiRequest<typeof myTasks>(`/api/tasks/?organization_id=${activeOrganizationId}&mine=true`).then(setMyTasks);
+      void apiRequest<typeof myTasks>(
+        `/api/tasks/?organization_id=${activeOrganizationId}&mine=true`,
+      ).then(setMyTasks);
     if (hasOrganizationPermission(session, activeOrganizationId, "activity.view"))
-      void apiRequest<typeof recentActivity>(`/api/activity/?organization_id=${activeOrganizationId}`).then(items => setRecentActivity(items.slice(0, 5)));
+      void apiRequest<typeof recentActivity>(
+        `/api/activity/?organization_id=${activeOrganizationId}`,
+      ).then((items) => setRecentActivity(items.slice(0, 5)));
   }, [activeOrganizationId, session]);
   const membership = session?.memberships.find(
     (item) => item.organization.id === activeOrganizationId,
@@ -183,32 +192,44 @@ export function DashboardPage() {
       : activeOrganizationId
         ? `/api/dashboard/?organization_id=${activeOrganizationId}`
         : null;
-  const { data, error } = useResource<{
+  type Attention = {
+    severity: "critical" | "high" | "normal";
+    domain: string;
+    title: string;
+    reason: string;
+    destination: string;
+    due?: string;
+    owner?: string;
+  };
+  type Dashboard = {
     mode: "platform" | "workspace";
     organization?: { id: string; name: string };
     counts: Record<string, number>;
     configuration?: Record<string, string>;
+    attention: Attention[];
+    today: { domain: string; title: string; destination: string; time?: string }[];
     upcoming_bookings: {
       id: string;
       reference: string;
       artist: string;
       date: string;
+      days_out: number;
       venue: string;
       status: string;
+      priority: string;
     }[];
-  }>(path);
+  };
+  const { data, error } = useResource<Dashboard>(path);
   const quickActions = [
     ["New Booking", "/workspace/bookings/new", "booking.manage"],
     ["New Artist", "/workspace/artists/new", "artist.manage"],
     ["New Contact", "/workspace/contacts", "contact.manage"],
+    ["New Task", "/workspace/tasks/new", "task.manage"],
     ["New Production Advance", "/workspace/production/new", "production.manage"],
     ["New Travel Itinerary", "/workspace/travel/new", "travel.manage"],
     ["New Release", "/workspace/music/releases/new", "music.manage"],
     ["New Campaign", "/workspace/campaigns/new", "campaign.manage"],
     ["New Document", "/workspace/documents/new", "document.manage"],
-    ["New Invoice", "/workspace/finance/invoices/new", "finance.manage"],
-    ["New Work", "/workspace/rights/works/new", "rights.manage"],
-    ["New Royalty Statement", "/workspace/royalties/statements/new", "royalties.manage"],
     ["New Contract", "/workspace/contracts/new", "contract.manage"],
   ].filter(([, , permission]) =>
     hasOrganizationPermission(session, activeOrganizationId, permission),
@@ -217,11 +238,7 @@ export function DashboardPage() {
     return (
       <RouteGuard portal="dashboard">
         <AppShell>
-          <PageHeader
-            eyebrow="Home"
-            title="Artist portal"
-            description="Your linked Artist workspace keeps organization-wide operations private."
-          />
+          <PageHeader eyebrow="Home" title="Artist portal" />
           <Link className={`mt-7 ${buttonClass}`} href="/artist">
             Open Artist portal
           </Link>
@@ -229,34 +246,71 @@ export function DashboardPage() {
       </RouteGuard>
     );
   }
+  const kpis = [
+    ["Upcoming bookings", data?.counts.upcoming_bookings, "/workspace/bookings"],
+    ["Active artists", data?.counts.active_artists, "/workspace/artists"],
+    ["Open tasks", data?.counts.open_tasks, "/workspace/tasks"],
+    ["Needs attention", data?.counts.needs_attention, "#needs-attention"],
+  ].filter(([, value]) => value !== undefined) as [string, number, string][];
   return (
     <RouteGuard portal="dashboard">
       <AppShell organizationScoped={!!activeOrganizationId}>
         <PageHeader
-          eyebrow={data?.mode === "platform" ? "Platform" : "Workspace"}
+          eyebrow={data?.mode === "platform" ? "Platform" : "Command centre"}
           title={data?.organization?.name ?? "Dashboard"}
-          description="A permission-aware operational summary."
+          description={new Intl.DateTimeFormat(undefined, {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+          }).format(new Date())}
           actions={
-            hasOrganizationPermission(session, activeOrganizationId, "booking.manage") ? (
-              <Link className={buttonClass} href="/workspace/bookings/new">
-                Create booking
-              </Link>
+            quickActions.length ? (
+              <details className="relative">
+                <summary className={`${buttonClass} cursor-pointer list-none`}>
+                  <Plus size={16} /> Create
+                </summary>
+                <div className="absolute right-0 z-20 mt-2 grid min-w-64 gap-1 rounded-md border border-neutral-700 bg-neutral-950 p-2 shadow-2xl">
+                  {quickActions.map(([label, href]) => (
+                    <Link
+                      className="rounded px-3 py-2 text-sm hover:bg-neutral-800 focus:bg-neutral-800"
+                      href={href}
+                      key={href}
+                    >
+                      {label}
+                    </Link>
+                  ))}
+                </div>
+              </details>
             ) : undefined
           }
         />
         <Notice message={error} error />
-        {data ? (
-          <>
-            <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {Object.entries(data.counts).map(([key, value]) => (
-                <StatCard
-                  key={key}
-                  label={key.replaceAll("_", " ")}
-                  value={value}
-                />
+        {!data ? (
+          <div aria-label="Loading dashboard" className="mt-7 grid animate-pulse gap-6">
+            <div className="grid gap-px overflow-hidden rounded-md border border-neutral-800 bg-neutral-800 sm:grid-cols-2 xl:grid-cols-4">
+              {[1, 2, 3, 4].map((item) => (
+                <div className="h-24 bg-neutral-900 p-5" key={item} />
               ))}
             </div>
-            {data.configuration && (
+            <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+              <div className="h-80 rounded-md bg-neutral-900" />
+              <div className="h-80 rounded-md bg-neutral-900" />
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="mt-7 grid gap-px overflow-hidden rounded-md border border-neutral-800 bg-neutral-800 sm:grid-cols-2 xl:grid-cols-4">
+              {kpis.map(([label, value, href]) => (
+                <Link className="group bg-neutral-950 p-5 hover:bg-neutral-900" href={href} key={label}>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase text-neutral-500">{label}</p>
+                    <ArrowUpRight className="text-neutral-600 group-hover:text-amber-300" size={16} />
+                  </div>
+                  <p className="mt-3 text-3xl font-semibold tabular-nums">{value}</p>
+                </Link>
+              ))}
+            </div>
+            {data.configuration ? (
               <section className="mt-8">
                 <h2 className="font-semibold">System configuration</h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -265,81 +319,102 @@ export function DashboardPage() {
                   ))}
                 </div>
               </section>
-            )}
-            {quickActions.length > 0 && (
-              <section className="mt-8">
-                <div className="mb-4 flex items-center justify-between">
-                  <h2 className="font-semibold">Quick actions</h2>
-                  <Link className="text-sm text-neutral-400 hover:text-white" href="/workspace">
-                    Open workspace
-                  </Link>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {quickActions.slice(0, 6).map(([label, href]) => (
-                    <Link className={label === "New Booking" ? buttonClass : secondaryButtonClass} href={href} key={href}>
-                      + {label}
-                    </Link>
-                  ))}
-                </div>
-                {quickActions.length > 6 && (
-                  <details className="mt-3">
-                    <summary className="cursor-pointer text-sm text-neutral-400">More actions</summary>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      {quickActions.slice(6).map(([label, href]) => (
-                        <Link className={secondaryButtonClass} href={href} key={href}>+ {label}</Link>
-                      ))}
+            ) : (
+              <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.8fr)]">
+                <section id="needs-attention" className="rounded-md border border-neutral-800 bg-neutral-950">
+                  <div className="flex items-center justify-between border-b border-neutral-800 px-5 py-4">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="text-amber-300" size={18} />
+                      <h2 className="font-semibold">Needs attention</h2>
                     </div>
-                  </details>
-                )}
-              </section>
-            )}
-            {activeOrganizationId && (
-              <div className="mt-8 grid gap-6 lg:grid-cols-2">
-                <section>
-                  <div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">My Tasks</h2><Link href="/workspace/tasks">View all</Link></div>
-                  <div className="grid gap-3">
-                    {myTasks.filter(item => !["done","cancelled"].includes(item.status)).slice(0,5).map(item => <Link className="rounded-md border border-neutral-800 bg-neutral-900 p-4" href={`/workspace/tasks/${item.id}`} key={item.id}><span>{item.title}</span><span className={item.is_overdue?"ml-3 text-sm text-red-300":"ml-3 text-sm text-neutral-500"}>{item.is_overdue?"Overdue":item.status.replaceAll("_"," ")}</span></Link>)}
-                    {!myTasks.length && <p className="text-sm text-neutral-500">No assigned tasks.</p>}
+                    <span className="text-xs text-neutral-500">Prioritized by Evolve</span>
+                  </div>
+                  <div className="divide-y divide-neutral-800">
+                    {data.attention.map((item, index) => (
+                      <Link
+                        className="grid gap-3 px-5 py-4 hover:bg-neutral-900 sm:grid-cols-[5rem_minmax(0,1fr)_auto] sm:items-center"
+                        href={item.destination}
+                        key={`${item.domain}-${item.title}-${index}`}
+                      >
+                        <span className={`text-xs font-semibold uppercase ${item.severity === "critical" ? "text-red-300" : "text-amber-300"}`}>
+                          {item.severity}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate font-medium">{item.title}</span>
+                          <span className="block text-sm text-neutral-400">{item.domain} / {item.reason}</span>
+                        </span>
+                        <span className="text-xs text-neutral-500">
+                          {item.due ? new Date(item.due).toLocaleDateString() : "Open"}
+                        </span>
+                      </Link>
+                    ))}
+                    {!data.attention.length && (
+                      <div className="px-5 py-10 text-center">
+                        <CheckSquare2 className="mx-auto text-emerald-300" size={24} />
+                        <p className="mt-3 font-medium">Nothing needs immediate attention</p>
+                        <p className="mt-1 text-sm text-neutral-500">Current operational checks are clear.</p>
+                      </div>
+                    )}
                   </div>
                 </section>
-                <section>
-                  <div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">Recent Activity</h2><Link href="/workspace/activity">View all</Link></div>
-                  <div className="grid gap-3">
-                    {recentActivity.map(item => item.destination ? <Link className="rounded-md border border-neutral-800 bg-neutral-900 p-4" href={item.destination} key={item.id}><span>{item.description}</span><time className="mt-1 block text-xs text-neutral-500">{new Date(item.created_at).toLocaleString()}</time></Link> : <div className="rounded-md border border-neutral-800 bg-neutral-900 p-4" key={item.id}><span>{item.description}</span><time className="mt-1 block text-xs text-neutral-500">{new Date(item.created_at).toLocaleString()}</time></div>)}
-                    {!recentActivity.length && <p className="text-sm text-neutral-500">No recent activity.</p>}
+                <section className="rounded-md border border-neutral-800 bg-neutral-950">
+                  <div className="flex items-center gap-2 border-b border-neutral-800 px-5 py-4">
+                    <CalendarClock className="text-neutral-400" size={18} />
+                    <h2 className="font-semibold">Today</h2>
+                  </div>
+                  <div className="divide-y divide-neutral-800">
+                    {data.today.map((item) => (
+                      <Link className="block px-5 py-4 hover:bg-neutral-900" href={item.destination} key={`${item.domain}-${item.title}`}>
+                        <p className="font-medium">{item.title}</p>
+                        <p className="mt-1 text-xs uppercase text-neutral-500">{item.domain}{item.time ? ` / ${new Date(item.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}</p>
+                      </Link>
+                    ))}
+                    {!data.today.length && <p className="px-5 py-8 text-sm text-neutral-500">No operational events due today.</p>}
                   </div>
                 </section>
               </div>
             )}
-            {data.upcoming_bookings.length > 0 && (
+            {activeOrganizationId && (
+              <div className="mt-8 grid gap-6 lg:grid-cols-2">
+                <section>
+                  <div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">My work</h2><Link className="text-sm text-neutral-400" href="/workspace/tasks">View all</Link></div>
+                  <div className="divide-y divide-neutral-800 rounded-md border border-neutral-800">
+                    {myTasks.filter((item) => !["done", "cancelled"].includes(item.status)).slice(0, 5).map((item) => (
+                      <Link className="flex items-center justify-between gap-3 p-4 hover:bg-neutral-900" href={`/workspace/tasks/${item.id}`} key={item.id}>
+                        <span>{item.title}</span><span className={item.is_overdue ? "text-sm text-red-300" : "text-sm text-neutral-500"}>{item.is_overdue ? "Overdue" : item.status.replaceAll("_", " ")}</span>
+                      </Link>
+                    ))}
+                    {!myTasks.length && <p className="p-5 text-sm text-neutral-500">No assigned tasks.</p>}
+                  </div>
+                </section>
+                <section>
+                  <div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">Recent activity</h2><Link className="text-sm text-neutral-400" href="/workspace/activity">View all</Link></div>
+                  <div className="divide-y divide-neutral-800 rounded-md border border-neutral-800">
+                    {recentActivity.map((item) => item.destination ? (
+                      <Link className="block p-4 hover:bg-neutral-900" href={item.destination} key={item.id}><span>{item.description}</span><time className="mt-1 block text-xs text-neutral-500">{new Date(item.created_at).toLocaleString()}</time></Link>
+                    ) : (
+                      <div className="p-4" key={item.id}><span>{item.description}</span><time className="mt-1 block text-xs text-neutral-500">{new Date(item.created_at).toLocaleString()}</time></div>
+                    ))}
+                    {!recentActivity.length && <p className="p-5 text-sm text-neutral-500">No recent activity.</p>}
+                  </div>
+                </section>
+              </div>
+            )}
+            {!!data.upcoming_bookings.length && (
               <section className="mt-8">
-                <div className="mb-4 flex items-center justify-between">
-                  <h2 className="font-semibold">Upcoming bookings</h2>
-                  <Link href="/workspace/bookings">View all</Link>
-                </div>
-                <div className="grid gap-3">
+                <div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">Upcoming bookings</h2><Link className="text-sm text-neutral-400" href="/workspace/bookings">View all</Link></div>
+                <div className="divide-y divide-neutral-800 rounded-md border border-neutral-800">
                   {data.upcoming_bookings.map((item) => (
-                    <Link
-                      className="grid gap-2 rounded-md border border-neutral-800 bg-neutral-900 p-4 sm:grid-cols-[1fr_auto_auto]"
-                      href={`/workspace/bookings/${item.id}`}
-                      key={item.id}
-                    >
-                      <span>
-                        {item.reference} / {item.artist}
-                      </span>
-                      <span>{item.venue || "Venue TBC"}</span>
-                      <span>
-                        {new Date(item.date).toLocaleDateString()} /{" "}
-                        {item.status}
-                      </span>
+                    <Link className="grid gap-2 p-4 hover:bg-neutral-900 sm:grid-cols-[1fr_auto_auto]" href={`/workspace/bookings/${item.id}`} key={item.id}>
+                      <span><strong>{item.artist}</strong><span className="ml-2 text-xs text-neutral-500">{item.reference}</span></span>
+                      <span className="text-sm text-neutral-400">{item.venue || "Venue TBC"}</span>
+                      <span className="text-sm tabular-nums">{item.days_out === 0 ? "Today" : `${item.days_out} days`} / {item.status}</span>
                     </Link>
                   ))}
                 </div>
               </section>
             )}
           </>
-        ) : (
-          <Loading />
         )}
       </AppShell>
     </RouteGuard>

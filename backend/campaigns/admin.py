@@ -8,6 +8,7 @@ from core.admin import PlatformSuperuserAdminMixin
 from .models import (
     Campaign,
     CampaignChannel,
+    CampaignResponsibility,
     Rollout,
     RolloutMilestone,
     RolloutTask,
@@ -27,11 +28,13 @@ class SafeAdmin(PlatformSuperuserAdminMixin, ModelAdmin):
             organization, resource, prefix = obj.organization, obj, "campaign"
         elif isinstance(obj, Rollout):
             organization, resource, prefix = obj.organization, obj, "rollout"
-        elif isinstance(obj, CampaignChannel):
+        elif isinstance(obj, CampaignChannel | CampaignResponsibility):
             organization, resource, prefix = (
                 obj.campaign.organization,
                 obj.campaign,
-                "campaign.channel",
+                "campaign.responsibility"
+                if isinstance(obj, CampaignResponsibility)
+                else "campaign.channel",
             )
         else:
             rollout = obj.rollout if hasattr(obj, "rollout") else obj.task.rollout
@@ -46,7 +49,9 @@ class SafeAdmin(PlatformSuperuserAdminMixin, ModelAdmin):
                     else "rollout.dependency"
                 ),
             )
-        if isinstance(obj, CampaignChannel):
+        if isinstance(obj, CampaignResponsibility):
+            action = f"campaign.responsibility_{'updated' if change else 'assigned'}"
+        elif isinstance(obj, CampaignChannel):
             action = "campaign.channel_added" if not change else "campaign.channel_updated"
         elif isinstance(obj, RolloutTaskDependency):
             action = "rollout.dependency_added" if not change else "rollout.dependency_updated"
@@ -220,3 +225,18 @@ class ChannelAdmin(SafeAdmin):
 class DependencyAdmin(SafeAdmin):
     list_display = ("task", "depends_on", "created_at")
     autocomplete_fields = ("task", "depends_on")
+
+
+@admin.register(CampaignResponsibility)
+class ResponsibilityAdmin(SafeAdmin):
+    list_display = ("campaign", "phase", "role", "membership", "created_at")
+    list_filter = ("campaign__organization", "phase", "role")
+    search_fields = (
+        "campaign__name",
+        "phase",
+        "membership__user__email",
+        "membership__user__first_name",
+        "membership__user__last_name",
+    )
+    autocomplete_fields = ("campaign", "membership")
+    readonly_fields = ("id", "created_at", "updated_at")

@@ -1,3 +1,4 @@
+from django.utils import timezone
 from rest_framework import serializers
 
 from music.models import MusicCredit, Release, ReleaseLink, ReleaseTrack, Track
@@ -101,6 +102,42 @@ class ReleaseSummarySerializer(serializers.ModelSerializer):
             "track_count",
             "created_at",
         )
+
+
+class ReleasePipelineSerializer(ReleaseSummarySerializer):
+    days_to_release = serializers.SerializerMethodField()
+    task_progress = serializers.SerializerMethodField()
+    campaign_state = serializers.SerializerMethodField()
+
+    class Meta(ReleaseSummarySerializer.Meta):
+        fields = ReleaseSummarySerializer.Meta.fields + (
+            "days_to_release",
+            "task_progress",
+            "campaign_state",
+        )
+
+    def get_days_to_release(self, release):
+        if not release.planned_release_date:
+            return None
+        return (release.planned_release_date - timezone.localdate()).days
+
+    def get_task_progress(self, release):
+        tasks = [task for task in release.tasks.all() if task.status != "cancelled"]
+        complete = sum(task.status == "done" for task in tasks)
+        return {
+            "complete": complete,
+            "total": len(tasks),
+            "percent": round(complete * 100 / len(tasks)) if tasks else 0,
+        }
+
+    def get_campaign_state(self, release):
+        campaigns = list(release.campaigns.all())
+        if not campaigns:
+            return "not_started"
+        for status in ("active", "planned", "paused", "draft", "completed"):
+            if any(campaign.status == status for campaign in campaigns):
+                return status
+        return campaigns[0].status
 
 
 class ReleaseWriteSerializer(serializers.ModelSerializer):

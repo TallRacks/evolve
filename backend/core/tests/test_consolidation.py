@@ -100,6 +100,7 @@ def test_dashboard_is_curated_and_role_aware(client, records):
         client.force_login(user)
         payload = client.get(f"/api/dashboard/?organization_id={first.id}").json()
         assert "draft_invoices" not in payload["counts"]
+        assert all(item["domain"] != "Finance" for item in payload["attention"])
         assert str(second.id) not in str(payload)
 
 

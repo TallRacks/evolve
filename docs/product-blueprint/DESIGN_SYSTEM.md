@@ -33,3 +33,7 @@ Frontend navigation is presentation only. Django authorizes every request.
 ## States
 
 Loading, empty, error, positive, warning, offline, reconnect, and update states use shared visual language. Status must never rely on color alone. Destructive actions require explicit confirmation where implemented.
+
+## Command-centre surfaces
+
+Operational pages use compact bordered bands, tabular KPI numbers, semantic status text, restrained default-theme amber accents, and dense rows on desktop. Tablet grids reduce columns; mobile rows stack without requiring horizontal tables. Organization branding tokens remain authoritative and no tenant-specific color is hard-coded into data or authorization.

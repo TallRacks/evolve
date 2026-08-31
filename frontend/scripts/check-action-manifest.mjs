@@ -22,7 +22,7 @@ for (const action of manifest) {
 }
 
 const dashboard = readFileSync(join(root, "components/management-pages.tsx"), "utf8");
-for (const label of ["New Booking", "New Artist", "New Contact", "New Production Advance", "New Travel Itinerary"]) {
+for (const label of ["New Booking", "New Artist", "New Contact", "New Production Advance", "New Travel Itinerary", "New Task", "New Campaign"]) {
   if (!dashboard.includes(label)) failures.push("/dashboard: quick action " + label + " is missing");
 }
 const access = readFileSync(join(root, "lib/auth/access.ts"), "utf8");
@@ -36,6 +36,8 @@ const detailContracts = [
   ["components/contract-pages.tsx", ["Edit", "Submit for Review"]],
   ["components/finance-pages.tsx", ["New invoice", "Record payment"]],
   ["components/rights-pages.tsx", ["New Work", "New statement"]],
+  ["components/campaign-pages.tsx", ["Lead and support by phase", "Assign"]],
+  ["components/music-pages.tsx", ["New release", "Add track"]],
 ];
 for (const [path, labels] of detailContracts) {
   const source = readFileSync(join(root, path), "utf8");

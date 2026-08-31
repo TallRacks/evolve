@@ -508,6 +508,16 @@ export function AppShell({
             show: can("booking.manage"),
           },
           {
+            title: "Create Contact",
+            destination: "/workspace/contacts",
+            show: can("contact.manage"),
+          },
+          {
+            title: "Create Task",
+            destination: "/workspace/tasks/new",
+            show: can("task.manage"),
+          },
+          {
             title: "Create Production Advance",
             destination: "/workspace/production/new",
             show: can("production.manage"),
@@ -516,6 +526,26 @@ export function AppShell({
             title: "Create Travel Itinerary",
             destination: "/workspace/travel/new",
             show: can("travel.manage"),
+          },
+          {
+            title: "Create Release",
+            destination: "/workspace/music/releases/new",
+            show: can("music.manage"),
+          },
+          {
+            title: "Create Campaign",
+            destination: "/workspace/campaigns/new",
+            show: can("campaign.manage"),
+          },
+          {
+            title: "Create Document",
+            destination: "/workspace/documents/new",
+            show: can("document.manage"),
+          },
+          {
+            title: "Create Contract",
+            destination: "/workspace/contracts/new",
+            show: can("contract.manage"),
           },
           {
             title: "Create Invoice",

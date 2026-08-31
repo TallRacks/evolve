@@ -391,3 +391,19 @@ def test_create_booking_with_setup_is_atomic_and_snapshots_initial_people(
             data={"title": "Rollback", "artist": artist, "event_date": date(2026, 12, 21)},
         )
     assert not Booking.objects.filter(title="Rollback").exists()
+
+
+def test_booking_list_includes_derived_days_out_and_permission_scoped_readiness(
+    client, owner, member, org, booking
+):
+    client.force_login(owner)
+    owner_payload = client.get("/api/bookings/", {"organization_id": org.id}).json()[0]
+    assert owner_payload["days_out"] == (booking.event_date - date.today()).days
+    assert {"production", "travel", "call_sheet", "contract", "invoice"} <= set(
+        owner_payload["readiness"]
+    )
+
+    client.force_login(member)
+    member_payload = client.get("/api/bookings/", {"organization_id": org.id}).json()[0]
+    assert "contract" not in member_payload["readiness"]
+    assert "invoice" not in member_payload["readiness"]

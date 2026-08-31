@@ -9,6 +9,7 @@ from organizations.permissions import user_has_organization_permission
 from .models import (
     Campaign,
     CampaignChannel,
+    CampaignResponsibility,
     Rollout,
     RolloutMilestone,
     RolloutTask,
@@ -157,6 +158,39 @@ def remove_channel(*, actor, channel, request=None):
         "campaign.channel_removed",
         campaign,
         "Removed a campaign channel.",
+        request,
+    )
+
+
+@transaction.atomic
+def assign_responsibility(*, actor, campaign, membership, phase, role, request=None):
+    require(actor, campaign.organization, "campaign.manage")
+    obj = CampaignResponsibility(campaign=campaign, membership=membership, phase=phase, role=role)
+    obj.save()
+    emit(
+        actor,
+        campaign.organization,
+        "campaign.responsibility_assigned",
+        campaign,
+        f"Assigned campaign {role} responsibility for {obj.phase}.",
+        request,
+    )
+    return obj
+
+
+@transaction.atomic
+def remove_responsibility(*, actor, responsibility, request=None):
+    campaign = responsibility.campaign
+    require(actor, campaign.organization, "campaign.manage")
+    phase = responsibility.phase
+    role = responsibility.role
+    CampaignResponsibility.objects.filter(pk=responsibility.pk).delete()
+    emit(
+        actor,
+        campaign.organization,
+        "campaign.responsibility_removed",
+        campaign,
+        f"Removed campaign {role} responsibility for {phase}.",
         request,
     )
 

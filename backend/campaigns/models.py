@@ -110,6 +110,53 @@ class Campaign(TimestampedModel):
         return self.name
 
 
+class CampaignResponsibility(TimestampedModel):
+    class Role(models.TextChoices):
+        LEAD = "lead", "Lead"
+        SUPPORT = "support", "Support"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    campaign = models.ForeignKey(
+        Campaign, on_delete=models.PROTECT, related_name="responsibilities"
+    )
+    membership = models.ForeignKey(
+        "organizations.Membership",
+        on_delete=models.PROTECT,
+        related_name="campaign_responsibilities",
+    )
+    phase = models.CharField(max_length=80)
+    role = models.CharField(max_length=16, choices=Role.choices)
+
+    class Meta:
+        ordering = ("phase", "role", "created_at")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("campaign", "membership", "phase", "role"),
+                name="unique_campaign_phase_responsibility",
+            )
+        ]
+
+    def clean(self):
+        active_membership(
+            self.membership,
+            self.campaign.organization_id if self.campaign_id else None,
+            "membership",
+        )
+        self.phase = self.phase.strip()
+        if not self.phase:
+            raise ValidationError({"phase": "Campaign phase is required."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Remove campaign responsibilities through the service.")
+
+    def __str__(self):
+        return f"{self.campaign}: {self.phase} {self.role}"
+
+
 class CampaignChannel(models.Model):
     class Channel(models.TextChoices):
         INSTAGRAM = "instagram", "Instagram"

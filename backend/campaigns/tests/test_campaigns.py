@@ -11,16 +11,19 @@ from campaigns.admin import CampaignAdmin
 from campaigns.models import (
     Campaign,
     CampaignChannel,
+    CampaignResponsibility,
     Rollout,
     RolloutTask,
 )
 from campaigns.services import (
     add_dependency,
+    assign_responsibility,
     complete_task,
     create_campaign,
     create_milestone,
     create_rollout,
     create_task,
+    remove_responsibility,
     transition_campaign,
     transition_rollout,
     transition_task,
@@ -192,9 +195,7 @@ def test_milestone_order_and_active_owner(owner, rollout, org):
 
 
 def test_task_completion_reopen_overdue_and_assignment(owner, rollout, other):
-    manager = member(
-        rollout.organization, Membership.Role.MANAGER, "task-manager@example.invalid"
-    )
+    manager = member(rollout.organization, Membership.Role.MANAGER, "task-manager@example.invalid")
     task = create_task(
         actor=owner[0],
         rollout=rollout,
@@ -355,3 +356,74 @@ def test_admin_status_and_delete_safeguards(owner, campaign):
     campaign.status = Campaign.Status.ACTIVE
     with pytest.raises(ValidationError):
         campaign.save()
+
+
+def test_campaign_responsibility_scope_permissions_and_audit(owner, campaign, org, other):
+    _, manager_membership = member(
+        org, Membership.Role.MANAGER, "responsibility-manager@example.invalid"
+    )
+    responsibility = assign_responsibility(
+        actor=owner[0],
+        campaign=campaign,
+        membership=manager_membership,
+        phase="Launch",
+        role=CampaignResponsibility.Role.LEAD,
+    )
+    assert responsibility.phase == "Launch"
+    assert AuditEvent.objects.filter(action="campaign.responsibility_assigned").exists()
+
+    _, inactive = member(org, Membership.Role.MEMBER, "responsibility-inactive@example.invalid")
+    inactive.is_active = False
+    inactive.save()
+    with pytest.raises(ValidationError):
+        assign_responsibility(
+            actor=owner[0],
+            campaign=campaign,
+            membership=inactive,
+            phase="Press",
+            role=CampaignResponsibility.Role.SUPPORT,
+        )
+
+    _, outside = member(other, Membership.Role.MANAGER, "responsibility-outside@example.invalid")
+    with pytest.raises(ValidationError):
+        assign_responsibility(
+            actor=owner[0],
+            campaign=campaign,
+            membership=outside,
+            phase="Press",
+            role=CampaignResponsibility.Role.SUPPORT,
+        )
+
+    staff = User.objects.create_user(
+        email="responsibility-staff@example.invalid", password=PASSWORD, is_staff=True
+    )
+    with pytest.raises(PermissionDenied):
+        assign_responsibility(
+            actor=staff,
+            campaign=campaign,
+            membership=manager_membership,
+            phase="Press",
+            role=CampaignResponsibility.Role.SUPPORT,
+        )
+
+    remove_responsibility(actor=owner[0], responsibility=responsibility)
+    assert not CampaignResponsibility.objects.filter(pk=responsibility.pk).exists()
+    assert AuditEvent.objects.filter(action="campaign.responsibility_removed").exists()
+
+
+def test_campaign_responsibility_api(client, owner, campaign, org):
+    _, support = member(org, Membership.Role.MEMBER, "responsibility-api@example.invalid")
+    client.force_login(owner[0])
+    created = client.post(
+        f"/api/campaigns/{campaign.id}/responsibilities/",
+        {"membership_id": str(support.id), "phase": "Release", "role": "support"},
+        content_type="application/json",
+    )
+    assert created.status_code == 201
+    payload = client.get(f"/api/campaigns/{campaign.id}/").json()
+    assert payload["responsibilities"][0]["name"]
+    assert "email" not in payload["responsibilities"][0]
+    deleted = client.delete(
+        f"/api/campaigns/{campaign.id}/responsibilities/{created.json()['id']}/"
+    )
+    assert deleted.status_code == 204

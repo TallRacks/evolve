@@ -10,6 +10,7 @@ from artists.models import Artist
 from campaigns.models import (
     Campaign,
     CampaignChannel,
+    CampaignResponsibility,
     Rollout,
     RolloutMilestone,
     RolloutTask,
@@ -20,6 +21,7 @@ from campaigns.services import (
     CAMPAIGN_TRANSITIONS,
     add_channel,
     add_dependency,
+    assign_responsibility,
     complete_task,
     create_campaign,
     create_milestone,
@@ -28,6 +30,7 @@ from campaigns.services import (
     remove_channel,
     remove_dependency,
     remove_milestone,
+    remove_responsibility,
     require,
     transition_campaign,
     transition_rollout,
@@ -45,6 +48,8 @@ from white_label.services import authenticate_api_key
 
 from .serializers import (
     CampaignDetailSerializer,
+    CampaignResponsibilitySerializer,
+    CampaignResponsibilityWriteSerializer,
     CampaignSummarySerializer,
     CampaignWriteSerializer,
     ChannelSerializer,
@@ -76,7 +81,7 @@ def org_for(user, pk):
 def campaign_qs():
     return Campaign.objects.select_related(
         "organization", "artist", "release", "owner_membership__user"
-    ).prefetch_related("rollouts")
+    ).prefetch_related("rollouts__tasks", "responsibilities__membership__user")
 
 
 def rollout_qs():
@@ -280,6 +285,36 @@ class ChannelDetailView(APIView):
         obj = scoped_campaign(r.user, campaign_id)
         ch = get_object_or_404(CampaignChannel, pk=channel_id, campaign=obj)
         valid(lambda: remove_channel(actor=r.user, channel=ch, request=r))
+        return Response(status=204)
+
+
+class CampaignResponsibilityView(APIView):
+    def post(self, r, campaign_id):
+        campaign = scoped_campaign(r.user, campaign_id)
+        serializer = CampaignResponsibilityWriteSerializer(data=r.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        member = get_object_or_404(
+            Membership.objects.active(),
+            pk=data.pop("membership_id"),
+            organization=campaign.organization,
+            user__is_active=True,
+        )
+        responsibility = valid(
+            lambda: assign_responsibility(
+                actor=r.user, campaign=campaign, membership=member, request=r, **data
+            )
+        )
+        return Response(CampaignResponsibilitySerializer(responsibility).data, status=201)
+
+
+class CampaignResponsibilityDetailView(APIView):
+    def delete(self, r, campaign_id, responsibility_id):
+        campaign = scoped_campaign(r.user, campaign_id)
+        responsibility = get_object_or_404(
+            CampaignResponsibility, pk=responsibility_id, campaign=campaign
+        )
+        valid(lambda: remove_responsibility(actor=r.user, responsibility=responsibility, request=r))
         return Response(status=204)
 
 

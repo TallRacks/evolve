@@ -14,6 +14,8 @@ class BookingListSerializer(serializers.ModelSerializer):
     promoter = serializers.SerializerMethodField()
     venue = serializers.SerializerMethodField()
     primary_assignment = serializers.SerializerMethodField()
+    days_out = serializers.SerializerMethodField()
+    readiness = serializers.SerializerMethodField()
 
     class Meta:
         model = Booking
@@ -36,6 +38,8 @@ class BookingListSerializer(serializers.ModelSerializer):
             "country_snapshot",
             "promoter_name_snapshot",
             "primary_assignment",
+            "days_out",
+            "readiness",
             "created_at",
             "updated_at",
         )
@@ -56,11 +60,58 @@ class BookingListSerializer(serializers.ModelSerializer):
     def get_venue(self, booking):
         return None if not booking.venue else {"id": booking.venue_id, "name": booking.venue.name}
 
+    def get_days_out(self, booking):
+        from django.utils import timezone
+
+        return (booking.event_date - timezone.localdate()).days
+
+    def get_readiness(self, booking):
+        production = getattr(booking, "production_advance", None)
+        travel = getattr(booking, "travel_itinerary", None)
+        call_sheet = getattr(booking, "call_sheet", None)
+        latest_version = call_sheet.versions.first() if call_sheet else None
+        items = {
+            "production": {
+                "status": production.status if production else "missing",
+                "href": f"/workspace/production/{production.id}"
+                if production
+                else f"/workspace/production/new?booking={booking.id}",
+            },
+            "travel": {
+                "status": travel.status if travel else "missing",
+                "href": f"/workspace/travel/{travel.id}"
+                if travel
+                else f"/workspace/travel/new?booking={booking.id}",
+            },
+            "call_sheet": {
+                "status": latest_version.status if latest_version else "missing",
+                "href": f"/workspace/call-sheets/{latest_version.id}"
+                if latest_version
+                else f"/workspace/bookings/{booking.id}/call-sheet",
+            },
+        }
+        if self.context.get("include_contracts"):
+            contract = booking.contracts.first()
+            items["contract"] = {
+                "status": contract.status if contract else "missing",
+                "href": f"/workspace/contracts/{contract.id}"
+                if contract
+                else f"/workspace/contracts/new?booking={booking.id}",
+            }
+        if self.context.get("include_finance"):
+            invoice = booking.invoices.first()
+            items["invoice"] = {
+                "status": invoice.status if invoice else "missing",
+                "href": f"/workspace/finance/invoices/{invoice.id}"
+                if invoice
+                else f"/workspace/finance/invoices/new?booking={booking.id}",
+            }
+        return items
+
     def get_primary_assignment(self, booking):
-        assignment = (
-            booking.team_assignments.filter(is_active=True, is_primary=True)
-            .select_related("membership__user")
-            .first()
+        assignment = next(
+            (item for item in booking.team_assignments.all() if item.is_active and item.is_primary),
+            None,
         )
         if not assignment:
             return None

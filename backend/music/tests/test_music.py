@@ -231,7 +231,9 @@ def test_member_read_manager_manage_staff_denied_and_superuser_cross_org(
     member = user_for(organization, Membership.Role.MEMBER, "music-member@example.invalid")
     manager = user_for(organization, Membership.Role.MANAGER, "music-manager@example.invalid")
     client.force_login(member)
-    assert client.get(f"/api/music/releases/?organization_id={organization.id}").status_code == 200
+    response = client.get(f"/api/music/releases/?organization_id={organization.id}")
+    assert response.status_code == 200
+    assert {"days_to_release", "task_progress", "campaign_state"} <= set(response.json()[0])
     denied = client.post(
         "/api/music/tracks/",
         {
@@ -287,6 +289,7 @@ def test_artist_portal_is_limited_to_linked_artist(client, organization, owner, 
     payload = client.get("/api/artist-portal/music/").json()
     assert [item["title"] for item in payload["releases"]] == ["First Release"]
     assert all("internal_notes" not in item for item in payload["releases"])
+    assert all("task_progress" not in item for item in payload["releases"])
 
 
 def test_developer_scope_org_isolation_and_privacy(
@@ -376,9 +379,7 @@ def test_concurrent_release_transitions_are_serialized_on_postgresql(organizatio
         try:
             thread_actor = User.objects.get(pk=owner.pk)
             thread_release = Release.objects.get(pk=release.pk)
-            transition_release(
-                actor=thread_actor, release=thread_release, to_status=to_status
-            )
+            transition_release(actor=thread_actor, release=thread_release, to_status=to_status)
             return "ok"
         except ValidationError:
             return "rejected"

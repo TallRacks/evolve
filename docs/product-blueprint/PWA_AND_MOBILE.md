@@ -29,3 +29,9 @@ Operational and authenticated content is network-only. The worker ignores `/api/
 ## Deferred capabilities
 
 Push delivery, app badges, background sync, offline mutations, camera-specific workflows, and OS share targets are not claimed. They require explicit security, permission, and delivery designs.
+
+## Connectivity semantics
+
+`navigator.onLine` is advisory. Evolve starts in a silent checking state and verifies same-origin server reachability through `/api/health/`. Browser online/offline events trigger conservative probes; one transient failure is retried before Offline is declared. Any HTTP response proves network reachability, so 401, 403, and 500 responses never mean device offline.
+
+Genuine loss shows a compact Offline state. Reconnection shows Reconnecting, then Back online, which dismisses automatically. Failed sensitive mutations are never replayed. There is no offline mutation queue. A 30-second reachability poll repairs missed browser events without creating high background traffic.
