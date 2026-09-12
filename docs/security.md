@@ -19,3 +19,7 @@ APIs, audit events, and logs.
 
 
 Transactional email validates addresses, rejects sender/subject header newlines, escapes HTML content, verifies SMTP TLS certificates, and stores connector credentials only through external environment references. Delivery logs omit bodies, invitation tokens, cookies, and provider secrets. Email links do not bypass sign-in or resource authorization.
+
+## Native and channel boundary
+
+AI, web, PWA, WhatsApp, inbound email, and native mobile are clients of the same Django authorization boundary. Native credentials are not yet implemented and must use the reviewed Keychain/Keystore design before production. This phase does not alter migration history or deploy experimental mobile authentication.

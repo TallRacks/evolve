@@ -1,0 +1,36 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { AppShell } from "@/components/app-shell";
+import { RouteGuard } from "@/components/auth/route-guard";
+import { useAuth } from "@/components/auth/auth-provider";
+import { apiRequest } from "@/lib/api/client";
+
+function Frame({ children }: { children: React.ReactNode }) { return <RouteGuard portal="workspace"><AppShell organizationScoped>{children}</AppShell></RouteGuard>; }
+type Board = { board: string; columns: string[]; cards: { id: string; title?: string; reference?: string; status: string; priority?: string; assignee?: string | null; artist?: string }[]; list_supported: boolean };
+
+export function LiveBoardsPage() {
+  const { activeOrganizationId } = useAuth();
+  const [key, setKey] = useState("tasks");
+  const [data, setData] = useState<Board | null>(null);
+  useEffect(() => { if (activeOrganizationId) void apiRequest<Board>(`/api/workspace/boards/${key}/?organization_id=${activeOrganizationId}`).then(setData); }, [activeOrganizationId, key]);
+  return <Frame><main className="p-4 sm:p-8"><p className="text-xs uppercase tracking-[0.2em] text-amber-400">Workspace</p><h1 className="mt-2 text-3xl font-semibold">Operational boards</h1><p className="mt-2 text-neutral-400">Live domain records grouped by authoritative lifecycle status.</p><div className="mt-6 flex flex-wrap gap-2">{["tasks", "bookings", "production", "campaigns", "releases"].map((item) => <button className={`min-h-10 rounded-lg border px-3 text-sm ${key === item ? "border-amber-400 text-amber-300" : "border-neutral-700 text-neutral-400"}`} key={item} onClick={() => setKey(item)}>{item[0].toUpperCase() + item.slice(1)}</button>)}</div><div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">{data?.columns.map((column) => <section className="min-h-40 rounded-xl border border-neutral-800 bg-neutral-950 p-3" key={column}><h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-400">{column.replaceAll("_", " ")}</h2><div className="space-y-2">{data.cards.filter((card) => card.status === column).map((card) => <article className="rounded-lg border border-neutral-800 bg-neutral-900 p-3" key={card.id}><p className="font-medium">{card.title ?? card.reference}</p><p className="mt-1 text-xs text-neutral-500">{card.artist ?? card.assignee ?? card.priority ?? "Open record"}</p></article>)}</div></section>)}</div></main></Frame>;
+}
+
+type Approval = { id: string; reference: string; title: string; artist: string | null; approver: string; status: string };
+export function LiveApprovalsPage() {
+  const { activeOrganizationId } = useAuth();
+  const [view, setView] = useState("pending"); const [rows, setRows] = useState<Approval[]>([]);
+  const load = () => activeOrganizationId && apiRequest<Approval[]>(`/api/workspace/approvals/?organization_id=${activeOrganizationId}&view=${view}`).then(setRows);
+  useEffect(() => { void load(); }, [activeOrganizationId, view]);
+  async function decide(id: string, decision: string) { await apiRequest("/api/workspace/approvals/", { method: "POST", body: JSON.stringify({ approval_id: id, decision }) }); await load(); }
+  return <Frame><main className="p-4 sm:p-8"><p className="text-xs uppercase tracking-[0.2em] text-amber-400">Workspace</p><h1 className="mt-2 text-3xl font-semibold">Approvals</h1><div className="mt-6 flex gap-2">{[["pending", "Pending My Approval"], ["requested", "Requested by Me"], ["completed", "Completed"]].map(([value, label]) => <button className={`min-h-10 rounded-lg border px-3 text-sm ${view === value ? "border-amber-400 text-amber-300" : "border-neutral-700 text-neutral-400"}`} key={value} onClick={() => setView(value)}>{label}</button>)}</div><div className="mt-6 space-y-3">{rows.map((row) => <article className="flex flex-col justify-between gap-3 rounded-xl border border-neutral-800 p-4 sm:flex-row sm:items-center" key={row.id}><div><p className="font-medium">{row.reference} / {row.title}</p><p className="mt-1 text-sm text-neutral-500">{row.artist ?? "No artist"} · {row.approver} · {row.status}</p></div>{view === "pending" && <div className="flex gap-2"><button className="min-h-10 rounded-lg bg-emerald-700 px-3 text-sm" onClick={() => void decide(row.id, "approved")}>Approve</button><button className="min-h-10 rounded-lg border border-red-800 px-3 text-sm text-red-300" onClick={() => void decide(row.id, "rejected")}>Reject</button></div>}</article>)}</div></main></Frame>;
+}
+
+type Automation = { id: string; name: string; event_key: string; action_key: string; is_active: boolean; last_run_at: string | null };
+export function LiveAutomationsPage() {
+  const { activeOrganizationId } = useAuth(); const [rows, setRows] = useState<Automation[]>([]);
+  const load = () => activeOrganizationId && apiRequest<Automation[]>(`/api/workspace/automations/?organization_id=${activeOrganizationId}`).then(setRows);
+  useEffect(() => { void load(); }, [activeOrganizationId]);
+  return <Frame><main className="p-4 sm:p-8"><p className="text-xs uppercase tracking-[0.2em] text-amber-400">Workspace</p><h1 className="mt-2 text-3xl font-semibold">Automations</h1><p className="mt-2 text-neutral-400">Allowlisted event-driven rules. Rules are inactive until deliberately activated.</p><div className="mt-6 space-y-3">{rows.map((row) => <article className="flex flex-col justify-between gap-2 rounded-xl border border-neutral-800 p-4 sm:flex-row" key={row.id}><div><p className="font-medium">{row.name}</p><p className="text-sm text-neutral-500">WHEN {row.event_key} · THEN {row.action_key}</p></div><span className="text-xs text-neutral-400">{row.is_active ? "Active" : "Inactive"} · {row.last_run_at ? "Ran recently" : "Never run"}</span></article>)}{!rows.length && <p className="rounded-xl border border-dashed border-neutral-700 p-8 text-sm text-neutral-500">No automations configured.</p>}</div></main></Frame>;
+}

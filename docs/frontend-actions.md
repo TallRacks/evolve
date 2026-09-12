@@ -84,3 +84,7 @@ prompt. Every action calls a backend-authorized endpoint.
 
 
 Milestone 25 adds explicit Save and Reset controls to notification preferences, one-time invitation delivery outcome messaging, and a platform-superuser email delivery table with constrained Retry actions. Connector configuration links to delivery activity and identifies external SPF/DKIM/DMARC responsibilities.
+
+## Route parity regression
+
+`npm run test:routes` verifies canonical operational and administrative destinations exist alongside `npm run test:actions`. Merged destinations are documented in `docs/page-parity.md`.

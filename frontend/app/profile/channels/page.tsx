@@ -1,2 +1,2 @@
-import { ChannelsPage } from "@/components/milestone26-pages";
-export default ChannelsPage;
+import { ProfileChannelsPage } from "@/components/milestone27-channel-pages";
+export default ProfileChannelsPage;

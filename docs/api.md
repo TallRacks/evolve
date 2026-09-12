@@ -102,3 +102,7 @@ are configured, never credential values. SMTP send-test accepts one recipient an
 ## Notification email APIs
 
 GET/PATCH /api/notification-preferences/ reads or updates the authenticated user's in-app and email category choices; POST /api/notification-preferences/reset/ restores defaults. GET /api/platform/email-deliveries/ supports platform-superuser filtering and pagination. POST /api/platform/email-deliveries/{id}/retry/ explicitly retries an eligible failed/not-configured notification attempt. There is no generic send-email endpoint.
+
+## Multi-client contracts
+
+Web and native clients consume Django/DRF under `/api/`. Django remains the source of truth for authentication, organization scope, permissions, lifecycle transitions, Action Gateway policy, and validation. Native production credentials are not implemented; the proposed reviewed design is documented in `docs/mobile-architecture.md`.

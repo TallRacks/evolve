@@ -1,2 +1,2 @@
-import { AutomationsPage } from "@/components/milestone26-pages";
-export default AutomationsPage;
+import { LiveAutomationsPage } from "@/components/milestone27-live-pages";
+export default LiveAutomationsPage;

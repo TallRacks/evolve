@@ -1,2 +1,2 @@
-import { ApprovalsPage } from "@/components/milestone26-pages";
-export default ApprovalsPage;
+import { LiveApprovalsPage } from "@/components/milestone27-live-pages";
+export default LiveApprovalsPage;

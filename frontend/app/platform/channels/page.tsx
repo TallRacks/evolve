@@ -1,2 +1,2 @@
-import { AISettingsPage } from "@/components/milestone26-pages";
-export default AISettingsPage;
+import { PlatformChannelsPage } from "@/components/milestone27-channel-pages";
+export default PlatformChannelsPage;

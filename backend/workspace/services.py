@@ -32,11 +32,13 @@ def propose_action(*, actor, organization, channel, action_key, payload, idempot
 
 
 @transaction.atomic
-def execute_action(*, action_request_id, actor, confirmation_hash=None):
+def execute_action(*, action_request_id, actor, confirmation_hash=None, channel=None):
     action = ActionRequest.objects.select_for_update().select_related("organization").get(pk=action_request_id)
     now = timezone.now()
     if action.actor_id != actor.pk or not actor.memberships.filter(is_active=True, organization_id=action.organization_id).exists():
         raise PermissionError("Action context does not match.")
+    if channel is not None and action.channel != channel:
+        raise PermissionError("Action channel does not match.")
     if action.status != ActionRequest.Status.PROPOSED:
         raise ValueError("Action is no longer executable.")
     if action.expires_at <= now:

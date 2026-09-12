@@ -1,2 +1,2 @@
-import { BoardsPage } from "@/components/milestone26-pages";
-export default BoardsPage;
+import { LiveBoardsPage } from "@/components/milestone27-live-pages";
+export default LiveBoardsPage;

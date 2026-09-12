@@ -6,6 +6,9 @@ from django.conf import settings
 from django.db import models
 
 from core.models import TimestampedModel
+from .automation_models import AutomationExecution
+from .channel_models import ChannelVerification, InboundMessage, MessagingConnector, MessagingIdentity
+from .collaboration_models import Comment, CommentMention
 
 
 class ActionRequest(TimestampedModel):

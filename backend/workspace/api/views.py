@@ -44,7 +44,7 @@ class ActionProposeView(APIView):
 class ActionExecuteView(APIView):
     def post(self, request, action_id):
         try:
-            action = execute_action(action_request_id=action_id, actor=request.user, confirmation_hash=request.data.get("confirmation_hash"))
+            action = execute_action(action_request_id=action_id, actor=request.user, confirmation_hash=request.data.get("confirmation_hash"), channel=request.data.get("channel"))
         except (ActionRequest.DoesNotExist, ValueError, PermissionError) as exc:
             raise ValidationError(str(exc)) from exc
         return Response({"id": action.id, "status": action.status, "result_summary": action.result_summary})
