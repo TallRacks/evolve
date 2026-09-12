@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "white_label",
     "audit",
     "core",
+    "workspace",
 ]
 
 MIDDLEWARE = [

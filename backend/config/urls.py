@@ -27,4 +27,5 @@ urlpatterns = [
     path("api/", include("venues.api.urls")),
     path("api/", include("audit.api.urls")),
     path("api/", include("white_label.api.urls")),
+    path("api/", include("workspace.api.urls")),
 ]
