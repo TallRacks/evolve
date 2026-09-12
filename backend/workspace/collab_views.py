@@ -14,13 +14,29 @@ from organizations.selectors import organizations_for_user
 
 from .collaboration_models import Comment, CommentMention
 
-CONTEXT_PERMISSIONS = {"task": "task.view", "booking": "booking.view", "campaign": "campaign.view", "production": "production.view"}
+CONTEXT_PERMISSIONS = {
+    "document": "document.view",
+    "task": "task.view",
+    "booking": "booking.view",
+    "campaign": "campaign.view",
+    "production": "production.view",
+}
 
 
 class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
-        fields = ("id", "organization", "author", "context_type", "context_id", "body", "created_at", "updated_at", "edited_at")
+        fields = (
+            "id",
+            "organization",
+            "author",
+            "context_type",
+            "context_id",
+            "body",
+            "created_at",
+            "updated_at",
+            "edited_at",
+        )
         read_only_fields = ("id", "organization", "author", "created_at", "updated_at", "edited_at")
 
 
@@ -30,8 +46,15 @@ def scoped_org(request, organization_id):
 
 def mention_memberships(body, organization):
     names = {value.lower() for value in re.findall(r"@([A-Za-z0-9._-]{2,80})", body)}
-    memberships = Membership.objects.active().filter(organization=organization).select_related("user")
-    return [item for item in memberships if item.user.email.lower() in names or item.user.get_full_name().lower().replace(" ", ".") in names]
+    memberships = (
+        Membership.objects.active().filter(organization=organization).select_related("user")
+    )
+    return [
+        item
+        for item in memberships
+        if item.user.email.lower() in names
+        or item.user.get_full_name().lower().replace(" ", ".") in names
+    ]
 
 
 class CommentListView(APIView):
@@ -47,21 +70,55 @@ class CommentListView(APIView):
     def post(self, request):
         organization = scoped_org(request, request.data.get("organization_id"))
         context_type = request.data.get("context_type")
-        if context_type not in CONTEXT_PERMISSIONS or not user_has_organization_permission(request.user, organization, CONTEXT_PERMISSIONS[context_type]):
+        if context_type not in CONTEXT_PERMISSIONS or not user_has_organization_permission(
+            request.user, organization, CONTEXT_PERMISSIONS[context_type]
+        ):
             raise PermissionDenied()
-        serializer = CommentSerializer(data={"context_type": context_type, "context_id": request.data.get("context_id"), "body": request.data.get("body", "")})
+        if context_type == "document":
+            from documents.selectors import documents_for_user
+
+            if (
+                not documents_for_user(request.user, organization)
+                .filter(pk=request.data.get("context_id"))
+                .exists()
+            ):
+                raise PermissionDenied()
+        serializer = CommentSerializer(
+            data={
+                "context_type": context_type,
+                "context_id": request.data.get("context_id"),
+                "body": request.data.get("body", ""),
+            }
+        )
         serializer.is_valid(raise_exception=True)
         comment = serializer.save(organization=organization, author=request.user)
         mentioned = mention_memberships(comment.body, organization)
-        CommentMention.objects.bulk_create([CommentMention(comment=comment, membership=item) for item in mentioned], ignore_conflicts=True)
+        CommentMention.objects.bulk_create(
+            [CommentMention(comment=comment, membership=item) for item in mentioned],
+            ignore_conflicts=True,
+        )
         if mentioned:
-            create_notification(organization=organization, notification_type="comment.mentioned", category="team", title=f"{request.user.get_full_name() or request.user.email} mentioned you", message=comment.body[:1000], users=[item.user for item in mentioned], actor=request.user, action_url=f"/workspace/{context_type}/{comment.context_id}")
+            create_notification(
+                organization=organization,
+                notification_type="comment.mentioned",
+                category="team",
+                title=f"{request.user.get_full_name() or request.user.email} mentioned you",
+                message=comment.body[:1000],
+                users=[item.user for item in mentioned],
+                actor=request.user,
+                action_url=f"/workspace/{context_type}/{comment.context_id}",
+            )
         return Response(CommentSerializer(comment).data, status=201)
 
 
 class CommentDetailView(APIView):
     def patch(self, request, comment_id):
-        comment = get_object_or_404(Comment, pk=comment_id, organization__in=organizations_for_user(request.user), archived_at__isnull=True)
+        comment = get_object_or_404(
+            Comment,
+            pk=comment_id,
+            organization__in=organizations_for_user(request.user),
+            archived_at__isnull=True,
+        )
         if comment.author_id != request.user.pk:
             raise PermissionDenied()
         body = request.data.get("body", "")
@@ -73,8 +130,15 @@ class CommentDetailView(APIView):
         return Response(CommentSerializer(comment).data)
 
     def delete(self, request, comment_id):
-        comment = get_object_or_404(Comment, pk=comment_id, organization__in=organizations_for_user(request.user), archived_at__isnull=True)
-        if comment.author_id != request.user.pk and not user_has_organization_permission(request.user, comment.organization, "organization.manage"):
+        comment = get_object_or_404(
+            Comment,
+            pk=comment_id,
+            organization__in=organizations_for_user(request.user),
+            archived_at__isnull=True,
+        )
+        if comment.author_id != request.user.pk and not user_has_organization_permission(
+            request.user, comment.organization, "organization.manage"
+        ):
             raise PermissionDenied()
         comment.archived_at = timezone.now()
         comment.save(update_fields=["archived_at", "updated_at"])

@@ -549,3 +549,57 @@ class DocumentLink(TimestampedModel):
 
     def delete(self, *args, **kwargs):
         raise ValidationError("Unlink documents through the document service.")
+
+
+class OfficeDocumentContent(TimestampedModel):
+    class Format(models.TextChoices):
+        DOCUMENT = "document", "Document"
+        NOTE = "note", "Note"
+        CHECKLIST = "checklist", "Checklist"
+        SHEET = "sheet", "Sheet"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    document = models.OneToOneField(
+        Document, on_delete=models.PROTECT, related_name="office_content"
+    )
+    format = models.CharField(max_length=16, choices=Format.choices, default=Format.DOCUMENT)
+    content_json = models.JSONField(default=dict)
+    revision_number = models.PositiveIntegerField(default=0)
+    last_edited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="office_documents_edited",
+    )
+    last_edited_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(revision_number__gte=0), name="office_content_revision_nonnegative"
+            )
+        ]
+
+
+class DocumentRevision(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    document = models.ForeignKey(
+        Document, on_delete=models.PROTECT, related_name="office_revisions"
+    )
+    revision_number = models.PositiveIntegerField()
+    content_json = models.JSONField(default=dict)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="office_revisions_created",
+    )
+    change_summary = models.CharField(max_length=500, blank=True)
+
+    class Meta:
+        ordering = ("-revision_number",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("document", "revision_number"), name="unique_office_document_revision"
+            )
+        ]

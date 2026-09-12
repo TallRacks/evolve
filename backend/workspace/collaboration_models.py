@@ -9,14 +9,19 @@ from core.models import TimestampedModel
 
 class Comment(TimestampedModel):
     class Context(models.TextChoices):
+        DOCUMENT = "document", "Document"
         TASK = "task", "Task"
         BOOKING = "booking", "Booking"
         CAMPAIGN = "campaign", "Campaign"
         PRODUCTION = "production", "Production"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    organization = models.ForeignKey("organizations.Organization", on_delete=models.PROTECT, related_name="comments")
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="comments")
+    organization = models.ForeignKey(
+        "organizations.Organization", on_delete=models.PROTECT, related_name="comments"
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="comments"
+    )
     context_type = models.CharField(max_length=20, choices=Context.choices)
     context_id = models.UUIDField()
     body = models.TextField(max_length=5000)
@@ -31,11 +36,15 @@ class Comment(TimestampedModel):
 class CommentMention(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     comment = models.ForeignKey(Comment, on_delete=models.PROTECT, related_name="mentions")
-    membership = models.ForeignKey("organizations.Membership", on_delete=models.PROTECT, related_name="comment_mentions")
+    membership = models.ForeignKey(
+        "organizations.Membership", on_delete=models.PROTECT, related_name="comment_mentions"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
-    class Meta:
-        constraints = [models.UniqueConstraint(fields=("comment", "membership"), name="unique_comment_mention")]
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=("comment", "membership"), name="unique_comment_mention")
+        ]
 
     def __str__(self):
         return f"{self.comment_id}:{self.membership_id}"
