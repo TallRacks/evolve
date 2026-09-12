@@ -147,3 +147,45 @@ class StorageProvider(TimestampedModel):
 
     def __str__(self):
         return self.name
+
+
+class StoragePolicy(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    max_document_size_bytes = models.PositiveBigIntegerField(default=25 * 1024 * 1024)
+    max_image_size_bytes = models.PositiveBigIntegerField(default=15 * 1024 * 1024)
+    max_audio_size_bytes = models.PositiveBigIntegerField(default=250 * 1024 * 1024)
+    max_video_size_bytes = models.PositiveBigIntegerField(default=25 * 1024 * 1024)
+    audio_upload_enabled = models.BooleanField(default=False)
+    video_upload_enabled = models.BooleanField(default=False)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
+
+    def clean(self):
+        ceilings = {
+            "max_document_size_bytes": 100 * 1024 * 1024,
+            "max_image_size_bytes": 50 * 1024 * 1024,
+            "max_audio_size_bytes": 1024 * 1024 * 1024,
+            "max_video_size_bytes": 2 * 1024 * 1024 * 1024,
+        }
+        for field, ceiling in ceilings.items():
+            value = getattr(self, field)
+            if value <= 0 or value > ceiling:
+                raise ValidationError(
+                    {field: "Value must be positive and within the platform hard ceiling."}
+                )
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(max_document_size_bytes__gt=0),
+                name="storage_policy_document_positive",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(max_image_size_bytes__gt=0), name="storage_policy_image_positive"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(max_audio_size_bytes__gt=0), name="storage_policy_audio_positive"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(max_video_size_bytes__gt=0), name="storage_policy_video_positive"
+            ),
+        ]

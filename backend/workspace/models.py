@@ -7,7 +7,12 @@ from django.db import models
 
 from core.models import TimestampedModel
 from .automation_models import AutomationExecution
-from .channel_models import ChannelVerification, InboundMessage, MessagingConnector, MessagingIdentity
+from .channel_models import (
+    ChannelVerification,
+    InboundMessage,
+    MessagingConnector,
+    MessagingIdentity,
+)
 from .collaboration_models import Comment, CommentMention
 
 
@@ -44,8 +49,21 @@ class ActionRequest(TimestampedModel):
         indexes = [models.Index(fields=("organization", "status", "expires_at"))]
 
     @staticmethod
-    def make_confirmation_hash(*, actor_id, organization_id, channel, action_key, payload, expires_at):
-        value = json.dumps({"actor": str(actor_id), "organization": str(organization_id), "channel": channel, "action": action_key, "payload": payload, "expires": expires_at.isoformat()}, sort_keys=True, separators=(",", ":"))
+    def make_confirmation_hash(
+        *, actor_id, organization_id, channel, action_key, payload, expires_at
+    ):
+        value = json.dumps(
+            {
+                "actor": str(actor_id),
+                "organization": str(organization_id),
+                "channel": channel,
+                "action": action_key,
+                "payload": payload,
+                "expires": expires_at.isoformat(),
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        )
         return hashlib.sha256(value.encode()).hexdigest()
 
 
@@ -69,3 +87,65 @@ class Automation(TimestampedModel):
     last_run_at = models.DateTimeField(null=True, blank=True)
     organization = models.ForeignKey("organizations.Organization", on_delete=models.PROTECT)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+
+
+class Workspace(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey(
+        "organizations.Organization", on_delete=models.CASCADE, related_name="workspaces"
+    )
+    name = models.CharField(max_length=160)
+    slug = models.SlugField(max_length=120)
+    description = models.TextField(blank=True, max_length=2000)
+    icon = models.CharField(max_length=40, blank=True)
+    archived = models.BooleanField(default=False)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="workspaces_created",
+    )
+
+    class Meta:
+        ordering = ("name",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("organization", "slug"), name="unique_workspace_slug_per_org"
+            )
+        ]
+
+
+class Board(TimestampedModel):
+    class Source(models.TextChoices):
+        TASKS = "tasks", "Tasks"
+        BOOKINGS = "bookings", "Bookings"
+        PRODUCTION = "production", "Production"
+        CAMPAIGN_ROLLOUT = "campaign_rollout", "Campaigns and Rollouts"
+        RELEASES = "releases", "Releases"
+
+    class View(models.TextChoices):
+        LIST = "list", "List"
+        BOARD = "board", "Board"
+        CALENDAR = "calendar", "Calendar"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    workspace = models.ForeignKey(Workspace, on_delete=models.CASCADE, related_name="boards")
+    name = models.CharField(max_length=160)
+    source_type = models.CharField(max_length=32, choices=Source.choices)
+    description = models.TextField(blank=True, max_length=1000)
+    default_view = models.CharField(max_length=16, choices=View.choices, default=View.LIST)
+    archived = models.BooleanField(default=False)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="boards_created",
+    )
+
+    class Meta:
+        ordering = ("name",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("workspace", "name"), name="unique_board_name_per_workspace"
+            )
+        ]

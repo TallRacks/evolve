@@ -3,7 +3,12 @@ from django.urls import path
 from ..domain_views import ApprovalHubView, BoardView
 from ..channel_settings_views import ChannelSettingsView
 from ..collab_views import CommentDetailView, CommentListView
-from ..channel_views import ChannelConnectView, ChannelDisconnectView, InboundEmailWebhookView, WhatsAppWebhookView
+from ..channel_views import (
+    ChannelConnectView,
+    ChannelDisconnectView,
+    InboundEmailWebhookView,
+    WhatsAppWebhookView,
+)
 from .views import (
     ActionExecuteView,
     ActionProposeView,
@@ -12,6 +17,12 @@ from .views import (
     MyWorkView,
     PlatformAIView,
     WorkspaceInboxView,
+    WorkspaceListView,
+    WorkspaceSummaryView,
+    WorkspaceDetailView,
+    BoardDetailView,
+    WorkspaceBoardView,
+    DailySummaryView,
 )
 
 urlpatterns = [
@@ -19,6 +30,13 @@ urlpatterns = [
     path("platform/channels/", ChannelSettingsView.as_view()),
     path("workspace/approvals/", ApprovalHubView.as_view()),
     path("workspace/boards/<str:board_key>/", BoardView.as_view()),
+    path("workspaces/", WorkspaceListView.as_view()),
+    path("workspaces/<uuid:workspace_id>/summary/", WorkspaceSummaryView.as_view()),
+    path("workspaces/<uuid:workspace_id>/boards/", WorkspaceBoardView.as_view()),
+    path("workspaces/<uuid:workspace_id>/", WorkspaceDetailView.as_view()),
+    path("workspace/summary/", DailySummaryView.as_view()),
+    path("boards/<uuid:board_id>/", BoardDetailView.as_view()),
+    path("boards/<uuid:board_id>/<str:action>/", BoardDetailView.as_view()),
     path("workspace/comments/", CommentListView.as_view()),
     path("workspace/comments/<uuid:comment_id>/", CommentDetailView.as_view()),
     path("messaging/webhooks/whatsapp/<uuid:connector_id>/", WhatsAppWebhookView.as_view()),

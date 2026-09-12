@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from audit.services import record_event
-from integrations.models import EmailConnector, StorageProvider
+from integrations.models import EmailConnector, StoragePolicy, StorageProvider
 from integrations.services import send_test_email, test_email_connector, test_storage_provider
 from organizations.api.permissions import PlatformSuperuser
 
@@ -147,6 +147,64 @@ class StorageDetailView(ConfigDetailView):
     model = StorageProvider
     serializer_class = StorageProviderSerializer
     action_prefix = "storage"
+
+
+class StoragePolicyView(PlatformConfigView):
+    def get(self, request):
+        policy, _ = StoragePolicy.objects.get_or_create(id="00000000-0000-0000-0000-000000000001")
+        return Response(
+            {
+                "id": str(policy.id),
+                "max_document_size_bytes": policy.max_document_size_bytes,
+                "max_image_size_bytes": policy.max_image_size_bytes,
+                "max_audio_size_bytes": policy.max_audio_size_bytes,
+                "max_video_size_bytes": policy.max_video_size_bytes,
+                "audio_upload_enabled": policy.audio_upload_enabled,
+                "video_upload_enabled": policy.video_upload_enabled,
+                "hard_ceilings": {
+                    "document": 100 * 1024 * 1024,
+                    "image": 50 * 1024 * 1024,
+                    "audio": 1024 * 1024 * 1024,
+                    "video": 2 * 1024 * 1024 * 1024,
+                },
+            }
+        )
+
+    def patch(self, request):
+        policy, _ = StoragePolicy.objects.get_or_create(id="00000000-0000-0000-0000-000000000001")
+        values = {}
+        for field in (
+            "max_document_size_bytes",
+            "max_image_size_bytes",
+            "max_audio_size_bytes",
+            "max_video_size_bytes",
+        ):
+            if field in request.data:
+                values[field] = int(request.data[field])
+        for field in ("audio_upload_enabled", "video_upload_enabled"):
+            if field in request.data:
+                values[field] = bool(request.data[field])
+        ceilings = {
+            "max_document_size_bytes": 100 * 1024 * 1024,
+            "max_image_size_bytes": 50 * 1024 * 1024,
+            "max_audio_size_bytes": 1024 * 1024 * 1024,
+            "max_video_size_bytes": 2 * 1024 * 1024 * 1024,
+        }
+        if any(
+            value <= 0 or value > ceilings[field]
+            for field, value in values.items()
+            if field in ceilings
+        ):
+            raise ValidationError(
+                "Upload limits must be positive and within the platform hard ceiling."
+            )
+        for field, value in values.items():
+            setattr(policy, field, value)
+        policy.updated_by = request.user
+        policy.full_clean()
+        policy.save()
+        self.audit(request, "storage.policy_updated", policy, "Updated platform upload policy.")
+        return self.get(request)
 
 
 class StorageTestView(PlatformConfigView):

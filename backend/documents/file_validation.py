@@ -88,6 +88,16 @@ def validate_upload(file, *, document_type=None):
         raise ValidationError({"file": "This file extension is not supported."})
     size = getattr(file, "size", None)
     limit = settings.EVOLVE_MAX_UPLOAD_BYTES
+    from integrations.models import StoragePolicy
+
+    policy = StoragePolicy.objects.first()
+    if policy:
+        configured = (
+            policy.max_image_size_bytes
+            if expected.startswith("image/")
+            else policy.max_document_size_bytes
+        )
+        limit = min(limit, configured)
     if size is None or size > limit:
         raise ValidationError({"file": f"File exceeds the {limit // (1024 * 1024)} MB limit."})
     detected = _detect(file, filename)
