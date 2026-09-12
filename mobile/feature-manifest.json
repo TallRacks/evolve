@@ -1,0 +1,12 @@
+[
+  { "route": "/", "domain": "home", "screen": "Home", "api": "/api/", "permission": "authenticated", "parity": "READ/OPERATE" },
+  { "route": "/my-work", "domain": "workspace", "screen": "My Work", "api": "/api/workspace/", "permission": "authenticated", "parity": "READ/OPERATE" },
+  { "route": "/inbox", "domain": "workspace", "screen": "Inbox", "api": "/api/workspace/", "permission": "authenticated", "parity": "READ/OPERATE" },
+  { "route": "/tasks", "domain": "tasks", "screen": "Tasks", "api": "/api/workspace/", "permission": "tasks.view", "parity": "READ/OPERATE" },
+  { "route": "/artists", "domain": "artists", "screen": "Artists", "api": "/api/artists/", "permission": "artists.view", "parity": "READ/OPERATE" },
+  { "route": "/bookings", "domain": "bookings", "screen": "Bookings", "api": "/api/bookings/", "permission": "bookings.view", "parity": "READ/OPERATE" },
+  { "route": "/calendar", "domain": "calendar", "screen": "Calendar", "api": "/api/calendar/", "permission": "calendar.view", "parity": "READ/OPERATE" },
+  { "route": "/notifications", "domain": "notifications", "screen": "Notifications", "api": "/api/notifications/", "permission": "notifications.view", "parity": "READ/OPERATE" },
+  { "route": "/copilot", "domain": "ai", "screen": "Copilot", "api": "/api/ai/", "permission": "authenticated", "parity": "READ/OPERATE" },
+  { "route": "/profile", "domain": "account", "screen": "Profile / More", "api": "/api/profile/", "permission": "authenticated", "parity": "READ/OPERATE" }
+]

@@ -1,0 +1,2 @@
+import { NativeCard, NativeScreen } from "../components/NativeScreen";
+export default function Profile() { return <NativeScreen title="Profile"><NativeCard title="Workspace" detail="Organization switching is server-authorized and explicit." /><NativeCard title="Connected channels" detail="WhatsApp and Email Agent are unavailable until platform configuration and identity verification." /><NativeCard title="Security" detail="Native authentication is pending security review." /></NativeScreen>; }

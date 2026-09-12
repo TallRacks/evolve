@@ -1,0 +1,2 @@
+import { NativeCard, NativeScreen } from "../../components/NativeScreen";
+export default function Inbox() { return <NativeScreen title="Inbox"><NativeCard title="All" detail="Notifications, assignments, approvals, mentions, and AI confirmations." /><NativeCard title="Assigned to me" detail="Task assignments are derived from the notification source of truth." /><NativeCard title="Approvals" detail="Open and act on authorized approval requests." /><NativeCard title="AI confirmations" detail="Confirmations are exact, expiring, and server validated." /></NativeScreen>; }

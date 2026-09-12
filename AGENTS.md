@@ -56,6 +56,10 @@ their requirements are defined.
   relevant container health checks.
 - Do not weaken tests, checks, or compiler settings to obtain a passing result.
 
+## Multi-client product rule
+
+Evolve ships as a Next.js web/PWA client and a genuine React Native/Expo client. Every new product feature must explicitly account for Desktop, Tablet, Mobile Web, installed PWA, native iOS, Android implications, and shared API impact. Native screens consume Django APIs and never replace server-side authorization. Do not introduce native production authentication or device credential migrations without the documented security decision gate.
+
 ## Git and security
 
 - Do not commit generated dependencies, build output, local databases, environment

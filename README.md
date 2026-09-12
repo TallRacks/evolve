@@ -1,6 +1,8 @@
 # Evolve v2
 
 Private artist-management and operations platform. The repository contains the identity,
+
+Evolve is a multi-client product: `frontend/` is the Next.js web/PWA client and `mobile/` is the genuine React Native/Expo client. Both consume the Django API; the PWA is not a substitute for native mobile. See `docs/page-parity.md`, `docs/mobile-architecture.md`, and `docs/mobile-ios.md`.
 organization, white-label, artist, relationship, and booking foundations.
 
 Milestone 14 adds a dedicated Finance domain for invoice snapshots, line items, recorded external
@@ -171,3 +173,17 @@ used when a provider is unconfigured.
 ## Milestone 25: transactional email
 
 Selected invitations, task assignments, Contract approvals, and published Call Sheets can use the active default SMTP connector after commit. Per-category in-app/email preferences and platform-superuser delivery logs are available. Production credentials remain external; an unconfigured connector is a supported state recorded as not_configured. See docs/email-delivery.md and docs/email-connectors.md.
+
+## Native development
+
+The native project is installed independently so the established web lockfile remains stable:
+
+```bash
+cd mobile
+npm install
+npm run test:manifest
+npm run typecheck
+npx expo start
+```
+
+Local native development uses no production credentials. Native production authentication is pending security review; do not point a development build at production by default.

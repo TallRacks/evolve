@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Evolve",
+    "slug": "evolve",
+    "scheme": "evolve",
+    "version": "0.1.0",
+    "orientation": "default",
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router", "expo-secure-store"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pending.evolve"
+    },
+    "extra": { "MOBILE_BUNDLE_IDENTIFIER_DECISION_REQUIRED": true },
+    "android": {
+      "package": "com.pending.evolve"
+    },
+    "experiments": { "typedRoutes": true }
+  }
+}

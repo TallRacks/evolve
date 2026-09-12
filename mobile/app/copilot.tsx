@@ -1,0 +1,3 @@
+import { NativeButton, NativeCard, NativeScreen } from "../components/NativeScreen";
+import { Alert, TextInput } from "react-native";
+export default function Copilot() { return <NativeScreen title="Copilot"><NativeCard title="AI Not Configured" detail="The core Evolve app remains usable. When configured, this screen uses the same Action Gateway and confirmation policy as web." /><TextInput accessibilityLabel="Copilot message" placeholder="Ask what is happening today…" style={{ backgroundColor: "white", borderColor: "#d0d5dd", borderWidth: 1, borderRadius: 12, padding: 14, minHeight: 52 }} /><NativeButton label="Send" onPress={() => Alert.alert("Copilot", "AI provider is not configured.")} /></NativeScreen>; }

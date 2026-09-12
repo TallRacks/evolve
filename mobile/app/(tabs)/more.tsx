@@ -1,0 +1,3 @@
+import { NativeCard, NativeScreen } from "../../components/NativeScreen";
+import { Link } from "expo-router";
+export default function More() { return <NativeScreen title="More"><Link href="/tasks" asChild><NativeCard title="Operations" detail="Tasks, bookings, call sheets, calendar, and travel." /></Link><Link href="/artists" asChild><NativeCard title="Artists" detail="Artists and authorized team context." /></Link><Link href="/copilot" asChild><NativeCard title="Copilot" detail="Full-screen native assistant." /></Link><Link href="/profile" asChild><NativeCard title="Account" detail="Profile, security, channels, and workspace context." /></Link></NativeScreen>; }
