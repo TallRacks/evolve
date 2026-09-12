@@ -161,7 +161,7 @@ their requirements are defined.
 - Campaign Artist, optional Release, ownership Membership, Rollout, milestone, task, and dependency relationships must preserve organization scope.
 - Campaign, Rollout, and Task lifecycle changes use explicit services; task completion records actor/time and reopening is explicit.
 - Task dependencies remain within one Rollout and reject self-links, duplicates, and cycles. Progress and overdue state are derived.
-- Calendar and notification delivery remain deferred read/consumer concerns. Do not add analytics, budgets, integrations, Redis, or Celery.
+- External calendar sync remains deferred. Transactional email is limited to the documented allowlist and synchronous post-commit adapter. Do not add analytics, budgets, integrations, Redis, or Celery.
 
 ## Calendar and document invariants
 
@@ -248,3 +248,13 @@ their requirements are defined.
 - Email and storage records contain safe metadata and controlled `EVOLVE_...` secret references only. Secret values remain external and never enter APIs, models, admin, logs, or audit.
 - Platform connector/storage configuration requires an active superuser; `is_staff` is not authorization. General uploads and automatic email delivery remain disabled.
 - Storage is private by default. Connectivity probes use unique server-generated keys, verify write/read/delete, reject traversal and non-public endpoints, and clean up test objects.
+
+
+## Transactional Email
+
+- Treat Notification as the source event and email as an optional channel; never grant access through delivery.
+- Send only allowlisted sparse templates after transaction.on_commit(). Email failure must not roll back business state.
+- Keep SMTP secrets external under validated EVOLVE_EMAIL_ references. Never log bodies, raw invitation tokens, cookies, passwords, or connector secrets.
+- Preserve independent in-app/email preferences and centralized recipient/resource authorization.
+- EmailDeliveryAttempt is append-only. Sent means SMTP acceptance, not inbox delivery; retries are explicit and platform-superuser only.
+- Do not add marketing mail, bulk sends, tracking, inbound mail, Redis, or Celery without an approved architectural change.

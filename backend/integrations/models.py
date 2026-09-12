@@ -64,6 +64,8 @@ class EmailConnector(TimestampedModel):
         return bool(self.secret_reference and os.environ.get(self.secret_reference))
 
     def clean(self):
+        if any(char in self.from_name for char in "\r\n"):
+            raise ValidationError({"from_name": "Email sender name cannot contain newlines."})
         if self.use_tls and self.use_ssl:
             raise ValidationError("TLS and implicit SSL cannot both be enabled.")
         if not self.host or any(char in self.host for char in "/:@[]"):

@@ -16,3 +16,6 @@ private, link-local, and cloud metadata targets. SMTP hosts may intentionally be
 remain an explicit platform-superuser network trust decision. Connection errors are reduced to safe
 error classes; credential values, provider responses, and authorization material are excluded from
 APIs, audit events, and logs.
+
+
+Transactional email validates addresses, rejects sender/subject header newlines, escapes HTML content, verifies SMTP TLS certificates, and stores connector credentials only through external environment references. Delivery logs omit bodies, invitation tokens, cookies, and provider secrets. Email links do not bypass sign-in or resource authorization.

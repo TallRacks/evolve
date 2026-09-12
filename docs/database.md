@@ -59,7 +59,7 @@ than deleting them. These tables are introduced by `artists.0001_initial`.
 
 ## Calendar and documents
 
-Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. Binary upload, external calendar sync, and notification delivery remain deferred. See `docs/calendar.md` and `docs/documents.md`.
+Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. External calendar sync remains deferred; selected transactional email delivery is documented in docs/email-delivery.md. See `docs/calendar.md` and `docs/documents.md`.
 
 ## Notifications
 
@@ -103,3 +103,8 @@ and `integrations.StorageProvider` store configuration metadata, lifecycle state
 state, and `EVOLVE_EMAIL_...` or `EVOLVE_STORAGE_...` references. Credential values are never database
 fields. The existing normal forward migrations `reporting.0001_initial` and
 `integrations.0001_initial`/`0002_...` own this schema.
+
+
+## Email delivery records
+
+NotificationPreference.email_enabled stores a user/category channel choice independently from in_app_enabled. EmailDeliveryAttempt is append-only, uses UUID identity and idempotency keys, and protects related rows from deletion. It stores no message body, provider password, invitation raw token, or session data. Schema changes are migration notifications.0004.

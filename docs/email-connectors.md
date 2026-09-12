@@ -1,15 +1,9 @@
-# Email Connectors
+# Email connectors
 
-Email connectors are platform-superuser configuration records. Evolve stores SMTP metadata and an
-`EVOLVE_...` environment-variable reference, never the password or API token. Secret provisioning
-remains an external deployment operation; the browser cannot read or edit environment files.
+Email connectors are platform-superuser configuration records. Evolve stores SMTP host, port, sender identity, transport mode, username, and an EVOLVE_EMAIL_ environment-variable reference. The referenced password remains external and is never returned by an API or stored in the database.
 
-SMTP supports explicit TLS or implicit SSL, not both. Test Connection authenticates synchronously;
-Send Test Email sends one controlled system message to the explicitly entered recipient. These
-operations are audited without credentials or message bodies. A successful test is configuration
-health at that moment, not delivery monitoring.
+Exactly one active default connector is used for application mail. TLS certificate verification remains enabled. STARTTLS and implicit SSL are mutually exclusive. Sender names and subjects reject newline injection. Test Connection and Send Test Email are explicit platform operations; transactional delivery uses the same transport after a business transaction commits.
 
-SMTP endpoints are a platform-administrator network trust decision because legitimate private SMTP
-relays may be required. Configuration is therefore superuser-only. SPF, DKIM, DMARC, and sending-domain
-authorization remain external DNS/provider responsibilities. Automatic notification email and provider
-APIs remain deferred.
+The platform delivery view reports attempt status and permits explicit retries of failed or not-configured notification attempts. SMTP sent means accepted by the SMTP server, not delivered to an inbox. Evolve does not automate bounce, complaint, open, or click tracking.
+
+SPF, DKIM, DMARC, mail-domain authorization, reputation, and provider credentials must be configured externally. Production may remain honestly unconfigured: mutations and in-app notifications still succeed and attempts are recorded as not_configured.

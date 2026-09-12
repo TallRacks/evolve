@@ -51,6 +51,9 @@ def create_invitation(
         token_digest=_token_digest(token),
         expires_at=now + INVITATION_LIFETIME,
     )
+    from notifications.email_delivery import schedule_invitation_email
+
+    schedule_invitation_email(invitation, token)
     return CreatedInvitation(invitation=invitation, token=token)
 
 

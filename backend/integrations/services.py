@@ -123,3 +123,26 @@ def test_storage_provider(provider):
     provider.save(
         update_fields=("connection_status", "last_test_message", "last_tested_at", "updated_at")
     )
+
+
+def send_application_email(connector, recipient, subject, text_body, html_body):
+    connector.full_clean()
+    if not connector.is_active:
+        raise ValidationError("Email connector is inactive.")
+    if any(char in subject for char in "\r\n") or len(subject) > 220:
+        raise ValidationError("Invalid email subject.")
+    message = EmailMessage()
+    message["From"] = f"{connector.from_name} <{connector.from_email}>"
+    message["To"] = recipient
+    message["Subject"] = subject
+    if connector.reply_to_email:
+        message["Reply-To"] = connector.reply_to_email
+    message.set_content(text_body)
+    message.add_alternative(html_body, subtype="html")
+    try:
+        with _smtp(connector) as client:
+            client.send_message(message)
+    except ValidationError:
+        raise
+    except Exception as error:
+        raise ValidationError("Email delivery failed.") from error

@@ -1,36 +1,11 @@
 # Notifications
 
-`Notification` stores immutable shared operational content; `NotificationRecipient` stores each user read/archive state. Audit events remain separate immutable evidence.
+Notification is the authoritative operational event shown through recipient-specific in-app rows. Email is an optional delivery channel for a small allowlist of those events; it does not grant access, duplicate business state, or change linked-resource permissions.
 
-Categories are team, bookings, call sheets, music, marketing, documents, finance, and system. Priorities are low, normal, high, and urgent. Preferences are per-user category switches for in-app delivery only.
+Recipient resolution accepts only active users with active organization memberships. Actors are suppressed, recipient uniqueness is database enforced, and internal action URLs are server-generated relative paths. Email delivery rechecks active identity, organization access, resource permission, category preference, address validity, and connector state at send time.
 
-Recipient resolution is centralized and accepts only active users with active organization memberships. Actors are suppressed, recipient uniqueness is database enforced, and notifications never grant linked-resource authorization. Action URLs are server-generated internal relative paths.
+The personal APIs provide a paginated inbox, unread count, read/unread, read-all, archive, and per-category in-app/email preferences. Reset restores code-defined defaults. Email failure does not alter unread state. Users may see the latest email status attached to their own inbox row; full delivery logs are platform-superuser only.
 
-Booking status, Call Sheet publishing, Release scheduling/release, and Rollout task assignment/completion create synchronous notifications inside existing atomic service transactions. Failed outer transactions therefore roll back notification rows. No scheduler exists, so upcoming/overdue notifications are deferred.
+Task assignment/reassignment, Contract approval requests, and published Call Sheets may generate sparse transactional email after commit. Organization invitations use the same delivery adapter without storing the raw invitation token in a log. Other categories remain in-app by default unless an explicit event policy is added.
 
-APIs provide a paginated personal inbox, unread count, read/unread, read-all, archive, and preferences. Platform oversight exposes aggregate metadata only. Organization API keys receive no notification endpoint because inbox content is personal.
-
-Finance emits sparse `invoice.issued`, `payment.recorded`, and `invoice.paid` events. Messages use
-record references and exclude amounts, billing addresses, payer details, notes, and credentials.
-
-Rights emits a sparse royalty.statement_finalized event containing only the statement reference.
-It excludes earnings, percentages, parties, documents, and internal notes.
-
-Messages exclude commercial amounts, secrets, raw invitation tokens, restricted URLs, and sensitive personal data. Email, SMS, push, WhatsApp, WebSockets, Redis, Celery, scheduled delivery, retention automation, and digests are deferred.
-
-## Travel integration
-
-See `docs/travel.md` for the implemented Travel integration and its authorization, privacy, and snapshot rules.
-
-## Production notifications
-
-Production lifecycle and assignment services may create sparse in-app notifications for relevant active Booking team members or the assigned member. Content uses safe identifiers and excludes notes, security detail, Contact details, and other private operational data.
-
-
-## Contract notifications
-
-Approval requests create sparse synchronous in-app notifications containing only the Contract reference and internal action URL. Legal text, values, party addresses, comments, and signing details are excluded. Scheduled expiry reminders remain deferred.
-
-## Milestone 21 Hub
-
-The workspace Notifications Hub retains the existing per-recipient read, unread, archive, filter, and mark-all-read semantics. Mark-all-read is scoped to the authenticated user. The shell bell shows an unread count and a short recent list; notifications remain immutable messages and never grant access to their action destination. Task assignment and selected lifecycle changes emit sparse notifications rather than mirroring every audit event.
+Notification and email content excludes commercial amounts, credentials, raw tokens, restricted documents, contract text, private notes, and sensitive personal data. SMS, WhatsApp, push delivery, WebSockets, digests, scheduled reminders, marketing mail, and bulk organization broadcasts remain deferred.

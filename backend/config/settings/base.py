@@ -113,6 +113,10 @@ SESSION_COOKIE_AGE = 8 * 60 * 60
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 MAX_PASSWORD_AUTH_AGE_SECONDS = 14 * 24 * 60 * 60
 EVOLVE_MAX_UPLOAD_BYTES = env.int("EVOLVE_MAX_UPLOAD_BYTES", default=25 * 1024 * 1024)
+EVOLVE_APP_ORIGIN = env(
+    "EVOLVE_APP_ORIGIN",
+    default=CSRF_TRUSTED_ORIGINS[0] if CSRF_TRUSTED_ORIGINS else "http://localhost:3000",
+)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -493,6 +497,11 @@ UNFOLD = {
                         "link": reverse_lazy(
                             "admin:notifications_notificationpreference_changelist"
                         ),
+                    },
+                    {
+                        "title": "Email delivery attempts",
+                        "icon": "outgoing_mail",
+                        "link": reverse_lazy("admin:notifications_emaildeliveryattempt_changelist"),
                     },
                 ],
             },

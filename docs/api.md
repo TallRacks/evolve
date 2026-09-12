@@ -50,7 +50,7 @@ API credentials may receive `music.read`. `GET /api/developer/releases/` and `GE
 
 ## Calendar and documents
 
-Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. Binary upload, external calendar sync, and notification delivery remain deferred. See `docs/calendar.md` and `docs/documents.md`.
+Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. External calendar sync remains deferred; selected transactional email delivery is documented in docs/email-delivery.md. See `docs/calendar.md` and `docs/documents.md`.
 
 ## Finance API
 
@@ -97,3 +97,8 @@ All require organization authorization plus reporting and source-domain permissi
 `/api/platform/email-connectors/` and `/api/platform/storage/` expose safe metadata and explicit
 lifecycle/test actions to platform superusers only. APIs return only whether referenced credentials
 are configured, never credential values. SMTP send-test accepts one recipient and uses fixed content.
+
+
+## Notification email APIs
+
+GET/PATCH /api/notification-preferences/ reads or updates the authenticated user's in-app and email category choices; POST /api/notification-preferences/reset/ restores defaults. GET /api/platform/email-deliveries/ supports platform-superuser filtering and pagination. POST /api/platform/email-deliveries/{id}/retry/ explicitly retries an eligible failed/not-configured notification attempt. There is no generic send-email endpoint.

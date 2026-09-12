@@ -81,3 +81,6 @@ backend-generated CSV export, and complete private Saved View create/apply/renam
 flows. Platform Email and Storage pages provide create, edit, activate/deactivate, default, and explicit
 test actions. SMTP test delivery uses an accessible single-recipient dialog rather than a browser
 prompt. Every action calls a backend-authorized endpoint.
+
+
+Milestone 25 adds explicit Save and Reset controls to notification preferences, one-time invitation delivery outcome messaging, and a platform-superuser email delivery table with constrained Retry actions. Connector configuration links to delivery activity and identifies external SPF/DKIM/DMARC responsibilities.

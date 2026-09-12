@@ -52,7 +52,7 @@ def notify(row, actor, notification_type, title, users, request=None):
     create_notification(
         organization=row.organization,
         notification_type=notification_type,
-        category=Notification.Category.SYSTEM,
+        category=Notification.Category.CONTRACTS,
         title=title,
         message=f"{row.reference} requires attention.",
         users=users,

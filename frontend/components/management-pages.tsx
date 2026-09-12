@@ -67,6 +67,7 @@ interface Invitation {
   expires_at: string;
   status: string;
   token?: string;
+  email_delivery_status?: string;
 }
 interface PlatformUser {
   id: string;
@@ -689,8 +690,11 @@ export function InvitationsPage() {
       });
       setToken(created.token ?? "");
       setEmail("");
+      const deliveryStatus = (created.email_delivery_status || "pending").replaceAll("_", " ");
       setMessage(
-        "Invitation generated. Copy the token now; it will not be shown again.",
+        created.email_delivery_status === "sent"
+          ? "Invitation generated and email accepted for delivery. Copy the token now; it will not be shown again."
+          : "Invitation generated. Email status: " + deliveryStatus + ". Copy the token now; it will not be shown again.",
       );
       await load();
     } catch (caught) {
@@ -722,7 +726,7 @@ export function InvitationsPage() {
       <PageHeader
         eyebrow="Workspace"
         title="Invitations"
-        description="Seven-day invitations. Email delivery is not configured."
+        description="Seven-day invitations with transactional email delivery when a connector is configured."
       />
       {canManage && (
         <form

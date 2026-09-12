@@ -23,6 +23,9 @@ class Notification(models.Model):
         DOCUMENTS = "documents", "Documents"
         FINANCE = "finance", "Finance"
         RIGHTS = "rights", "Rights & royalties"
+        CONTRACTS = "contracts", "Contracts"
+        PRODUCTION = "production", "Production"
+        SECURITY = "security", "Security"
         SYSTEM = "system", "System"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -117,6 +120,7 @@ class NotificationPreference(TimestampedModel):
     )
     category = models.CharField(max_length=24, choices=Notification.Category.choices)
     in_app_enabled = models.BooleanField(default=True)
+    email_enabled = models.BooleanField(default=False)
 
     class Meta:
         constraints = [
@@ -124,3 +128,82 @@ class NotificationPreference(TimestampedModel):
                 fields=("user", "category"), name="unique_user_notification_category"
             )
         ]
+
+
+class EmailDeliveryAttempt(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        SENT = "sent", "Sent"
+        FAILED = "failed", "Failed"
+        SKIPPED = "skipped", "Skipped"
+        NOT_CONFIGURED = "not_configured", "Not configured"
+        SUPPRESSED = "suppressed", "Suppressed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    notification = models.ForeignKey(
+        Notification,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="email_attempts",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="email_delivery_attempts",
+    )
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="email_delivery_attempts",
+    )
+    connector = models.ForeignKey(
+        "integrations.EmailConnector",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="delivery_attempts",
+    )
+    category = models.CharField(max_length=24)
+    template_key = models.CharField(max_length=80)
+    recipient_email_snapshot = models.EmailField()
+    subject_snapshot = models.CharField(max_length=220)
+    status = models.CharField(max_length=24, choices=Status.choices)
+    provider_message_id = models.CharField(max_length=255, blank=True)
+    failure_code = models.CharField(max_length=40, blank=True)
+    failure_message = models.CharField(max_length=240, blank=True)
+    attempt_number = models.PositiveIntegerField(default=1)
+    idempotency_key = models.CharField(max_length=120, unique=True, null=True, blank=True)
+    attempted_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("-attempted_at",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("notification", "user", "attempt_number"),
+                name="unique_notification_email_attempt",
+            )
+        ]
+        indexes = [
+            models.Index(fields=("status", "attempted_at")),
+            models.Index(fields=("organization", "attempted_at")),
+            models.Index(fields=("connector", "attempted_at")),
+            models.Index(fields=("user", "attempted_at")),
+        ]
+
+    def __str__(self):
+        return f"{self.category}: {self.status}"
+
+    def save(self, *args, **kwargs):
+        if self.pk and type(self).objects.filter(pk=self.pk).exists():
+            raise ValidationError("Email delivery attempts are append-only.")
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Email delivery attempts cannot be deleted.")

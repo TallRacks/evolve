@@ -3,6 +3,7 @@ from django.utils import timezone
 
 from audit.services import record_event
 
+from .email_policy import CATEGORY_POLICIES, EMAIL_NOTIFICATION_TYPES
 from .models import Notification, NotificationPreference, NotificationRecipient
 
 
@@ -34,14 +35,15 @@ def create_notification(
     action_url="",
 ):
     ids = active_users(users, organization)
+    ids.discard(getattr(actor, "pk", None))
     disabled = set(
         NotificationPreference.objects.filter(
             user_id__in=ids, category=category, in_app_enabled=False
         ).values_list("user_id", flat=True)
     )
-    ids -= disabled
-    ids.discard(getattr(actor, "pk", None))
-    if not ids:
+    in_app_ids = ids - disabled
+    email_eligible = notification_type in EMAIL_NOTIFICATION_TYPES
+    if not in_app_ids and not (email_eligible and ids):
         return None
     item = Notification(
         organization=organization,
@@ -57,9 +59,13 @@ def create_notification(
     )
     item.save()
     NotificationRecipient.objects.bulk_create(
-        [NotificationRecipient(notification=item, user_id=user_id) for user_id in ids],
+        [NotificationRecipient(notification=item, user_id=user_id) for user_id in in_app_ids],
         ignore_conflicts=True,
     )
+    if email_eligible:
+        from .email_delivery import schedule_notification_email
+
+        schedule_notification_email(item, ids)
     return item
 
 
@@ -101,16 +107,66 @@ def archive(recipient):
     return recipient
 
 
+def preference_rows(user):
+    current = {item.category: item for item in NotificationPreference.objects.filter(user=user)}
+    return [
+        {
+            "category": policy.key,
+            "label": policy.label,
+            "description": policy.description,
+            "in_app_enabled": (
+                current[policy.key].in_app_enabled
+                if policy.key in current
+                else policy.default_in_app
+            ),
+            "email_enabled": (
+                current[policy.key].email_enabled if policy.key in current else policy.default_email
+            ),
+            "in_app_disableable": policy.in_app_disableable,
+            "email_disableable": policy.email_disableable,
+        }
+        for policy in CATEGORY_POLICIES.values()
+    ]
+
+
 def update_preferences(user, values, request=None):
-    for category, enabled in values.items():
+    for category, value in values.items():
+        policy = CATEGORY_POLICIES[category]
+        supplied = value if isinstance(value, dict) else {"in_app_enabled": value}
+        existing = NotificationPreference.objects.filter(user=user, category=category).first()
+        defaults = {
+            "in_app_enabled": supplied.get(
+                "in_app_enabled", existing.in_app_enabled if existing else policy.default_in_app
+            ),
+            "email_enabled": supplied.get(
+                "email_enabled", existing.email_enabled if existing else policy.default_email
+            ),
+        }
+        if not policy.in_app_disableable:
+            defaults["in_app_enabled"] = True
+        if not policy.email_disableable:
+            defaults["email_enabled"] = True
         NotificationPreference.objects.update_or_create(
-            user=user, category=category, defaults={"in_app_enabled": enabled}
+            user=user, category=category, defaults=defaults
         )
     record_event(
         actor=user,
         organization=None,
         action="notification.preference_updated",
         resource=user,
-        description="Updated in-app notification preferences.",
+        description="Updated notification delivery preferences.",
         request=request,
     )
+
+
+def reset_preferences(user, request=None):
+    NotificationPreference.objects.filter(user=user).delete()
+    record_event(
+        actor=user,
+        organization=None,
+        action="notification.preference_reset",
+        resource=user,
+        description="Reset notification delivery preferences to defaults.",
+        request=request,
+    )
+    return preference_rows(user)

@@ -80,7 +80,7 @@ The centralized permissions are `music.view`, `music.manage`, `music.release.man
 
 ## Calendar and documents
 
-Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. Binary upload, external calendar sync, and notification delivery remain deferred. See `docs/calendar.md` and `docs/documents.md`.
+Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. External calendar sync remains deferred; selected transactional email delivery is documented in docs/email-delivery.md. See `docs/calendar.md` and `docs/documents.md`.
 
 ## Notifications
 
@@ -138,3 +138,8 @@ aggregation and CSV generation. Saved views are private to their user and organi
 
 Email connector and storage configuration requires an active Django superuser in reusable backend
 permission classes and Django admin rules. Staff status and frontend visibility never grant access.
+
+
+## Email permissions
+
+Email is sent only after active-user, active-membership, organization, and linked-resource checks. A preference cannot grant resource access. Delivery logs and manual retry are platform-superuser only; is_staff alone confers no access. Users manage only their own category preferences and see only their own inbox delivery status.

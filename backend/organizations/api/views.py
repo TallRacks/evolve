@@ -212,8 +212,17 @@ class OrganizationInvitationListView(APIView):
             description=f"Created invitation for {created.invitation.email}.",
             request=request,
         )
+        from notifications.models import EmailDeliveryAttempt
+
+        attempt = EmailDeliveryAttempt.objects.filter(
+            idempotency_key=f"invitation:{created.invitation.pk}"
+        ).first()
         return Response(
-            {**InvitationSerializer(created.invitation).data, "token": created.token},
+            {
+                **InvitationSerializer(created.invitation).data,
+                "token": created.token,
+                "email_delivery_status": attempt.status if attempt else "pending",
+            },
             status=status.HTTP_201_CREATED,
         )
 

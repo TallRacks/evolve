@@ -166,3 +166,8 @@ streaming. Local and production setup, accepted file types, version/retention be
 malware-scanning boundary are documented in [`docs/documents.md`](docs/documents.md) and
 [`docs/storage.md`](docs/storage.md). Storage credentials remain external; no local/public fallback is
 used when a provider is unconfigured.
+
+
+## Milestone 25: transactional email
+
+Selected invitations, task assignments, Contract approvals, and published Call Sheets can use the active default SMTP connector after commit. Per-category in-app/email preferences and platform-superuser delivery logs are available. Production credentials remain external; an unconfigured connector is a supported state recorded as not_configured. See docs/email-delivery.md and docs/email-connectors.md.

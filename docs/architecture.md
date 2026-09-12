@@ -112,7 +112,7 @@ The `campaigns` Django app separates organization-owned Campaign strategy from R
 
 ## Calendar and documents
 
-Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. Binary upload, external calendar sync, and notification delivery remain deferred. See `docs/calendar.md` and `docs/documents.md`.
+Milestone 12 adds a non-persisted, bounded calendar projection and standalone `CalendarEvent`, plus external-reference `Document` metadata with explicit version lineage and constrained same-organization typed links. External calendar sync remains deferred; selected transactional email delivery is documented in docs/email-delivery.md. See `docs/calendar.md` and `docs/documents.md`.
 
 ## Notifications
 
@@ -159,3 +159,8 @@ records or provide arbitrary ORM access. Django authorizes `reporting.view` and 
 permission before filtering, aggregation, pagination, or export. The `integrations` app stores only
 safe platform-level SMTP and S3-compatible metadata plus external environment secret references.
 Connector and storage APIs are platform-superuser only; `is_staff` is not sufficient.
+
+
+## Transactional email
+
+Selected notification and invitation workflows schedule synchronous SMTP delivery after the database transaction commits. Django remains authoritative for recipient and resource authorization. The platform-level default EmailConnector resolves an external environment secret; EmailDeliveryAttempt provides append-only operational state. No Redis, Celery, background worker, or direct frontend mail transport is introduced.

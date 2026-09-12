@@ -463,6 +463,7 @@ export function AppShell({
           { href: "/platform/organizations", label: "Organizations", icon: Building2, show: superuser },
           { href: "/platform/users", label: "Users", icon: UsersRound, show: superuser },
           { href: "/platform/connectors", label: "Connectors", icon: Mail, show: superuser },
+          { href: "/platform/email-delivery", label: "Email delivery", icon: Mail, show: superuser },
           { href: "/platform/storage", label: "Storage", icon: Server, show: superuser },
           { href: "/platform/audit", label: "Audit", icon: ShieldCheck, show: superuser },
         ],
