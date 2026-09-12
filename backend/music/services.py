@@ -4,6 +4,7 @@ from django.db import transaction
 from audit.services import record_event
 from notifications.services import artist_team_users, create_notification
 from organizations.permissions import user_has_organization_permission
+from tasks.services import create_task
 
 from .models import MusicCredit, Release, ReleaseLink, ReleaseTrack, Track
 
@@ -46,6 +47,39 @@ def create_release(*, actor, organization, data, request=None):
     )
     return release
 
+
+@transaction.atomic
+def prepare_release(*, actor, release, request=None):
+    """Create the fixed release-operations checklist exactly once."""
+    require_music_permission(actor, release.organization, "music.release.manage")
+    locked = Release.objects.select_for_update().get(pk=release.pk)
+    task_titles = (
+        "Complete release metadata",
+        "Confirm release rights",
+        "Prepare release assets",
+        "Prepare distribution package",
+        "Plan release promotion",
+    )
+    tasks = []
+    for title in task_titles:
+        task = locked.tasks.filter(title=title).first()
+        if task is None:
+            task = create_task(
+                actor=actor,
+                organization=locked.organization,
+                data={"title": title, "release": locked},
+                request=request,
+            )
+        tasks.append(task)
+    record_event(
+        actor=actor,
+        organization=locked.organization,
+        action="release.operations_prepared",
+        resource=locked,
+        description=f"Prepared release operations for {locked.title}.",
+        request=request,
+    )
+    return tasks
 
 @transaction.atomic
 def update_release(*, actor, release, data, request=None):

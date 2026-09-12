@@ -24,6 +24,7 @@ from music.services import (
     create_link,
     create_release,
     create_track,
+    prepare_release,
     remove_credit,
     remove_link,
     remove_release_track,
@@ -260,6 +261,23 @@ class ReleaseReadinessView(APIView):
                 "release_id": release.id,
                 "readiness": readiness,
                 "next_action": release_next_action(release, readiness),
+            }
+        )
+
+
+class ReleasePrepareView(APIView):
+    def post(self, request, release_id):
+        release = scoped_release(request.user, release_id)
+        tasks = validated(
+            lambda: prepare_release(actor=request.user, release=release, request=request)
+        )
+        return Response(
+            {
+                "release_id": release.id,
+                "tasks": [
+                    {"id": task.id, "title": task.title, "status": task.status}
+                    for task in tasks
+                ],
             }
         )
 

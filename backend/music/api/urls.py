@@ -15,6 +15,7 @@ from .views import (
     PlatformTrackListView,
     ReleaseDetailView,
     ReleaseListView,
+    ReleasePrepareView,
     ReleaseReadinessView,
     ReleaseStatusView,
     ReleaseTrackDetailView,
@@ -28,6 +29,7 @@ urlpatterns = [
     path("music/releases/<uuid:release_id>/", ReleaseDetailView.as_view()),
     path("music/releases/<uuid:release_id>/status/", ReleaseStatusView.as_view()),
     path("music/releases/<uuid:release_id>/readiness/", ReleaseReadinessView.as_view()),
+    path("music/releases/<uuid:release_id>/prepare/", ReleasePrepareView.as_view()),
     path("music/releases/<uuid:release_id>/tracks/", ReleaseTracksView.as_view()),
     path(
         "music/releases/<uuid:release_id>/tracks/<uuid:placement_id>/",

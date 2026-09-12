@@ -16,6 +16,7 @@ from music.services import (
     create_credit,
     create_release,
     create_track,
+    prepare_release,
     transition_release,
     update_release,
 )
@@ -430,3 +431,14 @@ def test_release_and_track_details_include_artist_display_fields(client, owner, 
     assert release_data["artist_id"] == str(release.primary_artist_id)
     assert track_data["artist"] == track.primary_artist.stage_name
     assert track_data["artist_id"] == str(track.primary_artist_id)
+
+
+def test_prepare_release_is_idempotent_and_audited(owner, release):
+    first = prepare_release(actor=owner, release=release)
+    second = prepare_release(actor=owner, release=release)
+
+    assert [task.id for task in first] == [task.id for task in second]
+    assert release.tasks.count() == 5
+    assert AuditEvent.objects.filter(
+        action="release.operations_prepared", resource_id=str(release.id)
+    ).count() == 2
