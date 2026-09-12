@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from users.authentication import RawSessionAuthentication, mark_password_fresh
+from users.mobile_services import revoke_all_devices
 from users.models import SecurityEvent, User
 
 from .serializers import (
@@ -143,6 +144,7 @@ class PasswordChangeView(APIView):
             raise ValidationError({"new_password": error.messages}) from error
         request.user.set_password(serializer.validated_data["new_password"])
         request.user.save(update_fields=("password", "updated_at"))
+        revoke_all_devices(request.user)
         update_session_auth_hash(request, request.user)
         mark_password_fresh(request)
         record_security(request, SecurityEvent.Type.PASSWORD_CHANGED, True, request.user)

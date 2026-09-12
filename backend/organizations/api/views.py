@@ -15,6 +15,7 @@ from bookings.models import Booking
 from callsheets.models import CallSheet, CallSheetVersion
 from contacts.models import Contact
 from promoters.models import Promoter
+from users.mobile_services import revoke_all_devices
 from users.models import User
 from venues.models import Venue
 
@@ -415,7 +416,10 @@ class PlatformUserDetailView(APIView):
             )
         except DjangoValidationError as error:
             raise ValidationError(error.messages) from error
+        was_active = user.is_active
         serializer.save()
+        if was_active and not user.is_active:
+            revoke_all_devices(user)
         record_event(
             actor=request.user,
             action="user.updated",

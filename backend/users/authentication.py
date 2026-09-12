@@ -48,3 +48,30 @@ class SessionAuthentication(RawSessionAuthentication):
 
     def authenticate_header(self, request):
         return "Session"
+
+
+class MobileOpaqueAuthentication:
+    """Authenticates only short-lived opaque access credentials."""
+
+    def authenticate(self, request):
+        from .mobile_models import MobileCredential
+        from .mobile_services import digest_token
+
+        header = request.headers.get("Authorization", "")
+        scheme, separator, raw_token = header.partition(" ")
+        if not separator or scheme.lower() != "bearer" or not raw_token or " " in raw_token:
+            return None
+        credential = (
+            MobileCredential.objects.select_related("device", "device__user")
+            .filter(kind=MobileCredential.Kind.ACCESS, token_digest=digest_token(raw_token))
+            .first()
+        )
+        if credential is None or not credential.usable:
+            raise AuthenticationFailed("Mobile session is invalid or expired.")
+        credential.device.last_seen_at = timezone.now()
+        credential.device.save(update_fields=("last_seen_at", "updated_at"))
+        request.mobile_credential = credential
+        return credential.device.user, credential
+
+    def authenticate_header(self, request):
+        return "Bearer"

@@ -5,6 +5,7 @@ from unfold.admin import ModelAdmin
 from core.admin import PlatformSuperuserAdminMixin
 
 from .admin_forms import OwnerSafeUserChangeForm
+from .mobile_services import revoke_all_devices
 from .models import SecurityEvent, User
 
 
@@ -36,6 +37,12 @@ class UserAdmin(PlatformSuperuserAdminMixin, DjangoUserAdmin, ModelAdmin):
             },
         ),
     )
+
+    def save_model(self, request, obj, form, change):
+        was_active = User.objects.filter(pk=obj.pk).values_list("is_active", flat=True).first()
+        super().save_model(request, obj, form, change)
+        if was_active and not obj.is_active:
+            revoke_all_devices(obj)
 
     def has_delete_permission(self, request, obj=None):
         return False
