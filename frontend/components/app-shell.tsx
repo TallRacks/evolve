@@ -40,6 +40,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { CSSProperties, useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { NotificationBell } from "@/components/notification-bell";
+import { MobileCreateSheet } from "@/components/mobile-create-sheet";
 import { apiRequest } from "@/lib/api/client";
 
 interface Branding {
@@ -102,6 +103,7 @@ export function AppShell({
   const { session, activeOrganizationId, selectOrganization, logout } =
     useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -345,6 +347,18 @@ export function AppShell({
             show: can("music.view"),
           },
           {
+            href: "/workspace/music",
+            label: "Music workspace",
+            icon: Music2,
+            show: can("music.view"),
+          },
+          {
+            href: "/workspace/music/metadata",
+            label: "Metadata",
+            icon: Music2,
+            show: can("music.view"),
+          },
+          {
             href: "/workspace/music/tracks",
             label: "Tracks",
             icon: Music2,
@@ -463,6 +477,7 @@ export function AppShell({
           { href: "/platform/organizations", label: "Organizations", icon: Building2, show: superuser },
           { href: "/platform/users", label: "Users", icon: UsersRound, show: superuser },
           { href: "/platform/connectors", label: "Connectors", icon: Mail, show: superuser },
+          { href: "/platform/google-workspace", label: "Google Workspace", icon: FileText, show: superuser },
           { href: "/platform/email-delivery", label: "Email delivery", icon: Mail, show: superuser },
           { href: "/platform/storage", label: "Storage", icon: Server, show: superuser },
           { href: "/platform/audit", label: "Audit", icon: ShieldCheck, show: superuser },
@@ -531,6 +546,11 @@ export function AppShell({
           {
             title: "Create Release",
             destination: "/workspace/music/releases/new",
+            show: can("music.manage"),
+          },
+          {
+            title: "Create Track",
+            destination: "/workspace/music/tracks/new",
             show: can("music.manage"),
           },
           {
@@ -775,12 +795,14 @@ export function AppShell({
               </Link>
             );
           })}
+          {!platform && !artistPortal && <button className="flex min-w-0 flex-col items-center justify-center gap-1 rounded px-1 py-1 text-[0.6875rem] font-medium text-amber-300" onClick={() => setCreateOpen(true)}><span aria-hidden="true" className="text-xl leading-4">+</span><span>Create</span></button>}
           <button className="flex min-w-0 flex-col items-center justify-center gap-1 rounded px-1 py-1 text-[0.6875rem] font-medium text-neutral-400" onClick={() => setMenuOpen(true)}>
             <MoreHorizontal aria-hidden="true" size={20} />
             <span>More</span>
           </button>
         </nav>
       </div>
+      <MobileCreateSheet actions={actionCommands.map(({ title, destination }) => ({ title, destination }))} open={createOpen} onClose={() => setCreateOpen(false)} />
       {paletteOpen && (
         <div
           className="fixed inset-0 z-50 flex justify-center bg-black/75 px-4 pt-[10vh]"

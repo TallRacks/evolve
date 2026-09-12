@@ -197,6 +197,73 @@ class ReleaseDetailView(APIView):
         return Response(release_detail(release))
 
 
+def release_readiness(release):
+    placements = list(release.track_placements.select_related("track"))
+    tracks = [placement.track for placement in placements]
+    release_href = f"/workspace/music/releases/{release.id}"
+    checks = {
+        "tracks": (bool(tracks), release_href),
+        "metadata": (
+            all(track.isrc and track.genre and track.language for track in tracks),
+            "/workspace/music/metadata",
+        ),
+        "identifiers": (bool(release.upc_ean), release_href),
+        "credits": (
+            bool(release.credits.exists()) or all(track.credits.exists() for track in tracks),
+            release_href,
+        ),
+        "rights": (
+            all(track.work_links.exists() for track in tracks) if tracks else False,
+            "/workspace/rights",
+        ),
+        "masters": (all(bool(track.audio_preview_url) for track in tracks), release_href),
+        "artwork": (bool(release.artwork_url), release_href),
+        "distribution": (
+            bool(release.distributor_name and release.upc_ean),
+            "/workspace/music/distribution",
+        ),
+        "campaign": (release.campaigns.exists(), "/workspace/campaigns"),
+    }
+    return {
+        key: {"status": "ready" if complete else "needs_attention", "href": href}
+        for key, (complete, href) in checks.items()
+    }
+
+
+def release_next_action(release, readiness):
+    actions = (
+        ("tracks", "Add tracks", f"/workspace/music/releases/{release.id}"),
+        ("metadata", "Complete metadata", "/workspace/music/metadata"),
+        ("rights", "Review rights", "/workspace/rights"),
+        ("masters", "Add master reference", f"/workspace/music/releases/{release.id}"),
+        ("artwork", "Add artwork", f"/workspace/music/releases/{release.id}"),
+        ("distribution", "Prepare distribution", "/workspace/music/distribution"),
+        ("campaign", "Create campaign", "/workspace/campaigns/new"),
+    )
+    for key, label, href in actions:
+        if readiness[key]["status"] != "ready":
+            return {"key": key, "label": label, "href": href}
+    return {
+        "key": "review",
+        "label": "Review release readiness",
+        "href": f"/workspace/music/releases/{release.id}",
+    }
+
+
+class ReleaseReadinessView(APIView):
+    def get(self, request, release_id):
+        release = scoped_release(request.user, release_id)
+        require_music_permission(request.user, release.organization, "music.view")
+        readiness = release_readiness(release)
+        return Response(
+            {
+                "release_id": release.id,
+                "readiness": readiness,
+                "next_action": release_next_action(release, readiness),
+            }
+        )
+
+
 class ReleaseStatusView(APIView):
     def post(self, request, release_id):
         release = scoped_release(request.user, release_id)

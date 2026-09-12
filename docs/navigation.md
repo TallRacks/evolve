@@ -36,3 +36,11 @@ deep links remain stable, while `/platform` redirects to the canonical Dashboard
 In Platform context organization workflows are hidden and platform configuration/governance is shown.
 In organization context the same shell applies organization branding and permission-aware workflows;
 platform superusers additionally retain the Platform group. `is_staff` has no platform capability.
+
+## Web/native parity rule
+
+The web App Router is regression-checked by `npm run test:routes`. Native navigation is operational: Home, My Work, Create, Inbox, and More are Expo Router tabs; administrative Platform/Developer destinations remain web-first. Every new feature must account for Desktop, Tablet, Mobile Web, installed PWA, native iOS, Android implications, and shared API impact.
+
+- Platform → Google Workspace is the canonical, configuration-gated entry point for Google-native document foundations.
+- Music → Metadata and Music → Distribution are operational views over existing catalog APIs.
+- Booking detail exposes the deterministic Next Best Action and Show Day view.

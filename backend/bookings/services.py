@@ -51,8 +51,10 @@ def apply_partner_snapshots(booking, *, promoter_changed=True, venue_changed=Tru
         booking.promoter_name_snapshot = booking.promoter.name if booking.promoter else ""
     if venue_changed:
         booking.venue_name_snapshot = booking.venue.name if booking.venue else ""
-        booking.city_snapshot = booking.venue.city if booking.venue else ""
-        booking.country_snapshot = booking.venue.country if booking.venue else ""
+        booking.city_snapshot = booking.venue.city if booking.venue else booking.city_snapshot
+        booking.country_snapshot = (
+            booking.venue.country if booking.venue else booking.country_snapshot
+        )
 
 
 def allowed_transitions(booking):

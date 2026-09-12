@@ -16,6 +16,7 @@ class BookingListSerializer(serializers.ModelSerializer):
     primary_assignment = serializers.SerializerMethodField()
     days_out = serializers.SerializerMethodField()
     readiness = serializers.SerializerMethodField()
+    next_action = serializers.SerializerMethodField()
 
     class Meta:
         model = Booking
@@ -40,6 +41,7 @@ class BookingListSerializer(serializers.ModelSerializer):
             "primary_assignment",
             "days_out",
             "readiness",
+            "next_action",
             "created_at",
             "updated_at",
         )
@@ -107,6 +109,55 @@ class BookingListSerializer(serializers.ModelSerializer):
                 else f"/workspace/finance/invoices/new?booking={booking.id}",
             }
         return items
+
+    def get_next_action(self, booking):
+        """Return a deterministic action for the booking command centre."""
+        production = getattr(booking, "production_advance", None)
+        travel = getattr(booking, "travel_itinerary", None)
+        call_sheet = getattr(booking, "call_sheet", None)
+        latest_version = call_sheet.versions.first() if call_sheet else None
+        booking_href = f"/workspace/bookings/{booking.id}"
+        if not booking.venue and not booking.city_snapshot:
+            return {
+                "key": "complete_venue",
+                "label": "Complete venue or city",
+                "href": f"{booking_href}/edit",
+            }
+        if not production:
+            return {
+                "key": "create_production",
+                "label": "Start Production Advance",
+                "href": f"/workspace/production/new?booking={booking.id}",
+            }
+        if not latest_version:
+            return {
+                "key": "generate_call_sheet",
+                "label": "Generate Call Sheet",
+                "href": f"{booking_href}/call-sheet",
+            }
+        if latest_version.status == "draft":
+            return {
+                "key": "review_call_sheet",
+                "label": "Review Call Sheet",
+                "href": f"/workspace/call-sheets/{latest_version.id}",
+            }
+        if travel is None and booking.event_start_datetime:
+            return {
+                "key": "complete_travel",
+                "label": "Complete Travel",
+                "href": f"/workspace/travel/new?booking={booking.id}",
+            }
+        if self.context.get("include_contracts") and not booking.contracts.first():
+            return {
+                "key": "review_contract",
+                "label": "Review Contract",
+                "href": f"/workspace/contracts/new?booking={booking.id}",
+            }
+        return {
+            "key": "review_readiness",
+            "label": "Review booking readiness",
+            "href": booking_href,
+        }
 
     def get_primary_assignment(self, booking):
         assignment = next(
@@ -208,6 +259,7 @@ class BookingWriteSerializer(serializers.ModelSerializer):
             "event_start_datetime",
             "event_end_datetime",
             "timezone",
+            "city_snapshot",
             "currency",
             "performance_fee",
             "deposit_amount",

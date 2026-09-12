@@ -1,2 +1,2 @@
-import { BookingCreatePage } from "@/components/booking-pages";
-export default BookingCreatePage;
+import { BookingQuickCreatePage } from "@/components/booking-quick-create";
+export default BookingQuickCreatePage;

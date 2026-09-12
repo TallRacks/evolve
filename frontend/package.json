@@ -7,8 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit --tsBuildInfoFile /tmp/evolve-frontend.tsbuildinfo",
     "test:actions": "node scripts/check-action-manifest.mjs",
+    "test:routes": "node scripts/check-route-parity.mjs",
+    "test:features": "node scripts/check-feature-completeness.mjs",
     "test:pwa": "node --test scripts/check-pwa-connectivity.mjs"
   },
   "dependencies": {
