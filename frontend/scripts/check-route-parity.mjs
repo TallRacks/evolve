@@ -9,7 +9,7 @@ const required = [
   "/workspace/bookings/[id]/call-sheet", "/workspace/production", "/workspace/travel",
   "/workspace/artists", "/workspace/contacts", "/workspace/promoters", "/workspace/venues",
   "/workspace/music", "/workspace/music/releases", "/workspace/music/tracks", "/workspace/music/metadata", "/workspace/music/distribution", "/workspace/campaigns",
-  "/workspace/rollouts/[id]", "/workspace/contracts", "/workspace/documents",
+  "/workspace/rollouts/[id]", "/workspace/contracts", "/workspace/documents", "/workspace/office", "/workspace/office/new", "/workspace/office/shared", "/workspace/office/recent", "/workspace/office/starred",
   "/workspace/finance", "/workspace/rights", "/workspace/royalties", "/workspace/reports",
   "/platform", "/platform/ai", "/platform/channels", "/platform/google-workspace", "/platform/connectors",
   "/platform/email-delivery", "/platform/storage", "/profile", "/profile/channels",

@@ -15,5 +15,6 @@
   {"route":"/workspace/royalties/statements","label":"New statement","destination":"/workspace/royalties/statements/new","permission":"royalties.manage","source":"components/rights-pages.tsx"},
   {"route":"/workspace/contracts","label":"New Contract","destination":"/workspace/contracts/new","permission":"contract.manage","source":"components/contract-pages.tsx"},
   {"route":"/workspace/tasks","label":"New Task","destination":"/workspace/tasks/new","permission":"task.manage","source":"components/workflow-pages.tsx"},
-  {"route":"/workspace/settings/templates","label":"New Template","destination":"/workspace/settings/templates","permission":"document_template.manage","source":"components/workflow-pages.tsx"}
+  {"route":"/workspace/settings/templates","label":"New Template","destination":"/workspace/settings/templates","permission":"document_template.manage","source":"components/workflow-pages.tsx"},
+  {"route":"/workspace/office","label":"Create Office Document","destination":"/workspace/office/new","permission":"document.manage","source":"components/app-shell.tsx"}
 ]

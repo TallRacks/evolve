@@ -22,6 +22,7 @@ scope.
 | Calendar / Tasks | PRESENT | PRESENT | PRESENT | PRESENT | complete/status | assignments, checklist, context | PRESENT | PRESENT | PRESENT | PRESENT |
 | Notifications / Activity | PRESENT | n/a | PRESENT | read/archive | archive/read | deep links, Inbox projection | PRESENT | PRESENT | PRESENT | PRESENT |
 | Documents / Contracts | PRESENT | PRESENT | PRESENT | PRESENT | archive/approve/reject | links, templates, print | PRESENT | PRESENT | PRESENT | READ/OPERATE |
+| Office | PRESENT | PRESENT | PRESENT | PRESENT | archive/restore | shared, recent, starred, revisions | PRESENT | PRESENT | PRESENT | READ ONLY |
 | Finance / Invoices / Payments | PRESENT | PRESENT | PRESENT | PRESENT | issue/void/allocation | booking and contract context | PRESENT | PRESENT | PRESENT | READ ONLY |
 | Rights / Royalties | PRESENT | PRESENT | PRESENT | limited | finalize/immutable | music context | PRESENT | PRESENT | PRESENT | READ ONLY |
 | Reports | PRESENT | n/a | PRESENT | filters/views | n/a | CSV export, saved views | PRESENT | PRESENT | PRESENT | WEB FIRST |
@@ -31,7 +32,7 @@ scope.
 | My Work / Inbox / Approvals | PRESENT | n/a | PRESENT | action-specific | complete/approve/reject | mentions, confirmations | PRESENT | PRESENT | PRESENT | PRESENT |
 | Boards / Automations | PRESENT | rule-gated | PRESENT | rule/view controls | activate/deactivate | domain transitions, executions | PRESENT | PRESENT | PRESENT | PRESENT |
 | Music Workspace | PRESENT | release/track | PRESENT | domain pages | lifecycle | rights, campaign, docs, tasks | PRESENT | PRESENT | PRESENT | PRESENT |
-| Workspaces | MERGED | quick create | MERGED | n/a | n/a | board/list/report grouping | PRESENT | PRESENT | PRESENT | PRESENT |
+| Workspaces | PRESENT | quick create | PRESENT | n/a | archive | board/list/report grouping, selector | PRESENT | PRESENT | PRESENT | PRESENT |
 
 ## Current completion actions
 

@@ -10,7 +10,7 @@ import { apiRequest } from "@/lib/api/client";
 
 type Block = { type: string; text?: string; content?: Block[] };
 type OfficeResponse = { document: string; title?: string; format: string | null; content_json: Block | null; revision_number: number };
-type OfficeItem = { id: string; title: string; format: string; revision_number: number };
+type OfficeItem = { id: string; title: string; format: string; revision_number: number; visibility?: string };
 
 function Frame({ children }: { children: React.ReactNode }) {
   return <RouteGuard portal="workspace"><AppShell organizationScoped>{children}</AppShell></RouteGuard>;
@@ -21,12 +21,19 @@ function Nav() {
 const initial: Block = { type: "doc", content: [{ type: "paragraph", content: [] }] };
 function blockText(block: Block): string { return block.text ?? (block.content ?? []).map(blockText).join(" "); }
 
-export function OfficeHomePage() {
+export function OfficeHomePage({ filter = "all" }: { filter?: "all" | "shared" | "recent" | "starred" }) {
   const { activeOrganizationId } = useAuth();
   const [items, setItems] = useState<OfficeItem[]>([]);
   const [error, setError] = useState("");
-  useEffect(() => { if (!activeOrganizationId) return; void apiRequest<OfficeItem[]>(`/api/office/documents/list/?organization_id=${activeOrganizationId}`).then(setItems).catch(() => setError("Unable to load Office documents.")); }, [activeOrganizationId]);
-  return <Frame><main className="mx-auto max-w-6xl p-6"><Nav /><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm uppercase tracking-widest text-amber-300">Evolve Office</p><h1 className="mt-2 text-3xl font-semibold">Documents, notes and checklists</h1><p className="mt-2 text-neutral-400">Structured, organization-scoped content inside Evolve.</p></div><Link href="/workspace/office/new" className="rounded-md bg-amber-300 px-4 py-2 font-medium text-black">New document</Link></div>{error && <p className="mt-6 text-red-300">{error}</p>}<section className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{items.map(item => <Link key={item.id} href={`/workspace/office/${item.id}`} className="rounded-lg border border-neutral-800 bg-neutral-900 p-5 hover:border-amber-300"><h2 className="font-semibold">{item.title}</h2><p className="mt-2 text-sm text-neutral-400">{item.format} · revision {item.revision_number}</p></Link>)}{!items.length && !error && <p className="text-neutral-400">No Office documents yet.</p>}</section></main></Frame>;
+  useEffect(() => { if (!activeOrganizationId) return; void apiRequest<OfficeItem[]>(`/api/office/documents/list/?organization_id=${activeOrganizationId}`).then((next) => {
+    if (filter === "all") return setItems(next);
+    try {
+      const key = filter === "recent" ? "evolve.office.recent" : "evolve.office.starred";
+      const ids = JSON.parse(localStorage.getItem(key) ?? "[]") as string[];
+      setItems(next.filter((item) => filter === "shared" ? item.visibility !== "restricted" : ids.includes(item.id)));
+    } catch { setItems([]); }
+  }).catch(() => setError("Unable to load Office documents.")); }, [activeOrganizationId, filter]);
+  return <Frame><main className="mx-auto max-w-6xl p-6"><Nav /><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-sm uppercase tracking-widest text-amber-300">Evolve Office</p><h1 className="mt-2 text-3xl font-semibold">{filter === "all" ? "Documents, notes and checklists" : filter === "shared" ? "Shared with me" : filter[0].toUpperCase() + filter.slice(1)}</h1><p className="mt-2 text-neutral-400">Structured, organization-scoped content inside Evolve.</p></div><Link href="/workspace/office/new" className="rounded-md bg-amber-300 px-4 py-2 font-medium text-black">New document</Link></div>{error && <p className="mt-6 text-red-300">{error}</p>}<section className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{items.map(item => <Link key={item.id} href={`/workspace/office/${item.id}`} className="rounded-lg border border-neutral-800 bg-neutral-900 p-5 hover:border-amber-300"><h2 className="font-semibold">{item.title}</h2><p className="mt-2 text-sm text-neutral-400">{item.format} · revision {item.revision_number}</p></Link>)}{!items.length && !error && <p className="text-neutral-400">No Office documents yet.</p>}</section></main></Frame>;
 }
 
 export function OfficeEditorPage({ id }: { id?: string }) {

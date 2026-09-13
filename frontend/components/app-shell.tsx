@@ -100,7 +100,7 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { session, activeOrganizationId, selectOrganization, logout } =
+  const { session, activeOrganizationId, selectOrganization, logout, activeWorkspaceId, selectWorkspace } =
     useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -111,6 +111,7 @@ export function AppShell({
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [searchError, setSearchError] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [workspaces, setWorkspaces] = useState<Array<{ id: string; name: string }>>([]);
   const [brandingState, setBrandingState] = useState<{
     organizationId: string;
     data: Branding;
@@ -132,6 +133,16 @@ export function AppShell({
   const superuser = !!session?.user.is_superuser;
   const platform = pathname.startsWith("/platform");
   const artistPortal = pathname.startsWith("/artist");
+  useEffect(() => {
+    if (!organizationScoped || !activeOrganizationId) { setWorkspaces([]); return; }
+    void apiRequest<Array<{ id: string; name: string }>>(`/api/workspaces/?organization_id=${activeOrganizationId}`)
+      .then((next) => {
+        setWorkspaces(next);
+        if (activeWorkspaceId && !next.some((item) => item.id === activeWorkspaceId)) selectWorkspace(next[0]?.id ?? null);
+        else if (!activeWorkspaceId && next[0]) selectWorkspace(next[0].id);
+      })
+      .catch(() => setWorkspaces([]));
+  }, [activeOrganizationId, activeWorkspaceId, organizationScoped, selectWorkspace]);
   useEffect(() => {
     if (!organizationScoped || !activeOrganizationId) return;
     let cancelled = false;
@@ -283,6 +294,18 @@ export function AppShell({
             icon: BarChart3,
             show: can("reporting.view"),
           },
+        ],
+      },
+      {
+        label: "Workspace",
+        items: [
+          { href: "/workspace", label: "Workspace home", icon: LayoutDashboard, show: !!membership },
+          { href: "/workspace/boards", label: "Boards", icon: LayoutDashboard, show: !!membership },
+          { href: "/workspace/automations", label: "Automations", icon: Code2, show: can("organization.manage") },
+          { href: "/workspace/office", label: "Office", icon: FileText, show: can("document.view") },
+          { href: "/workspace/documents", label: "Documents", icon: FileText, show: can("document.view") },
+          { href: "/workspace/calendar", label: "Calendar", icon: CalendarDays, show: can("calendar.view") },
+          { href: "/workspace/reports", label: "Reports", icon: BarChart3, show: can("reporting.view") },
         ],
       },
       {
@@ -564,6 +587,16 @@ export function AppShell({
             show: can("document.manage"),
           },
           {
+            title: "Create Office Document",
+            destination: "/workspace/office/new",
+            show: can("document.manage"),
+          },
+          {
+            title: "Create Office Sheet",
+            destination: "/workspace/office/new?format=sheet",
+            show: can("document.manage"),
+          },
+          {
             title: "Create Contract",
             destination: "/workspace/contracts/new",
             show: can("contract.manage"),
@@ -753,6 +786,8 @@ export function AppShell({
             <kbd className="ml-auto hidden text-xs sm:block">⌘K</kbd>
           </button>
           {session && (superuser || (organizationScoped && organizations.length > 0)) && (
+            <div className="flex items-center gap-2">
+              {organizationScoped && workspaces.length > 0 && <label><span className="sr-only">Current workspace</span><select aria-label="Current workspace" className="h-10 max-w-48 rounded-md border border-neutral-700 bg-neutral-900 px-3 text-sm" value={activeWorkspaceId ?? ""} onChange={(event) => selectWorkspace(event.target.value || null)}><option value="">All workspaces</option>{workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}</select></label>}
             <label className="pwa-organization-select relative">
               <span className="sr-only">Current application context</span>
               <select
@@ -772,6 +807,7 @@ export function AppShell({
                 size={15}
               />
             </label>
+            </div>
           )}
           <NotificationBell />
           <Link

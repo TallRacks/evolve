@@ -1,6 +1,6 @@
 # Frontend page and workflow parity
 
-Inventory date: 2026-09-12. The current App Router contains 162 `page.tsx` or
+Inventory date: 2026-09-13. The current App Router contains 172 `page.tsx` or
 `route.ts` files. The route tree was compared with the historical trees from
 the domain milestones and app-shell consolidation commits. No historical page
 file is absent from the current source tree. The parity risk is discoverability:
@@ -47,6 +47,15 @@ native status is tracked in `docs/mobile-parity.md`.
 | Developer and integration settings | `/developer/...`, `/platform/connectors/...` | existing routes | PRESENT | PRESENT | PRESENT | PRESENT | WEB ONLY FOR NOW | secrets are never displayed |
 | Profile, security, channels | `/profile/...` | existing profile routes | PRESENT | PRESENT | PRESENT | PRESENT | READ/OPERATE | channel connection is permission/config gated |
 | Authentication and offline | `/login`, `/reauthenticate`, `/invite/[token]`, `/offline` | same canonical routes | PRESENT | PRESENT | PRESENT | PRESENT | DEFERRED_MOBILE | native auth awaits security decision |
+
+## Reflection findings
+
+| Finding | Root cause | Resolution |
+|---|---|---|
+| Office shared/recent/starred destinations did not render | P: source feature was present only as the Office home/editor; the canonical subroutes were absent | Added explicit App Router wrappers and parity checks |
+| Office was not visible in the unified sidebar | A/J: the shell had Documents but no Office navigation group | Added a permission-aware Office entry under Workspace |
+| Office document/sheet creation was not available from Global Create | A/J: global action list stopped at generic Documents | Added permission-aware Office Document and Sheet destinations |
+| Workspace context was not selectable | P/I: backend Workspace APIs existed, but auth context and shell only persisted organization | Added session-scoped workspace selection, validation against the current organization, and a selector in the shell |
 
 ## Historical review and redirects
 
