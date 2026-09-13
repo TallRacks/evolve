@@ -134,7 +134,7 @@ export function AppShell({
   const platform = pathname.startsWith("/platform");
   const artistPortal = pathname.startsWith("/artist");
   useEffect(() => {
-    if (!organizationScoped || !activeOrganizationId) { setWorkspaces([]); return; }
+    if (!organizationScoped || !activeOrganizationId) { queueMicrotask(() => setWorkspaces([])); return; }
     void apiRequest<Array<{ id: string; name: string }>>(`/api/workspaces/?organization_id=${activeOrganizationId}`)
       .then((next) => {
         setWorkspaces(next);

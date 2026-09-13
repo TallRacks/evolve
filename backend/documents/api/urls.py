@@ -5,6 +5,8 @@ from documents.api.office_api import (
     OfficeDocumentCollectionView,
     OfficeDocumentListView,
     OfficeRevisionView,
+    OfficeSheetView,
+    OfficeSheetExportView,
 )
 from documents.template_api import (
     TemplateActionView,
@@ -39,6 +41,8 @@ urlpatterns = [
     path("office/documents/list/", OfficeDocumentListView.as_view()),
     path("documents/<uuid:document_id>/office-content/", OfficeContentView.as_view()),
     path("documents/<uuid:document_id>/office-revisions/", OfficeRevisionView.as_view()),
+    path("documents/<uuid:document_id>/office-sheet/", OfficeSheetView.as_view()),
+    path("documents/<uuid:document_id>/office-sheet/export/", OfficeSheetExportView.as_view()),
     path(
         "documents/<uuid:document_id>/office-revisions/<int:revision_number>/restore/",
         OfficeRevisionView.as_view(),

@@ -1,3 +1,4 @@
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
@@ -162,3 +163,84 @@ class OfficeDocumentListView(APIView):
                 for row in rows[:100]
             ]
         )
+
+
+class OfficeSheetView(APIView):
+    def get(self, request, document_id):
+        document = document_for(request, document_id)
+        content = document.office_content.content_json
+        if content.get("type") != "sheet":
+            content = {"type": "sheet", "columns": [], "rows": []}
+        return Response({"document": str(document.id), "revision_number": document.office_content.revision_number, "sheet": content})
+
+    def patch(self, request, document_id):
+        document = document_for(request, document_id)
+        current = document.office_content
+        try:
+            save_content(actor=request.user, document=document, content=request.data.get("sheet"), expected_revision=int(request.data.get("expected_revision", -1)), change_summary="Updated Sheet", request=request)
+        except PermissionError as exc:
+            raise PermissionDenied(str(exc)) from exc
+        except ValueError as exc:
+            if str(exc) == "CONFLICT":
+                return Response({"detail": "This Sheet changed since it was opened.", "code": "conflict", "revision_number": current.revision_number}, status=409)
+            raise ValidationError(str(exc)) from exc
+        return self.get(request, document_id)
+
+    def post(self, request, document_id):
+        document = document_for(request, document_id)
+        if request.data.get("operation") != "import_csv":
+            raise ValidationError("Unsupported Sheet operation.")
+        csv_text = request.data.get("csv", "")
+        if not isinstance(csv_text, str) or len(csv_text) > 2_000_000:
+            raise ValidationError("CSV import is too large or invalid.")
+        import csv
+        from io import StringIO
+        try:
+            rows = list(csv.reader(StringIO(csv_text)))
+        except csv.Error as exc:
+            raise ValidationError("Malformed CSV.") from exc
+        if not rows or len(rows) > 10001 or len(rows[0]) > 200:
+            raise ValidationError("CSV dimensions exceed the supported limit.")
+        columns = [{"id": f"column_{index + 1}", "name": name[:120] or f"Column {index + 1}", "type": "TEXT"} for index, name in enumerate(rows[0])]
+        sheet = {
+            "type": "sheet",
+            "columns": columns,
+            "rows": [
+                {
+                    "id": f"row_{index + 1}",
+                    "cells": {
+                        column["id"]: (
+                            "'" + value[:19999]
+                            if value[:1] in ("=", "+", "-", "@")
+                            else value[:20000]
+                        )
+                        for column, value in zip(columns, row)
+                    },
+                }
+                for index, row in enumerate(rows[1:], 1)
+            ],
+        }
+        current = document.office_content
+        save_content(actor=request.user, document=document, content=sheet, expected_revision=int(request.data.get("expected_revision", -1)), change_summary="Imported CSV", request=request)
+        return self.get(request, document_id)
+
+    def export(self, request, document_id):
+        document = document_for(request, document_id)
+        import csv
+        from io import StringIO
+        sheet = document.office_content.content_json
+        output = StringIO()
+        writer = csv.writer(output)
+        columns = sheet.get("columns", [])
+        writer.writerow([column.get("name", "") for column in columns])
+        for row in sheet.get("rows", []):
+            values = [str(row.get("cells", {}).get(column.get("id"), "")) for column in columns]
+            writer.writerow([f"'" + value if value.startswith(("=", "+", "-", "@")) else value for value in values])
+        response = HttpResponse(output.getvalue(), content_type="text/csv; charset=utf-8")
+        response["Content-Disposition"] = f'attachment; filename="{document.title[:80]}.csv"'
+        return response
+
+
+class OfficeSheetExportView(OfficeSheetView):
+    def get(self, request, document_id):
+        return self.export(request, document_id)

@@ -1,5 +1,7 @@
 import json
 from copy import deepcopy
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -28,11 +30,17 @@ ALLOWED_NODES = {
     "text",
     "image",
     "link",
+    "sheet",
+    "sheet_column",
+    "sheet_row",
 }
 ALLOWED_FORMATS = {choice.value for choice in OfficeDocumentContent.Format}
 
 
 def validate_content(value, depth=0):
+    if isinstance(value, dict) and value.get("type") == "sheet":
+        validate_sheet(value)
+        return
     if depth > 30:
         raise ValidationError("Office content is too deeply nested.")
     if not isinstance(value, dict | list):
@@ -61,6 +69,59 @@ def validate_content(value, depth=0):
     if len(json.dumps(value, separators=(",", ":"))) > 1_000_000:
         raise ValidationError("Office content exceeds the 1 MB limit.")
 
+
+
+SHEET_TYPES = {"TEXT", "NUMBER", "DATE", "DATETIME", "CURRENCY", "STATUS", "SELECT", "CHECKBOX", "USER", "ENTITY_LINK"}
+SHEET_ENTITIES = {"artist", "booking", "release", "task", "contact", "venue", "promoter"}
+
+
+def validate_sheet(value):
+    if not isinstance(value, dict) or value.get("type") != "sheet":
+        raise ValidationError("Sheet content must be a structured sheet object.")
+    columns = value.get("columns", [])
+    rows = value.get("rows", [])
+    if not isinstance(columns, list) or not isinstance(rows, list) or len(columns) > 200 or len(rows) > 10000:
+        raise ValidationError("Sheet dimensions exceed the supported limit.")
+    column_ids = set()
+    for column in columns:
+        if not isinstance(column, dict) or not column.get("id") or not column.get("name"):
+            raise ValidationError("Sheet columns require an id and name.")
+        if column["id"] in column_ids or column.get("type", "TEXT") not in SHEET_TYPES:
+            raise ValidationError("Sheet column type or identity is invalid.")
+        if column.get("type") == "ENTITY_LINK" and column.get("entity") not in SHEET_ENTITIES:
+            raise ValidationError("Sheet entity links use an unsupported registry entry.")
+        column_ids.add(column["id"])
+    for row in rows:
+        if not isinstance(row, dict) or not row.get("id") or not isinstance(row.get("cells", {}), dict):
+            raise ValidationError("Sheet rows require an id and cells object.")
+        if set(row["cells"]) - column_ids:
+            raise ValidationError("Sheet cells must reference declared columns.")
+        for column in columns:
+            cell = row["cells"].get(column["id"])
+            if cell in (None, ""):
+                continue
+            cell_type = column.get("type", "TEXT")
+            if cell_type in {"NUMBER", "CURRENCY"}:
+                try:
+                    Decimal(str(cell))
+                except (InvalidOperation, TypeError, ValueError) as exc:
+                    raise ValidationError("Number and currency cells must be numeric.") from exc
+            elif cell_type == "DATE":
+                try:
+                    date.fromisoformat(str(cell))
+                except ValueError as exc:
+                    raise ValidationError("Date cells must use ISO date format.") from exc
+            elif cell_type == "DATETIME":
+                try:
+                    datetime.fromisoformat(str(cell).replace("Z", "+00:00"))
+                except ValueError as exc:
+                    raise ValidationError("Datetime cells must use ISO datetime format.") from exc
+            elif cell_type == "CHECKBOX" and not isinstance(cell, bool | str):
+                raise ValidationError("Checkbox cells must be boolean values.")
+            elif cell_type in {"TEXT", "STATUS", "SELECT", "USER", "ENTITY_LINK"} and not isinstance(cell, (str, dict)):
+                raise ValidationError("Sheet cell value has an invalid type.")
+    if len(json.dumps(value, separators=(",", ":"))) > 2_000_000:
+        raise ValidationError("Sheet content exceeds the 2 MB limit.")
 
 def initial_content():
     return {"type": "doc", "content": [{"type": "paragraph", "content": []}]}
