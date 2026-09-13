@@ -40,6 +40,16 @@ def test_native_document_save_conflict_and_restore():
     assert DocumentRevision.objects.filter(document=document).count() == 2
 
 
+def test_sheet_starts_with_structured_sheet_content():
+    user, organization = setup_data()
+    document = create_office_document(
+        actor=user, organization=organization, title="Sheet",
+        document_type=Document.Type.OTHER, format=OfficeDocumentContent.Format.SHEET,
+        visibility=Document.Visibility.ORGANIZATION,
+    )
+    assert document.office_content.content_json == {"type": "sheet", "columns": [], "rows": []}
+
+
 def test_native_content_rejects_unsafe_nodes():
     user, organization = setup_data()
     document = create_office_document(

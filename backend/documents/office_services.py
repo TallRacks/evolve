@@ -162,7 +162,9 @@ def _walk_nodes(value):
             yield from _walk_nodes(child)
 
 
-def initial_content():
+def initial_content(format=None):
+    if format == OfficeDocumentContent.Format.SHEET:
+        return {"type": "sheet", "columns": [], "rows": []}
     return {"type": "doc", "content": [{"type": "paragraph", "content": []}]}
 
 
@@ -191,7 +193,7 @@ def create_office_document(
     OfficeDocumentContent.objects.create(
         document=document,
         format=format,
-        content_json=initial_content(),
+        content_json=initial_content(format),
         last_edited_by=actor,
         last_edited_at=timezone.now(),
     )

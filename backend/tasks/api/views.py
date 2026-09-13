@@ -51,7 +51,9 @@ class TaskListView(TaskAPIView):
         if request.query_params.get("mine") == "true":
             queryset = queryset.filter(assigned_membership__user=request.user)
         if request.query_params.get("workspace_id"):
-            queryset = queryset.filter(source_document__workspace_id=request.query_params["workspace_id"])
+            queryset = queryset.filter(
+                source_document__workspace_id=request.query_params["workspace_id"]
+            )
         for name in ("status", "priority", "release", "booking", "artist"):
             if request.query_params.get(name):
                 queryset = queryset.filter(**{name: request.query_params[name]})
