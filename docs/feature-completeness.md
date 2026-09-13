@@ -22,7 +22,7 @@ scope.
 | Calendar / Tasks | PRESENT | PRESENT | PRESENT | PRESENT | complete/status | assignments, checklist, context | PRESENT | PRESENT | PRESENT | PRESENT |
 | Notifications / Activity | PRESENT | n/a | PRESENT | read/archive | archive/read | deep links, Inbox projection | PRESENT | PRESENT | PRESENT | PRESENT |
 | Documents / Contracts | PRESENT | PRESENT | PRESENT | PRESENT | archive/approve/reject | links, templates, print | PRESENT | PRESENT | PRESENT | READ/OPERATE |
-| Office | PRESENT | PRESENT | PRESENT | PRESENT | archive/restore | shared, recent, starred, revisions | PRESENT | PRESENT | PRESENT | READ ONLY |
+| Office | PARTIAL | PRESENT | PRESENT | PRESENT | archive/restore | shared, recent, starred, revisions | PRESENT | PRESENT | PRESENT | READ ONLY |
 | Finance / Invoices / Payments | PRESENT | PRESENT | PRESENT | PRESENT | issue/void/allocation | booking and contract context | PRESENT | PRESENT | PRESENT | READ ONLY |
 | Rights / Royalties | PRESENT | PRESENT | PRESENT | limited | finalize/immutable | music context | PRESENT | PRESENT | PRESENT | READ ONLY |
 | Reports | PRESENT | n/a | PRESENT | filters/views | n/a | CSV export, saved views | PRESENT | PRESENT | PRESENT | WEB FIRST |

@@ -72,7 +72,7 @@ def require(actor, document, permission="document.view"):
 
 
 def create_office_document(
-    *, actor, organization, title, document_type, format, visibility, request=None
+    *, actor, organization, title, document_type, format, visibility, workspace=None, request=None
 ):
     if not user_has_organization_permission(actor, organization, "document.manage"):
         raise PermissionError("Permission denied.")
@@ -80,6 +80,7 @@ def create_office_document(
         raise ValidationError("Unsupported Office format.")
     document = Document.objects.create(
         organization=organization,
+        workspace=workspace,
         title=title,
         document_type=document_type,
         visibility=visibility,

@@ -46,6 +46,13 @@ class Document(TimestampedModel):
     organization = models.ForeignKey(
         "organizations.Organization", on_delete=models.PROTECT, related_name="documents"
     )
+    workspace = models.ForeignKey(
+        "workspace.Workspace",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="documents",
+    )
     title = models.CharField(max_length=220)
     document_type = models.CharField(max_length=24, choices=Type.choices)
     description = models.TextField(blank=True, max_length=5000)
@@ -109,6 +116,8 @@ class Document(TimestampedModel):
     def clean(self):
         if self.rendered_content and self.source_type == self.SourceType.EXTERNAL:
             self.source_type = self.SourceType.GENERATED
+        if self.workspace_id and self.workspace.organization_id != self.organization_id:
+            raise ValidationError("Document and workspace must remain in one organization.")
         if self.source_type == self.SourceType.EXTERNAL:
             if not self.external_url:
                 raise ValidationError({"external_url": "An HTTPS external reference is required."})

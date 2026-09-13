@@ -7,6 +7,7 @@ from documents.models import Document, DocumentRevision, OfficeDocumentContent
 from documents.office_services import create_office_document, restore_revision, save_content
 from documents.selectors import documents_for_user
 from organizations.selectors import organizations_for_user
+from workspace.models import Workspace
 
 
 def organization_for(request):
@@ -18,7 +19,11 @@ def organization_for(request):
 
 def document_for(request, document_id):
     organization = organization_for(request)
-    return get_object_or_404(documents_for_user(request.user, organization), pk=document_id)
+    queryset = documents_for_user(request.user, organization)
+    workspace_id = request.data.get("workspace_id") or request.query_params.get("workspace_id")
+    if workspace_id:
+        queryset = queryset.filter(workspace_id=workspace_id)
+    return get_object_or_404(queryset, pk=document_id)
 
 
 def content_response(document):
@@ -44,10 +49,20 @@ def content_response(document):
 class OfficeDocumentCollectionView(APIView):
     def post(self, request):
         organization = organization_for(request)
+        workspace = None
+        workspace_id = request.data.get("workspace_id") or request.query_params.get("workspace_id")
+        if workspace_id:
+            workspace = get_object_or_404(
+                Workspace,
+                pk=workspace_id,
+                organization=organization,
+                archived=False,
+            )
         try:
             document = create_office_document(
                 actor=request.user,
                 organization=organization,
+                workspace=workspace,
                 title=str(request.data.get("title", "")).strip(),
                 document_type=request.data.get("document_type", Document.Type.OTHER),
                 format=request.data.get("format", OfficeDocumentContent.Format.DOCUMENT),
@@ -126,9 +141,11 @@ class OfficeRevisionView(APIView):
 class OfficeDocumentListView(APIView):
     def get(self, request):
         organization = organization_for(request)
-        rows = (
-            documents_for_user(request.user, organization)
-            .filter(office_content__isnull=False)
+        rows = documents_for_user(request.user, organization).filter(office_content__isnull=False)
+        workspace_id = request.query_params.get("workspace_id")
+        if workspace_id:
+            rows = rows.filter(workspace_id=workspace_id)
+        rows = (rows
             .select_related("office_content")
         )
         return Response(
@@ -138,6 +155,7 @@ class OfficeDocumentListView(APIView):
                     "title": row.title,
                     "format": row.office_content.format,
                     "visibility": row.visibility,
+                    "workspace_id": str(row.workspace_id) if row.workspace_id else None,
                     "updated_at": row.updated_at,
                     "revision_number": row.office_content.revision_number,
                 }
