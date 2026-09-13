@@ -30,11 +30,11 @@ function Progress({ value }: { value: Task["progress"] }) {
 }
 
 export function TasksPage() {
-  const { activeOrganizationId, session } = useAuth();
+  const { activeOrganizationId, activeWorkspaceId, session } = useAuth();
   const canManage = hasOrganizationPermission(session, activeOrganizationId, "task.manage");
   const [items, setItems] = useState<Task[]>([]);
   const [view, setView] = useState("mine");
-  const load = useCallback(() => activeOrganizationId ? apiRequest<Task[]>(`/api/tasks/?organization_id=${activeOrganizationId}${view === "mine" ? "&mine=true" : view ? `&status=${view}` : ""}`).then(setItems) : Promise.resolve(), [activeOrganizationId, view]);
+  const load = useCallback(() => activeOrganizationId ? apiRequest<Task[]>(`/api/tasks/?organization_id=${activeOrganizationId}${activeWorkspaceId ? `&workspace_id=${activeWorkspaceId}` : ""}${view === "mine" ? "&mine=true" : view ? `&status=${view}` : ""}`).then(setItems) : Promise.resolve(), [activeOrganizationId, activeWorkspaceId, view]);
   useEffect(() => { void load(); }, [load]);
   return <Shell><PageHeader eyebrow="Workflow" title="Tasks" description="Assigned work, due dates, checklist progress, and status." actions={canManage ? <Link className={buttonClass} href="/workspace/tasks/new">New Task</Link> : undefined}/><div className="mt-6 flex flex-wrap gap-2" role="group" aria-label="Task views">{[["mine","My Tasks"],["","All"],["todo","Open"],["blocked","Blocked"],["done","Completed"]].map(([value,label])=><button className={view===value?buttonClass:secondaryButtonClass} key={label} onClick={()=>setView(value)}>{label}</button>)}</div><div className="mt-7 grid gap-3">{items.map(item=><article className={panel} key={item.id}><div className="flex flex-wrap items-start justify-between gap-4"><div><Link className="font-semibold hover:text-amber-300" href={`/workspace/tasks/${item.id}`}>{item.title}</Link><p className="mt-1 text-sm text-neutral-500">{item.context?.name || "General"} / {item.assignee?.name || "Unassigned"}</p><p className={item.is_overdue?"mt-2 text-sm text-red-300":"mt-2 text-sm text-neutral-400"}>{item.due_at ? new Date(item.due_at).toLocaleString() : "No due date"}{item.is_overdue ? " / overdue" : ""}</p></div><div className="flex gap-2"><StatusBadge positive={item.status==="done"}>{item.status.replaceAll("_"," ")}</StatusBadge><StatusBadge>{item.priority}</StatusBadge></div></div><div className="mt-4 max-w-sm"><Progress value={item.progress}/></div></article>)}{!items.length&&<EmptyState title="No tasks in this view" detail="Create a task or choose another filter."/>}</div></Shell>;
 }

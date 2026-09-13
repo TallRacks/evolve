@@ -100,6 +100,7 @@ export function AppShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  // Workspace switching is constrained by backend-authorized organization.view membership.
   const { session, activeOrganizationId, selectOrganization, logout, activeWorkspaceId, selectWorkspace } =
     useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -787,9 +788,9 @@ export function AppShell({
           </button>
           {session && (superuser || (organizationScoped && organizations.length > 0)) && (
             <div className="flex items-center gap-2">
-              {organizationScoped && workspaces.length > 0 && <label><span className="sr-only">Current workspace</span><select aria-label="Current workspace" className="h-10 max-w-48 rounded-md border border-neutral-700 bg-neutral-900 px-3 text-sm" value={activeWorkspaceId ?? ""} onChange={(event) => selectWorkspace(event.target.value || null)}><option value="">All workspaces</option>{workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}</select></label>}
+              {organizationScoped && workspaces.length > 0 && <label><span className="sr-only">Workspace</span><span className="mr-1 hidden text-xs text-neutral-500 sm:inline">Workspace</span><select aria-label="Switch Workspace" className="h-10 max-w-48 rounded-md border border-neutral-700 bg-neutral-900 px-3 text-sm" value={activeWorkspaceId ?? ""} onChange={(event) => selectWorkspace(event.target.value || null)}><option value="">All workspaces</option>{workspaces.map((workspace) => <option key={workspace.id} value={workspace.id}>{workspace.name}</option>)}</select></label>}
             <label className="pwa-organization-select relative">
-              <span className="sr-only">Current application context</span>
+              <span className="sr-only">Organization</span><span className="mr-1 hidden text-xs text-neutral-500 sm:inline">Organization</span>
               <select
                 className="h-10 max-w-48 appearance-none rounded-md border border-neutral-700 bg-neutral-900 pl-3 pr-9 text-sm"
                 value={activeOrganizationId ?? "platform"}

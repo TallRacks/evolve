@@ -44,3 +44,21 @@ def test_storage_policy_is_superuser_only_and_has_hard_ceiling():
     assert response.json()["max_document_size_bytes"] == 25 * 1024 * 1024
     assert root_client.patch("/api/platform/storage-policy/", {"max_document_size_bytes": 101 * 1024 * 1024}, format="json").status_code == 400
     assert StoragePolicy.objects.count() == 1
+
+
+def test_archived_workspace_is_readable_but_not_selectable_for_new_boards():
+    organization, user, client = member_context()
+    workspace = Workspace.objects.create(
+        organization=organization, name="Archived", slug="archived", archived=True
+    )
+    assert client.get("/api/workspaces/", {"organization_id": organization.id}).json() == []
+    assert client.get(f"/api/workspaces/{workspace.id}/").json()["archived"] is True
+    assert client.post(
+        f"/api/workspaces/{workspace.id}/boards/",
+        {"name": "Blocked", "source_type": "tasks"},
+        format="json",
+    ).status_code == 400
+    restored = client.patch(
+        f"/api/workspaces/{workspace.id}/", {"archived": False}, format="json"
+    )
+    assert restored.status_code == 200 and restored.json()["archived"] is False

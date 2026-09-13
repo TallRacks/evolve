@@ -166,5 +166,61 @@
     "destination": "/workspace/office",
     "permission": "document.manage",
     "source": "components/office-pages.tsx"
+  },
+  {
+    "route": "/workspace",
+    "label": "New Workspace",
+    "destination": "/workspace",
+    "permission": "organization.manage",
+    "source": "components/management-pages.tsx"
+  },
+  {
+    "route": "/workspace",
+    "label": "Archive Workspace",
+    "destination": "/workspace",
+    "permission": "organization.manage",
+    "source": "components/management-pages.tsx"
+  },
+  {
+    "route": "/workspace",
+    "label": "Restore Workspace",
+    "destination": "/workspace",
+    "permission": "organization.manage",
+    "source": "components/management-pages.tsx"
+  },
+  {
+    "route": "/workspace",
+    "label": "Switch Workspace",
+    "destination": "/workspace",
+    "permission": "organization.view",
+    "source": "components/app-shell.tsx"
+  },
+  {
+    "route": "/workspace",
+    "label": "New Board",
+    "destination": "/workspace/boards",
+    "permission": "organization.manage",
+    "source": "components/management-pages.tsx"
+  },
+  {
+    "route": "/workspace",
+    "label": "New Task",
+    "destination": "/workspace/tasks/new",
+    "permission": "task.manage",
+    "source": "components/management-pages.tsx"
+  },
+  {
+    "route": "/workspace",
+    "label": "New Document",
+    "destination": "/workspace/office/new",
+    "permission": "document.manage",
+    "source": "components/management-pages.tsx"
+  },
+  {
+    "route": "/workspace",
+    "label": "New Sheet",
+    "destination": "/workspace/office/new",
+    "permission": "document.manage",
+    "source": "components/management-pages.tsx"
   }
 ]

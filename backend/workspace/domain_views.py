@@ -83,8 +83,11 @@ class BoardView(APIView):
             rows = (
                 tasks_for_user(request.user)
                 .filter(organization=organization)
-                .select_related("assigned_membership__user")[:200]
+                .select_related("assigned_membership__user")
             )
+            if request.query_params.get("workspace_id"):
+                rows = rows.filter(source_document__workspace_id=request.query_params["workspace_id"])
+            rows = rows[:200]
             cards = [
                 {
                     "id": row.id,

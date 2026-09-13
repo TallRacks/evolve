@@ -1,6 +1,9 @@
 from django.utils import timezone
 
+from audit.models import AuditEvent
 from bookings.models import Booking
+from documents.models import OfficeDocumentContent
+from documents.selectors import documents_for_user
 from music.models import Release
 from notifications.selectors import unread_count
 from tasks.models import Task
@@ -48,37 +51,62 @@ def daily_summary(*, user, organization, on=None):
 
 def workspace_summary(*, user, workspace):
     organization = workspace.organization
+    documents = documents_for_user(user, organization).filter(
+        workspace=workspace, status="active"
+    ).order_by("-updated_at")
     tasks = (
         tasks_for_user(user)
-        .filter(organization=organization)
-        .exclude(status__in=[Task.Status.DONE, Task.Status.CANCELLED])
+        .filter(source_document__workspace=workspace)
+        .select_related("assigned_membership__user", "source_document")
     )
-    bookings = Booking.objects.filter(
-        organization=organization, event_date__gte=timezone.localdate()
-    ).select_related("artist", "venue")[:10]
-    releases = Release.objects.filter(
-        organization=organization, planned_release_date__gte=timezone.localdate()
-    ).order_by("planned_release_date")[:10]
+    board_ids = list(workspace.boards.values_list("id", flat=True))
+    document_ids = list(documents.values_list("id", flat=True)[:100])
+    task_ids = list(tasks.values_list("id", flat=True)[:100])
+    resource_ids = [str(workspace.id), *(str(item) for item in board_ids)]
+    resource_ids.extend(str(item) for item in document_ids)
+    resource_ids.extend(str(item) for item in task_ids)
+    activity = AuditEvent.objects.filter(
+        organization=organization, resource_id__in=resource_ids
+    ).select_related("actor")[:20]
+    open_tasks = tasks.exclude(status__in=[Task.Status.DONE, Task.Status.CANCELLED])
+    def document_format(item):
+        try:
+            return item.office_content.format
+        except OfficeDocumentContent.DoesNotExist:
+            return None
+
     return {
-        "workspace": {"id": str(workspace.id), "name": workspace.name},
-        "open_tasks": tasks.count(),
-        "overdue_tasks": tasks.filter(due_at__lt=timezone.now()).count(),
-        "upcoming_bookings": [
-            {
-                "id": str(x.id),
-                "reference": x.reference,
-                "date": x.event_date,
-                "venue": x.venue.name if x.venue else None,
-            }
-            for x in bookings
+        "workspace": {
+            "id": str(workspace.id),
+            "name": workspace.name,
+            "description": workspace.description,
+            "icon": workspace.icon,
+            "archived": workspace.archived,
+        },
+        "open_tasks": open_tasks.count(),
+        "overdue_tasks": open_tasks.filter(due_at__lt=timezone.now()).count(),
+        "tasks": [
+            {"id": str(item.id), "title": item.title, "status": item.status, "due_at": item.due_at}
+            for item in open_tasks[:10]
         ],
-        "upcoming_releases": [
-            {"id": str(x.id), "title": x.title, "release_date": x.planned_release_date}
-            for x in releases
-        ],
+        "upcoming_bookings": [],
+        "upcoming_releases": [],
         "boards": [
-            {"id": str(x.id), "name": x.name, "source": x.source_type}
-            for x in workspace.boards.filter(archived=False)
+            {"id": str(item.id), "name": item.name, "source": item.source_type}
+            for item in workspace.boards.filter(archived=False)
+        ],
+        "documents": [
+            {"id": str(item.id), "title": item.title, "format": document_format(item)}
+            for item in documents[:10]
+        ],
+        "recent_activity": [
+            {
+                "id": str(item.id),
+                "action": item.action,
+                "description": item.description,
+                "created_at": item.created_at,
+            }
+            for item in activity
         ],
     }
 

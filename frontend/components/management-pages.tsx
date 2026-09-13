@@ -423,90 +423,64 @@ export function DashboardPage() {
 }
 
 export function WorkspaceOverviewPage() {
-  const { activeOrganizationId, session } = useAuth();
-  const membership = session?.memberships.find(
-    (item) => item.organization.id === activeOrganizationId,
-  );
-  const { data, error } = useResource<Organization>(
-    activeOrganizationId ? `/api/organizations/${activeOrganizationId}/` : null,
-  );
-  return (
-    <WorkspaceFrame>
-      <PageHeader
-        eyebrow="Workspace"
-        title={data?.name ?? "Organization overview"}
-        description="Current organization access, team, booking, and invitation status."
-      />
-      <Notice message={error} error />
-      {data ? (
-        <>
-          <div className="mt-7 grid gap-4 sm:grid-cols-3">
-            <StatCard label="Your role" value={session?.user.is_superuser ? "platform superuser" : membership?.role ?? "-"} />
-            <StatCard
-              label="Upcoming bookings"
-              value={data.upcoming_booking_count}
-            />
-            <StatCard
-              label="Confirmed bookings"
-              value={data.confirmed_booking_count}
-            />
-          </div>
-          <div className="mt-7 flex flex-wrap gap-3">
-            {hasOrganizationPermission(session, activeOrganizationId, "booking.manage") && (
-              <Link className={buttonClass} href="/workspace/bookings/new">
-                Create booking
-              </Link>
-            )}
-            {hasOrganizationPermission(session, activeOrganizationId, "artist.manage") && (
-              <Link
-                className={secondaryButtonClass}
-                href="/workspace/artists/new"
-              >
-                Add artist
-              </Link>
-            )}
-            {hasOrganizationPermission(session, activeOrganizationId, "promoter.manage") && (
-              <Link
-                className={secondaryButtonClass}
-                href="/workspace/promoters/new"
-              >
-                Add promoter
-              </Link>
-            )}
-            {hasOrganizationPermission(session, activeOrganizationId, "venue.manage") && (
-              <Link
-                className={secondaryButtonClass}
-                href="/workspace/venues/new"
-              >
-                Add venue
-              </Link>
-            )}
-          </div>
-          <div className="mt-7 flex flex-wrap gap-3">
-            <Link className={buttonClass} href="/workspace/team">
-              Manage team
-            </Link>
-            <Link
-              className={secondaryButtonClass}
-              href="/workspace/invitations"
-            >
-              Invitations
-            </Link>
-            <Link
-              className={secondaryButtonClass}
-              href="/workspace/organization"
-            >
-              Organization settings
-            </Link>
-          </div>
-        </>
-      ) : (
-        <Loading />
-      )}
-    </WorkspaceFrame>
-  );
+  const { activeOrganizationId, activeWorkspaceId, session } = useAuth();
+  type WorkspaceSummary = {
+    workspace: { id: string; name: string; description: string; icon: string; archived: boolean };
+    open_tasks: number;
+    overdue_tasks: number;
+    tasks: { id: string; title: string; status: string; due_at: string | null }[];
+    upcoming_bookings: { id: string; reference: string; date: string }[];
+    upcoming_releases: { id: string; title: string; release_date: string }[];
+    boards: { id: string; name: string; source: string }[];
+    documents: { id: string; title: string; format: string | null }[];
+    recent_activity: { id: string; action: string; description: string; created_at: string }[];
+  };
+  const path = activeWorkspaceId ? `/api/workspaces/${activeWorkspaceId}/summary/` : null;
+  const { data, error } = useResource<WorkspaceSummary>(path);
+  const canManage = hasOrganizationPermission(session, activeOrganizationId, "document.manage");
+  const canTask = hasOrganizationPermission(session, activeOrganizationId, "task.manage");
+  const canBoard = hasOrganizationPermission(session, activeOrganizationId, "organization.manage");
+  const [managementMessage, setManagementMessage] = useState("");
+  async function createWorkspace(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!activeOrganizationId) return;
+    const values = Object.fromEntries(new FormData(event.currentTarget));
+    try {
+      const created = await apiRequest<{ id: string }>("/api/workspaces/", { method: "POST", body: JSON.stringify({ organization_id: activeOrganizationId, ...values }) });
+      sessionStorage.setItem("evolve.activeWorkspaceId", created.id);
+      window.location.reload();
+    } catch (caught) { setManagementMessage(caught instanceof Error ? caught.message : "Unable to create Workspace."); }
+  }
+  async function updateWorkspaceDetails(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!activeWorkspaceId || !activeOrganizationId) return;
+    try { await apiRequest(`/api/workspaces/${activeWorkspaceId}/`, { method: "PATCH", body: JSON.stringify({ organization_id: activeOrganizationId, ...Object.fromEntries(new FormData(event.currentTarget)) }) }); window.location.reload(); }
+    catch (caught) { setManagementMessage(caught instanceof Error ? caught.message : "Unable to edit Workspace."); }
+  }
+  async function updateWorkspace(archived: boolean) {
+    if (!activeWorkspaceId || !activeOrganizationId) return;
+    if (archived && !await confirmAction("Archive this Workspace? Existing records remain readable.")) return;
+    try { await apiRequest(`/api/workspaces/${activeWorkspaceId}/`, { method: "PATCH", body: JSON.stringify({ organization_id: activeOrganizationId, archived }) }); window.location.reload(); }
+    catch (caught) { setManagementMessage(caught instanceof Error ? caught.message : "Unable to update Workspace."); }
+  }
+  if (!activeWorkspaceId) {
+    return <WorkspaceFrame><PageHeader eyebrow="Workspace" title="Choose a Workspace" description="Select an active Workspace from the application context selector to see its operational home." /><EmptyState title="No Workspace selected" detail="Your organization-wide pages remain available. Choose or create a Workspace to continue." />{hasOrganizationPermission(session, activeOrganizationId, "organization.manage") && <form className="mt-6 flex max-w-2xl flex-wrap gap-2" onSubmit={(event) => void createWorkspace(event)}><input className={fieldClass + " min-w-48 flex-1"} name="name" placeholder="Workspace name" required /><input className={fieldClass + " min-w-40 flex-1"} name="slug" placeholder="workspace-slug" required /><button className={buttonClass}>Create Workspace</button></form>}{managementMessage && <Notice message={managementMessage} error />}</WorkspaceFrame>;
+  }
+  return <WorkspaceFrame><PageHeader eyebrow="Workspace Home" title={data?.workspace.name ?? "Workspace"} description={data?.workspace.description || "Workspace-specific boards, documents, and work."} />
+    <Notice message={error} error />
+    {data?.workspace.archived && <p className="mt-5 rounded-md border border-amber-800 bg-amber-950/30 p-4 text-sm text-amber-200">This Workspace is archived. It remains readable, but new operational records are disabled.</p>}
+    {data ? <>
+      {managementMessage && <Notice message={managementMessage} error />}
+      <div className="mt-5 flex flex-wrap gap-3">{hasOrganizationPermission(session, activeOrganizationId, "organization.manage") && <><button className={secondaryButtonClass} type="button" onClick={() => void updateWorkspace(!data.workspace.archived)}>{data.workspace.archived ? "Restore Workspace" : "Archive Workspace"}</button><form className="flex flex-wrap gap-2" onSubmit={(event) => void updateWorkspaceDetails(event)}><input className={fieldClass + " max-w-48"} name="name" defaultValue={data.workspace.name} aria-label="Workspace name" required /><input className={fieldClass + " max-w-56"} name="description" defaultValue={data.workspace.description} aria-label="Workspace description" /><button className={secondaryButtonClass}>Edit Workspace</button></form><form className="flex flex-wrap gap-2" onSubmit={(event) => void createWorkspace(event)}><input className={fieldClass + " max-w-48"} name="name" placeholder="New Workspace name" required /><input className={fieldClass + " max-w-40"} name="slug" placeholder="workspace-slug" required /><button className={secondaryButtonClass}>Create Workspace</button></form></>}</div>
+      <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><StatCard label="Open tasks" value={data.open_tasks} /><StatCard label="Overdue tasks" value={data.overdue_tasks} /><StatCard label="Boards" value={data.boards.length} /><StatCard label="Documents" value={data.documents.length} /></div>
+      <div className="mt-7 flex flex-wrap gap-3">{canBoard && !data.workspace.archived && <Link className={buttonClass} href="/workspace/boards">New Board</Link>}{canTask && !data.workspace.archived && <Link className={secondaryButtonClass} href="/workspace/tasks/new">New Task</Link>}{canManage && !data.workspace.archived && <><Link className={secondaryButtonClass} href="/workspace/office/new">New Document</Link><Link className={secondaryButtonClass} href="/workspace/office/new?format=sheet">New Sheet</Link></>}</div>
+      <div className="mt-8 grid gap-6 lg:grid-cols-2"><section className="rounded-md border border-neutral-800 bg-neutral-900 p-5"><div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Boards</h2><Link className="text-sm text-neutral-400" href="/workspace/boards">View all</Link></div>{data.boards.length ? <div className="mt-3 space-y-2">{data.boards.map(item => <div className="border-t border-neutral-800 pt-3" key={item.id}><p className="font-medium">{item.name}</p><p className="text-sm text-neutral-500">{item.source}</p></div>)}</div> : <EmptyState title="No boards yet" detail={canBoard ? "Create a Board to organize this Workspace." : "Ask a Workspace manager to create a Board."} />}</section>
+      <section className="rounded-md border border-neutral-800 bg-neutral-900 p-5"><div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Tasks</h2><Link className="text-sm text-neutral-400" href="/workspace/tasks">View all</Link></div>{data.tasks.length ? <div className="mt-3 space-y-2">{data.tasks.map(item => <Link className="block border-t border-neutral-800 pt-3" href={`/workspace/tasks/${item.id}`} key={item.id}><p className="font-medium">{item.title}</p><p className="text-sm text-neutral-500">{item.status}{item.due_at ? ` · due ${new Date(item.due_at).toLocaleDateString()}` : ""}</p></Link>)}</div> : <EmptyState title="No tasks yet" detail={canTask ? "Create a task for this Workspace." : "No Workspace-linked tasks are assigned to you."} />}</section>
+      <section className="rounded-md border border-neutral-800 bg-neutral-900 p-5"><div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Office and Documents</h2><Link className="text-sm text-neutral-400" href="/workspace/office">View Office</Link></div>{data.documents.length ? <div className="mt-3 space-y-2">{data.documents.map(item => <Link className="block border-t border-neutral-800 pt-3" href={`/workspace/office/${item.id}`} key={item.id}><p className="font-medium">{item.title}</p><p className="text-sm text-neutral-500">{item.format || "Document"}</p></Link>)}</div> : <EmptyState title="No documents yet" detail={canManage ? "Create a Workspace document or Sheet." : "No Workspace documents are available."} />}</section>
+      <section className="rounded-md border border-neutral-800 bg-neutral-900 p-5"><h2 className="font-semibold">Recent activity</h2>{data.recent_activity.length ? <div className="mt-3 space-y-2">{data.recent_activity.map(item => <div className="border-t border-neutral-800 pt-3" key={item.id}><p className="text-sm">{item.description}</p><p className="mt-1 text-xs text-neutral-500">{item.action} · {new Date(item.created_at).toLocaleString()}</p></div>)}</div> : <p className="mt-3 text-sm text-neutral-500">No recent Workspace activity.</p>}</section></div>
+      {!data.upcoming_bookings.length && !data.upcoming_releases.length && <p className="mt-6 text-sm text-neutral-500">Upcoming bookings and releases remain organization-wide because no explicit Workspace relationship exists yet.</p>}
+    </> : <Loading />}</WorkspaceFrame>;
 }
-
 export function TeamPage() {
   const { activeOrganizationId, session } = useAuth();
   const path = activeOrganizationId

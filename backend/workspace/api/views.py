@@ -357,6 +357,8 @@ class WorkspaceBoardView(APIView):
 
     def post(self, request, workspace_id):
         workspace = workspace_for_request(request, workspace_id)
+        if workspace.archived:
+            raise ValidationError("Archived Workspaces do not accept new Boards.")
         if not user_has_organization_permission(
             request.user, workspace.organization, "organization.manage"
         ):
@@ -423,8 +425,8 @@ class WorkspaceDetailView(APIView):
         for field in ("name", "slug", "description", "icon"):
             if field in request.data:
                 setattr(workspace, field, str(request.data[field]).strip())
-        if request.data.get("archived") is True:
-            workspace.archived = True
+        if "archived" in request.data:
+            workspace.archived = bool(request.data["archived"])
         workspace.save()
         record_event(
             actor=request.user,
