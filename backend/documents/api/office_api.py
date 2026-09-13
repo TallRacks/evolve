@@ -4,10 +4,21 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from documents.models import Document, DocumentRevision, OfficeDocumentContent
+from documents.api.views import DocumentContentView
+from documents.models import (
+    Document,
+    DocumentRevision,
+    OfficeDocumentAttachment,
+    OfficeDocumentContent,
+)
 from documents.office_services import create_office_document, restore_revision, save_content
 from documents.selectors import documents_for_user
+from documents.services import upload_document
+from documents.storage import DocumentStorageUnavailable
+from organizations.models import Membership
+from organizations.permissions import user_has_organization_permission
 from organizations.selectors import organizations_for_user
+from tasks.services import create_task
 from workspace.models import Workspace
 
 
@@ -146,9 +157,7 @@ class OfficeDocumentListView(APIView):
         workspace_id = request.query_params.get("workspace_id")
         if workspace_id:
             rows = rows.filter(workspace_id=workspace_id)
-        rows = (rows
-            .select_related("office_content")
-        )
+        rows = rows.select_related("office_content")
         return Response(
             [
                 {
@@ -165,24 +174,185 @@ class OfficeDocumentListView(APIView):
         )
 
 
+class OfficeAttachmentView(APIView):
+    def get(self, request, document_id):
+        document = document_for(request, document_id)
+        return Response(
+            [
+                {
+                    "id": str(item.id),
+                    "document_id": str(item.attachment_id),
+                    "title": item.attachment.title,
+                    "filename": item.attachment.original_filename,
+                    "content_type": item.attachment.detected_content_type,
+                    "is_image": item.is_image,
+                    "download_url": (
+                        f"/api/documents/{item.attachment_id}/download/"
+                        f"?organization={document.organization_id}"
+                    ),
+                    "preview_url": (
+                        f"/api/documents/{item.attachment_id}/preview/"
+                        f"?organization={document.organization_id}"
+                        if item.is_image
+                        else None
+                    ),
+                }
+                for item in document.office_attachments.select_related("attachment")
+                if item.attachment.status == Document.Status.ACTIVE
+                and documents_for_user(request.user, document.organization)
+                .filter(pk=item.attachment_id)
+                .exists()
+            ]
+        )
+
+    def post(self, request, document_id):
+        document = document_for(request, document_id)
+        attachment_id = request.data.get("attachment_id")
+        if attachment_id:
+            attachment = get_object_or_404(
+                documents_for_user(request.user, document.organization),
+                pk=attachment_id,
+                source_type=Document.SourceType.STORED,
+                status=Document.Status.ACTIVE,
+            )
+            is_image = bool(request.data.get("is_image", False))
+        else:
+            file = request.FILES.get("file")
+            if not file:
+                raise ValidationError("Choose a file to attach.")
+            is_image = request.data.get("is_image") in {True, "true", "1", "on"}
+            if is_image and not str(file.content_type or "").lower().startswith("image/"):
+                raise ValidationError("Image embeds require an image file.")
+            try:
+                attachment = upload_document(
+                    actor=request.user,
+                    organization=document.organization,
+                    file=file,
+                    request=request,
+                    title=str(request.data.get("title") or file.name)[:220],
+                    document_type=Document.Type.ARTWORK if is_image else Document.Type.OTHER,
+                    visibility=document.visibility,
+                )
+            except DocumentStorageUnavailable as exc:
+                raise ValidationError("Private file storage is unavailable.") from exc
+        if is_image and not attachment.detected_content_type.startswith("image/"):
+            raise ValidationError("Only image attachments can be embedded as images.")
+        link, _ = OfficeDocumentAttachment.objects.get_or_create(
+            office_document=document,
+            attachment=attachment,
+            defaults={"created_by": request.user, "is_image": is_image},
+        )
+        if link.is_image != is_image:
+            link.is_image = is_image
+            link.save(update_fields=["is_image", "updated_at"])
+        return Response(
+            {"id": str(link.id), "document_id": str(attachment.id), "is_image": link.is_image},
+            status=201,
+        )
+
+    def delete(self, request, document_id, attachment_id):
+        document = document_for(request, document_id)
+        link = get_object_or_404(
+            OfficeDocumentAttachment, pk=attachment_id, office_document=document
+        )
+        if not user_has_organization_permission(
+            request.user, document.organization, "document.manage"
+        ):
+            raise PermissionDenied("Permission denied.")
+        link.delete()
+        return Response(status=204)
+
+
+class OfficeAttachmentContentView(DocumentContentView):
+    preview = True
+
+    def get(self, request, document_id, attachment_id):
+        office = document_for(request, document_id)
+        link = get_object_or_404(
+            OfficeDocumentAttachment.objects.select_related("attachment"),
+            id=attachment_id,
+            office_document=office,
+            is_image=True,
+        )
+        request.query_params._mutable = True
+        request.query_params["organization"] = str(office.organization_id)
+        return super().get(request, link.attachment_id)
+
+
+class OfficeTaskView(APIView):
+    def post(self, request, document_id):
+        document = document_for(request, document_id)
+        data = {
+            key: request.data.get(key)
+            for key in ("title", "description", "priority", "due_at")
+            if request.data.get(key) not in (None, "")
+        }
+        membership_id = request.data.get("assigned_membership") or request.data.get(
+            "assigned_membership_id"
+        )
+        if membership_id:
+            data["assigned_membership"] = get_object_or_404(
+                Membership.objects.filter(
+                    organization=document.organization, is_active=True, user__is_active=True
+                ),
+                pk=membership_id,
+            )
+        data["source_document"] = document
+        for link in document.links.all():
+            entity_type = link.entity_type
+            if entity_type in {"artist", "booking", "release", "campaign"}:
+                data[entity_type] = link.entity
+                break
+        try:
+            task = create_task(
+                actor=request.user, organization=document.organization, data=data, request=request
+            )
+        except PermissionError as exc:
+            raise PermissionDenied(str(exc)) from exc
+        return Response(
+            {"id": str(task.id), "title": task.title, "source_document": str(document.id)},
+            status=201,
+        )
+
+
 class OfficeSheetView(APIView):
     def get(self, request, document_id):
         document = document_for(request, document_id)
         content = document.office_content.content_json
         if content.get("type") != "sheet":
             content = {"type": "sheet", "columns": [], "rows": []}
-        return Response({"document": str(document.id), "revision_number": document.office_content.revision_number, "sheet": content})
+        return Response(
+            {
+                "document": str(document.id),
+                "revision_number": document.office_content.revision_number,
+                "sheet": content,
+            }
+        )
 
     def patch(self, request, document_id):
         document = document_for(request, document_id)
         current = document.office_content
         try:
-            save_content(actor=request.user, document=document, content=request.data.get("sheet"), expected_revision=int(request.data.get("expected_revision", -1)), change_summary="Updated Sheet", request=request)
+            save_content(
+                actor=request.user,
+                document=document,
+                content=request.data.get("sheet"),
+                expected_revision=int(request.data.get("expected_revision", -1)),
+                change_summary="Updated Sheet",
+                request=request,
+            )
         except PermissionError as exc:
             raise PermissionDenied(str(exc)) from exc
         except ValueError as exc:
             if str(exc) == "CONFLICT":
-                return Response({"detail": "This Sheet changed since it was opened.", "code": "conflict", "revision_number": current.revision_number}, status=409)
+                return Response(
+                    {
+                        "detail": "This Sheet changed since it was opened.",
+                        "code": "conflict",
+                        "revision_number": current.revision_number,
+                    },
+                    status=409,
+                )
             raise ValidationError(str(exc)) from exc
         return self.get(request, document_id)
 
@@ -195,13 +365,21 @@ class OfficeSheetView(APIView):
             raise ValidationError("CSV import is too large or invalid.")
         import csv
         from io import StringIO
+
         try:
             rows = list(csv.reader(StringIO(csv_text)))
         except csv.Error as exc:
             raise ValidationError("Malformed CSV.") from exc
         if not rows or len(rows) > 10001 or len(rows[0]) > 200:
             raise ValidationError("CSV dimensions exceed the supported limit.")
-        columns = [{"id": f"column_{index + 1}", "name": name[:120] or f"Column {index + 1}", "type": "TEXT"} for index, name in enumerate(rows[0])]
+        columns = [
+            {
+                "id": f"column_{index + 1}",
+                "name": name[:120] or f"Column {index + 1}",
+                "type": "TEXT",
+            }
+            for index, name in enumerate(rows[0])
+        ]
         sheet = {
             "type": "sheet",
             "columns": columns,
@@ -214,20 +392,27 @@ class OfficeSheetView(APIView):
                             if value[:1] in ("=", "+", "-", "@")
                             else value[:20000]
                         )
-                        for column, value in zip(columns, row)
+                        for column, value in zip(columns, row, strict=False)
                     },
                 }
                 for index, row in enumerate(rows[1:], 1)
             ],
         }
-        current = document.office_content
-        save_content(actor=request.user, document=document, content=sheet, expected_revision=int(request.data.get("expected_revision", -1)), change_summary="Imported CSV", request=request)
+        save_content(
+            actor=request.user,
+            document=document,
+            content=sheet,
+            expected_revision=int(request.data.get("expected_revision", -1)),
+            change_summary="Imported CSV",
+            request=request,
+        )
         return self.get(request, document_id)
 
     def export(self, request, document_id):
         document = document_for(request, document_id)
         import csv
         from io import StringIO
+
         sheet = document.office_content.content_json
         output = StringIO()
         writer = csv.writer(output)
@@ -235,7 +420,12 @@ class OfficeSheetView(APIView):
         writer.writerow([column.get("name", "") for column in columns])
         for row in sheet.get("rows", []):
             values = [str(row.get("cells", {}).get(column.get("id"), "")) for column in columns]
-            writer.writerow([f"'" + value if value.startswith(("=", "+", "-", "@")) else value for value in values])
+            writer.writerow(
+                [
+                    "'" + value if value.startswith(("=", "+", "-", "@")) else value
+                    for value in values
+                ]
+            )
         response = HttpResponse(output.getvalue(), content_type="text/csv; charset=utf-8")
         response["Content-Disposition"] = f'attachment; filename="{document.title[:80]}.csv"'
         return response

@@ -10,7 +10,7 @@ from django.utils import timezone
 from audit.services import record_event
 from organizations.permissions import user_has_organization_permission
 
-from .models import Document, DocumentRevision, OfficeDocumentContent
+from .models import Document, DocumentRevision, OfficeDocumentAttachment, OfficeDocumentContent
 
 ALLOWED_NODES = {
     "doc",
@@ -62,6 +62,8 @@ def validate_content(value, depth=0):
             ("https://", "http://")
         ):
             raise ValidationError("Only HTTP(S) links are supported.")
+        if node_type == "image" and (not attrs.get("attachment_id") or "src" in attrs):
+            raise ValidationError("Images must reference a private attachment ID.")
     if "content" in value:
         validate_content(value["content"], depth + 1)
     if "attrs" in value and not isinstance(value["attrs"], dict):
@@ -70,8 +72,18 @@ def validate_content(value, depth=0):
         raise ValidationError("Office content exceeds the 1 MB limit.")
 
 
-
-SHEET_TYPES = {"TEXT", "NUMBER", "DATE", "DATETIME", "CURRENCY", "STATUS", "SELECT", "CHECKBOX", "USER", "ENTITY_LINK"}
+SHEET_TYPES = {
+    "TEXT",
+    "NUMBER",
+    "DATE",
+    "DATETIME",
+    "CURRENCY",
+    "STATUS",
+    "SELECT",
+    "CHECKBOX",
+    "USER",
+    "ENTITY_LINK",
+}
 SHEET_ENTITIES = {"artist", "booking", "release", "task", "contact", "venue", "promoter"}
 
 
@@ -80,7 +92,12 @@ def validate_sheet(value):
         raise ValidationError("Sheet content must be a structured sheet object.")
     columns = value.get("columns", [])
     rows = value.get("rows", [])
-    if not isinstance(columns, list) or not isinstance(rows, list) or len(columns) > 200 or len(rows) > 10000:
+    if (
+        not isinstance(columns, list)
+        or not isinstance(rows, list)
+        or len(columns) > 200
+        or len(rows) > 10000
+    ):
         raise ValidationError("Sheet dimensions exceed the supported limit.")
     column_ids = set()
     for column in columns:
@@ -92,7 +109,11 @@ def validate_sheet(value):
             raise ValidationError("Sheet entity links use an unsupported registry entry.")
         column_ids.add(column["id"])
     for row in rows:
-        if not isinstance(row, dict) or not row.get("id") or not isinstance(row.get("cells", {}), dict):
+        if (
+            not isinstance(row, dict)
+            or not row.get("id")
+            or not isinstance(row.get("cells", {}), dict)
+        ):
             raise ValidationError("Sheet rows require an id and cells object.")
         if set(row["cells"]) - column_ids:
             raise ValidationError("Sheet cells must reference declared columns.")
@@ -118,10 +139,27 @@ def validate_sheet(value):
                     raise ValidationError("Datetime cells must use ISO datetime format.") from exc
             elif cell_type == "CHECKBOX" and not isinstance(cell, bool | str):
                 raise ValidationError("Checkbox cells must be boolean values.")
-            elif cell_type in {"TEXT", "STATUS", "SELECT", "USER", "ENTITY_LINK"} and not isinstance(cell, (str, dict)):
+            elif cell_type in {
+                "TEXT",
+                "STATUS",
+                "SELECT",
+                "USER",
+                "ENTITY_LINK",
+            } and not isinstance(cell, str | dict):
                 raise ValidationError("Sheet cell value has an invalid type.")
     if len(json.dumps(value, separators=(",", ":"))) > 2_000_000:
         raise ValidationError("Sheet content exceeds the 2 MB limit.")
+
+
+def _walk_nodes(value):
+    if isinstance(value, dict):
+        yield value
+        for child in value.values():
+            yield from _walk_nodes(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _walk_nodes(child)
+
 
 def initial_content():
     return {"type": "doc", "content": [{"type": "paragraph", "content": []}]}
@@ -180,6 +218,18 @@ def save_content(*, actor, document, content, expected_revision, change_summary=
         )
     if current.revision_number != expected_revision:
         raise ValueError("CONFLICT")
+    for node in _walk_nodes(content):
+        if isinstance(node, dict) and node.get("type") == "image":
+            if not OfficeDocumentAttachment.objects.filter(
+                id=node.get("attrs", {}).get("attachment_id"),
+                office_document=document,
+                is_image=True,
+                attachment__status=Document.Status.ACTIVE,
+                attachment__storage_status=Document.StorageStatus.AVAILABLE,
+            ).exists():
+                raise ValidationError(
+                    "Image references must point to an authorized image attachment."
+                )
     next_revision = current.revision_number + 1
     DocumentRevision.objects.create(
         document=document,

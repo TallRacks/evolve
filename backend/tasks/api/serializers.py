@@ -46,6 +46,7 @@ class TaskSerializer(serializers.ModelSerializer):
             "production_advance",
             "travel_itinerary",
             "contract",
+            "source_document",
             "context",
             "progress",
             "is_overdue",
@@ -56,6 +57,7 @@ class TaskSerializer(serializers.ModelSerializer):
         read_only_fields = (
             "id",
             "organization_id",
+            "source_document",
             "status",
             "completed_at",
             "created_at",

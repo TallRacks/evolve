@@ -612,3 +612,46 @@ class DocumentRevision(TimestampedModel):
                 fields=("document", "revision_number"), name="unique_office_document_revision"
             )
         ]
+
+
+class OfficeDocumentAttachment(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    office_document = models.ForeignKey(
+        Document, on_delete=models.PROTECT, related_name="office_attachments"
+    )
+    attachment = models.ForeignKey(
+        Document, on_delete=models.PROTECT, related_name="office_attachment_references"
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="office_attachments_created",
+    )
+    is_image = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("office_document", "attachment"), name="unique_office_attachment_reference"
+            )
+        ]
+
+    def clean(self):
+        if self.office_document_id == self.attachment_id:
+            raise ValidationError("An Office document cannot attach itself.")
+        if self.office_document.organization_id != self.attachment.organization_id:
+            raise ValidationError("Office attachments must remain in one organization.")
+        if not OfficeDocumentContent.objects.filter(document_id=self.office_document_id).exists():
+            raise ValidationError("Attachments require an Office document.")
+        if self.attachment.source_type != Document.SourceType.STORED:
+            raise ValidationError("Only private stored Documents may be attached.")
+        if self.is_image and not self.attachment.detected_content_type.startswith("image/"):
+            raise ValidationError("Image embeds require an image attachment.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        return super().delete(*args, **kwargs)

@@ -41,6 +41,13 @@ class Task(TimestampedModel):
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="tasks_created"
     )
+    source_document = models.ForeignKey(
+        "documents.Document",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="source_tasks",
+    )
     due_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     completed_by = models.ForeignKey(
@@ -136,6 +143,8 @@ class Task(TimestampedModel):
             raise ValidationError(
                 {"assigned_membership": "Use an active membership from this organization."}
             )
+        if self.source_document_id and self.source_document.organization_id != self.organization_id:
+            raise ValidationError("Source Document must belong to the task organization.")
         contexts = [
             self.artist,
             self.booking,

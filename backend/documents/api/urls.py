@@ -1,12 +1,15 @@
 from django.urls import path
 
 from documents.api.office_api import (
+    OfficeAttachmentContentView,
+    OfficeAttachmentView,
     OfficeContentView,
     OfficeDocumentCollectionView,
     OfficeDocumentListView,
     OfficeRevisionView,
-    OfficeSheetView,
     OfficeSheetExportView,
+    OfficeSheetView,
+    OfficeTaskView,
 )
 from documents.template_api import (
     TemplateActionView,
@@ -41,6 +44,16 @@ urlpatterns = [
     path("office/documents/list/", OfficeDocumentListView.as_view()),
     path("documents/<uuid:document_id>/office-content/", OfficeContentView.as_view()),
     path("documents/<uuid:document_id>/office-revisions/", OfficeRevisionView.as_view()),
+    path("documents/<uuid:document_id>/office-attachments/", OfficeAttachmentView.as_view()),
+    path(
+        "documents/<uuid:document_id>/office-attachments/<uuid:attachment_id>/",
+        OfficeAttachmentView.as_view(),
+    ),
+    path(
+        "documents/<uuid:document_id>/office-attachments/<uuid:attachment_id>/preview/",
+        OfficeAttachmentContentView.as_view(),
+    ),
+    path("documents/<uuid:document_id>/office-task/", OfficeTaskView.as_view()),
     path("documents/<uuid:document_id>/office-sheet/", OfficeSheetView.as_view()),
     path("documents/<uuid:document_id>/office-sheet/export/", OfficeSheetExportView.as_view()),
     path(
