@@ -1,20 +1,142 @@
 [
-  {"route":"/workspace/artists","label":"Create artist","destination":"/workspace/artists/new","permission":"artist.manage","source":"components/artist-pages.tsx"},
-  {"route":"/workspace/bookings","label":"Create booking","destination":"/workspace/bookings/new","permission":"booking.manage","source":"components/booking-pages.tsx"},
-  {"route":"/workspace/promoters","label":"Create promoter","destination":"/workspace/promoters/new","permission":"promoter.manage","source":"components/relationship-pages.tsx"},
-  {"route":"/workspace/venues","label":"Create venue","destination":"/workspace/venues/new","permission":"venue.manage","source":"components/relationship-pages.tsx"},
-  {"route":"/workspace/contacts","label":"Create contact","destination":"/workspace/contacts","permission":"contact.manage","source":"components/relationship-pages.tsx"},
-  {"route":"/workspace/travel","label":"New itinerary","destination":"/workspace/travel/new","permission":"travel.manage","source":"components/travel-pages.tsx"},
-  {"route":"/workspace/production","label":"New Production Advance","destination":"/workspace/production/new","permission":"production.manage","source":"components/production-pages.tsx"},
-  {"route":"/workspace/music/releases","label":"New release","destination":"/workspace/music/releases/new","permission":"music.manage","source":"components/music-pages.tsx"},
-  {"route":"/workspace/campaigns","label":"New campaign","destination":"/workspace/campaigns/new","permission":"campaign.manage","source":"components/campaign-pages.tsx"},
-  {"route":"/workspace/documents","label":"New Document","destination":"/workspace/documents/new","permission":"document.manage","source":"components/calendar-document-pages.tsx"},
-  {"route":"/workspace/finance/invoices","label":"New invoice","destination":"/workspace/finance/invoices/new","permission":"finance.manage","source":"components/finance-pages.tsx"},
-  {"route":"/workspace/finance/payments","label":"Record payment","destination":"/workspace/finance/payments/new","permission":"finance.manage","source":"components/finance-pages.tsx"},
-  {"route":"/workspace/rights/works","label":"New Work","destination":"/workspace/rights/works/new","permission":"rights.manage","source":"components/rights-pages.tsx"},
-  {"route":"/workspace/royalties/statements","label":"New statement","destination":"/workspace/royalties/statements/new","permission":"royalties.manage","source":"components/rights-pages.tsx"},
-  {"route":"/workspace/contracts","label":"New Contract","destination":"/workspace/contracts/new","permission":"contract.manage","source":"components/contract-pages.tsx"},
-  {"route":"/workspace/tasks","label":"New Task","destination":"/workspace/tasks/new","permission":"task.manage","source":"components/workflow-pages.tsx"},
-  {"route":"/workspace/settings/templates","label":"New Template","destination":"/workspace/settings/templates","permission":"document_template.manage","source":"components/workflow-pages.tsx"},
-  {"route":"/workspace/office","label":"Create Office Document","destination":"/workspace/office/new","permission":"document.manage","source":"components/app-shell.tsx"}
+  {
+    "route": "/workspace/artists",
+    "label": "Create artist",
+    "destination": "/workspace/artists/new",
+    "permission": "artist.manage",
+    "source": "components/artist-pages.tsx"
+  },
+  {
+    "route": "/workspace/bookings",
+    "label": "Create booking",
+    "destination": "/workspace/bookings/new",
+    "permission": "booking.manage",
+    "source": "components/booking-pages.tsx"
+  },
+  {
+    "route": "/workspace/promoters",
+    "label": "Create promoter",
+    "destination": "/workspace/promoters/new",
+    "permission": "promoter.manage",
+    "source": "components/relationship-pages.tsx"
+  },
+  {
+    "route": "/workspace/venues",
+    "label": "Create venue",
+    "destination": "/workspace/venues/new",
+    "permission": "venue.manage",
+    "source": "components/relationship-pages.tsx"
+  },
+  {
+    "route": "/workspace/contacts",
+    "label": "Create contact",
+    "destination": "/workspace/contacts",
+    "permission": "contact.manage",
+    "source": "components/relationship-pages.tsx"
+  },
+  {
+    "route": "/workspace/travel",
+    "label": "New itinerary",
+    "destination": "/workspace/travel/new",
+    "permission": "travel.manage",
+    "source": "components/travel-pages.tsx"
+  },
+  {
+    "route": "/workspace/production",
+    "label": "New Production Advance",
+    "destination": "/workspace/production/new",
+    "permission": "production.manage",
+    "source": "components/production-pages.tsx"
+  },
+  {
+    "route": "/workspace/music/releases",
+    "label": "New release",
+    "destination": "/workspace/music/releases/new",
+    "permission": "music.manage",
+    "source": "components/music-pages.tsx"
+  },
+  {
+    "route": "/workspace/campaigns",
+    "label": "New campaign",
+    "destination": "/workspace/campaigns/new",
+    "permission": "campaign.manage",
+    "source": "components/campaign-pages.tsx"
+  },
+  {
+    "route": "/workspace/documents",
+    "label": "New Document",
+    "destination": "/workspace/documents/new",
+    "permission": "document.manage",
+    "source": "components/calendar-document-pages.tsx"
+  },
+  {
+    "route": "/workspace/finance/invoices",
+    "label": "New invoice",
+    "destination": "/workspace/finance/invoices/new",
+    "permission": "finance.manage",
+    "source": "components/finance-pages.tsx"
+  },
+  {
+    "route": "/workspace/finance/payments",
+    "label": "Record payment",
+    "destination": "/workspace/finance/payments/new",
+    "permission": "finance.manage",
+    "source": "components/finance-pages.tsx"
+  },
+  {
+    "route": "/workspace/rights/works",
+    "label": "New Work",
+    "destination": "/workspace/rights/works/new",
+    "permission": "rights.manage",
+    "source": "components/rights-pages.tsx"
+  },
+  {
+    "route": "/workspace/royalties/statements",
+    "label": "New statement",
+    "destination": "/workspace/royalties/statements/new",
+    "permission": "royalties.manage",
+    "source": "components/rights-pages.tsx"
+  },
+  {
+    "route": "/workspace/contracts",
+    "label": "New Contract",
+    "destination": "/workspace/contracts/new",
+    "permission": "contract.manage",
+    "source": "components/contract-pages.tsx"
+  },
+  {
+    "route": "/workspace/tasks",
+    "label": "New Task",
+    "destination": "/workspace/tasks/new",
+    "permission": "task.manage",
+    "source": "components/workflow-pages.tsx"
+  },
+  {
+    "route": "/workspace/settings/templates",
+    "label": "New Template",
+    "destination": "/workspace/settings/templates",
+    "permission": "document_template.manage",
+    "source": "components/workflow-pages.tsx"
+  },
+  {
+    "route": "/workspace/office",
+    "label": "Create Office Document",
+    "destination": "/workspace/office/new",
+    "permission": "document.manage",
+    "source": "components/app-shell.tsx"
+  },
+  {
+    "route": "/workspace/bookings",
+    "label": "Create Booking Brief",
+    "destination": "/workspace/office",
+    "permission": "booking.manage",
+    "source": "components/office-generator-actions.tsx"
+  },
+  {
+    "route": "/workspace/music/releases",
+    "label": "Create Release One-Sheet",
+    "destination": "/workspace/office",
+    "permission": "music.manage",
+    "source": "components/office-generator-actions.tsx"
+  }
 ]

@@ -1,5 +1,6 @@
 from django.urls import path
 
+from documents.api.generator_api import BookingOfficeGeneratorView, ReleaseOfficeGeneratorView
 from documents.api.office_api import (
     OfficeAttachmentContentView,
     OfficeAttachmentView,
@@ -40,6 +41,13 @@ from .views import (
 )
 
 urlpatterns = [
+    path(
+        "bookings/<uuid:booking_id>/office/<slug:generator>/", BookingOfficeGeneratorView.as_view()
+    ),
+    path(
+        "music/releases/<uuid:release_id>/office/<slug:generator>/",
+        ReleaseOfficeGeneratorView.as_view(),
+    ),
     path("office/documents/", OfficeDocumentCollectionView.as_view()),
     path("office/documents/list/", OfficeDocumentListView.as_view()),
     path("documents/<uuid:document_id>/office-content/", OfficeContentView.as_view()),
