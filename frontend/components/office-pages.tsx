@@ -131,15 +131,129 @@ function VersionHistory({ documentId, organizationId, onRestored }: { documentId
   return <section aria-label="Version history" className="mt-5 rounded-lg border border-neutral-800 bg-neutral-900 p-4"><h2 className="font-semibold">Version history</h2>{rows.length ? <div className="mt-3 space-y-2">{rows.map((row) => <div key={row.revision_number} className="border-t border-neutral-800 py-3"><div className="flex flex-wrap items-center justify-between gap-3"><span>Revision {row.revision_number}<span className="ml-2 text-sm text-neutral-500">{new Date(row.created_at).toLocaleString()}</span></span><div className="flex gap-2"><button type="button" className="rounded border border-neutral-700 px-3 py-1 text-sm" onClick={() => setPreview(row)}>Preview</button><button type="button" className="rounded border border-neutral-700 px-3 py-1 text-sm" onClick={() => void restore(row.revision_number)}>Restore</button></div></div>{preview?.revision_number === row.revision_number && <pre className="mt-3 max-h-48 overflow-auto rounded bg-neutral-950 p-3 text-xs text-neutral-400">Viewing Revision {row.revision_number}{"\n"}{JSON.stringify(row.content_json, null, 2)}</pre>}</div>)}</div> : <p className="mt-3 text-sm text-neutral-500">No immutable checkpoints yet.</p>}</section>;
 }
 
+// Sheet mutations require the document.manage permission; Django remains authoritative.
 function SheetFallback({ documentId, organizationId, workspaceId, revision, onRevision }: { documentId?: string; organizationId: string | null; workspaceId: string | null; revision: number; onRevision: (revision: number) => void }) {
-  type Sheet = { type: "sheet"; columns: { id: string; name: string; type: string }[]; rows: { id: string; cells: Record<string, string> }[] };
-  const [sheet, setSheet] = useState<Sheet>({ type: "sheet", columns: [{ id: "column_1", name: "Column 1", type: "TEXT" }, { id: "column_2", name: "Column 2", type: "TEXT" }, { id: "column_3", name: "Column 3", type: "TEXT" }], rows: Array.from({ length: 3 }, (_, index) => ({ id: `row_${index + 1}`, cells: { column_1: "", column_2: "", column_3: "" } })) });
+  type Column = { id: string; name: string; type: string; options?: { key: string; label: string }[] };
+  type Cell = string | boolean | Record<string, string>;
+  type Row = { id: string; cells: Record<string, Cell> };
+  type Sheet = { type: "sheet"; columns: Column[]; rows: Row[] };
+  type Filter = { id: string; operator: string; value: string };
+  const types = ["TEXT", "NUMBER", "DATE", "DATETIME", "CURRENCY", "STATUS", "SELECT", "CHECKBOX", "USER", "ENTITY_LINK"];
+  const [sheet, setSheet] = useState<Sheet>({ type: "sheet", columns: [{ id: "column_1", name: "Column 1", type: "TEXT" }], rows: [] });
   const [message, setMessage] = useState("Unsaved");
   const [csv, setCsv] = useState("");
+  const [sort, setSort] = useState<{ id: string; direction: "asc" | "desc" } | null>(null);
+  const [filter, setFilter] = useState<Filter | null>(null);
+  const [confirming, setConfirming] = useState("");
   const scope = organizationId ? `organization_id=${organizationId}${workspaceId ? `&workspace_id=${workspaceId}` : ""}` : "";
-  useEffect(() => { if (!documentId || !organizationId) return; void apiRequest<{ sheet: Sheet; revision_number: number }>(`/api/documents/${documentId}/office-sheet/?${scope}`).then((data) => { if (data.sheet.columns.length) setSheet(data.sheet); onRevision(data.revision_number); setMessage("Saved"); }).catch(() => setMessage("Error")); }, [documentId, organizationId, scope, onRevision]);
-  function update(rowId: string, columnId: string, value: string) { setSheet((current) => ({ ...current, rows: current.rows.map((row) => row.id === rowId ? { ...row, cells: { ...row.cells, [columnId]: value } } : row) })); setMessage("Unsaved"); }
-  async function save() { if (!documentId || !organizationId) return; setMessage("Saving"); try { const data = await apiRequest<{ revision_number: number }>(`/api/documents/${documentId}/office-sheet/?${scope}`, { method: "PATCH", body: JSON.stringify({ organization_id: organizationId, workspace_id: workspaceId, sheet, expected_revision: revision }) }); onRevision(data.revision_number); setMessage("Saved"); } catch { setMessage("Error"); } }
-  async function importCsv() { if (!documentId || !organizationId) return; try { const data = await apiRequest<{ sheet: Sheet; revision_number: number }>(`/api/documents/${documentId}/office-sheet/?${scope}`, { method: "POST", body: JSON.stringify({ organization_id: organizationId, workspace_id: workspaceId, operation: "import_csv", csv, expected_revision: revision }) }); setSheet(data.sheet); onRevision(data.revision_number); setCsv(""); setMessage("Saved"); } catch { setMessage("Error"); } }
-  return <section aria-label="Sheet grid" className="mt-6 rounded-lg border border-neutral-800 bg-neutral-950"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-800 p-3"><span className="text-sm text-neutral-400">{message} · revision {revision}</span><div className="flex gap-2"><button type="button" className="rounded border border-neutral-700 px-3 py-1 text-sm" onClick={() => void save()}>Save Sheet</button>{documentId && <a className="rounded border border-neutral-700 px-3 py-1 text-sm" href={`/api/documents/${documentId}/office-sheet/export/?${scope}`}>Export CSV</a>}</div></div><div className="overflow-x-auto"><div className="min-w-[38rem]"><div className="grid border-b border-neutral-800 bg-neutral-900 text-sm text-neutral-400" style={{ gridTemplateColumns: `repeat(${sheet.columns.length}, minmax(12rem, 1fr))` }}>{sheet.columns.map((column) => <div key={column.id} className="p-3 font-medium">{column.name}<span className="ml-2 text-xs text-neutral-600">{column.type}</span></div>)}</div>{sheet.rows.map((row) => <div key={row.id} className="grid border-b border-neutral-900" style={{ gridTemplateColumns: `repeat(${sheet.columns.length}, minmax(12rem, 1fr))` }}>{sheet.columns.map((column) => <input key={`${row.id}-${column.id}`} aria-label={`${column.name} ${row.id}`} className="min-w-0 border-r border-neutral-900 bg-transparent p-3 outline-none focus:bg-neutral-900 focus:ring-1 focus:ring-amber-300" value={row.cells[column.id] ?? ""} onChange={(event) => update(row.id, column.id, event.target.value)} />)}</div>)}</div></div><div className="border-t border-neutral-800 p-3"><label className="block text-sm text-neutral-400">Import CSV<textarea aria-label="CSV import" className="mt-2 min-h-20 w-full rounded border border-neutral-700 bg-neutral-900 p-2" value={csv} onChange={(event) => setCsv(event.target.value)} placeholder="Paste CSV for preview/import" /></label><button type="button" className="mt-2 rounded border border-neutral-700 px-3 py-1 text-sm" disabled={!csv.trim()} onClick={() => void importCsv()}>Import CSV</button></div></section>;
+  useEffect(() => {
+    if (!documentId || !organizationId) return;
+    void apiRequest<{ sheet: Sheet; revision_number: number }>(`/api/documents/${documentId}/office-sheet/?${scope}`).then((data) => {
+      if (data.sheet.columns.length) setSheet(data.sheet);
+      onRevision(data.revision_number);
+      setMessage("Saved");
+    }).catch(() => setMessage("Error"));
+  }, [documentId, organizationId, onRevision, scope]);
+  const displayRows = useMemo(() => {
+    let rows = sheet.rows.slice();
+    if (filter) rows = rows.filter((row) => {
+      const text = String(row.cells[filter.id] ?? "");
+      const target = filter.value.toLowerCase();
+      if (filter.operator === "is_empty") return text === "";
+      if (filter.operator === "is_not_empty") return text !== "";
+      if (filter.operator === "contains") return text.toLowerCase().includes(target);
+      if (filter.operator === "equals" || filter.operator === "is") return text.toLowerCase() === target;
+      if (filter.operator === "not_equals" || filter.operator === "is_not") return text.toLowerCase() !== target;
+      if (filter.operator === "greater") return text > filter.value;
+      if (filter.operator === "less") return text < filter.value;
+      return true;
+    });
+    if (sort) {
+      const column = sheet.columns.find((item) => item.id === sort.id);
+      rows.sort((left, right) => {
+        const a = String(left.cells[sort.id] ?? "");
+        const b = String(right.cells[sort.id] ?? "");
+        const result = column?.type === "NUMBER" || column?.type === "CURRENCY"
+          ? Number(a || 0) - Number(b || 0)
+          : a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+        return sort.direction === "asc" ? result : -result;
+      });
+    }
+    return rows;
+  }, [filter, sheet, sort]);
+  async function mutate(operation: string, payload: Record<string, unknown> = {}) {
+    if (!documentId || !organizationId) return;
+    setMessage("Saving");
+    try {
+      const data = await apiRequest<{ sheet: Sheet; revision_number: number }>(`/api/documents/${documentId}/office-sheet/?${scope}`, {
+        method: "PATCH",
+        body: JSON.stringify({ ...payload, operation, organization_id: organizationId, workspace_id: workspaceId, expected_revision: revision }),
+      });
+      setSheet(data.sheet); onRevision(data.revision_number); setMessage("Saved"); setConfirming("");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to save Sheet."); }
+  }
+  function update(rowId: string, columnId: string, value: string) {
+    setSheet((current) => ({ ...current, rows: current.rows.map((row) => row.id === rowId ? { ...row, cells: { ...row.cells, [columnId]: value } } : row) }));
+    setMessage("Unsaved");
+  }
+  async function save() {
+    if (!documentId || !organizationId) return;
+    setMessage("Saving");
+    try {
+      const data = await apiRequest<{ sheet: Sheet; revision_number: number }>(`/api/documents/${documentId}/office-sheet/?${scope}`, { method: "PATCH", body: JSON.stringify({ organization_id: organizationId, workspace_id: workspaceId, sheet, expected_revision: revision }) });
+      setSheet(data.sheet); onRevision(data.revision_number); setMessage("Saved");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Unable to save Sheet."); }
+  }
+  async function importCsv() {
+    if (!documentId || !organizationId) return;
+    try {
+      const data = await apiRequest<{ sheet: Sheet; revision_number: number }>(`/api/documents/${documentId}/office-sheet/?${scope}`, { method: "POST", body: JSON.stringify({ organization_id: organizationId, workspace_id: workspaceId, operation: "import_csv", csv, expected_revision: revision }) });
+      setSheet(data.sheet); onRevision(data.revision_number); setCsv(""); setMessage("Saved");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "CSV import failed."); }
+  }
+  function cellInput(row: Row, column: Column) {
+    const value = row.cells[column.id];
+    const className = "min-w-0 border-r border-neutral-900 bg-transparent p-3 outline-none focus:bg-neutral-900 focus:ring-1 focus:ring-amber-300";
+    if (column.type === "CHECKBOX") {
+      return <input aria-label={`${column.name} ${row.id}`} type="checkbox" className={className} checked={value === true || value === "true"} onChange={(event) => update(row.id, column.id, event.target.checked ? "true" : "false")} />;
+    }
+    if (["SELECT", "STATUS"].includes(column.type) && column.options?.length) {
+      return <select aria-label={`${column.name} ${row.id}`} className={className} value={String(value ?? "")} onChange={(event) => update(row.id, column.id, event.target.value)}><option value="">—</option>{column.options.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}</select>;
+    }
+    return <input aria-label={`${column.name} ${row.id}`} className={className} value={String(value ?? "")} onChange={(event) => update(row.id, column.id, event.target.value)} />;
+  }
+  function removeColumn(column: Column) {
+    const key = `column:${column.id}`;
+    if (confirming !== key) { setConfirming(key); return; }
+    void mutate("remove_column", { column_id: column.id, confirmed: true });
+  }
+  function removeRow(row: Row) {
+    const key = `row:${row.id}`;
+    if (confirming !== key) { setConfirming(key); return; }
+    void mutate("delete_row", { row_id: row.id });
+  }
+  function configureOptions(event: React.FocusEvent<HTMLInputElement>, columnId: string) {
+    const options = event.target.value.split(",").map((item) => {
+      const parts = item.trim().split(":");
+      return { key: parts[0], label: parts.slice(1).join(":") || parts[0] };
+    }).filter((item) => item.key && item.label);
+    void mutate("configure_column", { column_id: columnId, options });
+  }
+  return <section aria-label="Sheet grid" className="mt-6 rounded-lg border border-neutral-800 bg-neutral-950">
+    <h2 className="sr-only">Column Settings</h2>
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-800 p-3">
+      <span className="text-sm text-neutral-400" role="status">{message} · revision {revision} · {displayRows.length}/{sheet.rows.length} rows</span>
+      <div className="flex flex-wrap gap-2"><button type="button" className="rounded border border-neutral-700 px-3 py-1 text-sm" onClick={() => void mutate("add_column", { column: { name: `Column ${sheet.columns.length + 1}`, type: "TEXT" } })}>Add Column</button><button type="button" className="rounded border border-neutral-700 px-3 py-1 text-sm" onClick={() => void mutate("add_row")}>Add Row</button><button type="button" className="rounded border border-neutral-700 px-3 py-1 text-sm" onClick={() => void mutate("insert_row", { index: 0 })}>Insert Row</button><button type="button" className="rounded border border-neutral-700 px-3 py-1 text-sm" onClick={() => void save()}>Save Sheet</button>{documentId && <a className="rounded border border-neutral-700 px-3 py-1 text-sm" href={`/api/documents/${documentId}/office-sheet/export/?${scope}`}>Export CSV</a>}</div>
+    </div>
+    <div className="grid gap-2 border-b border-neutral-800 p-3 sm:grid-cols-2">
+      <label className="text-sm text-neutral-400">Sort<select aria-label="Sort Sheet" className="ml-2 rounded border border-neutral-700 bg-neutral-900 p-1" value={sort?.id ?? ""} onChange={(event) => setSort(event.target.value ? { id: event.target.value, direction: sort?.direction ?? "asc" } : null)}><option value="">None</option>{sheet.columns.map((column) => <option key={column.id} value={column.id}>{column.name}</option>)}</select>{sort && <button type="button" className="ml-2 underline" onClick={() => setSort({ ...sort, direction: sort.direction === "asc" ? "desc" : "asc" })}>{sort.direction === "asc" ? "Ascending" : "Descending"}</button>}</label>
+      <label className="text-sm text-neutral-400">Filter<select aria-label="Filter Sheet" className="ml-2 rounded border border-neutral-700 bg-neutral-900 p-1" value={filter?.id ?? ""} onChange={(event) => setFilter(event.target.value ? { id: event.target.value, operator: "contains", value: "" } : null)}><option value="">None</option>{sheet.columns.map((column) => <option key={column.id} value={column.id}>{column.name}</option>)}</select>{filter && <><select aria-label="Filter operator" className="ml-2 rounded border border-neutral-700 bg-neutral-900 p-1" value={filter.operator} onChange={(event) => setFilter({ ...filter, operator: event.target.value })}><option value="contains">contains</option><option value="equals">equals</option><option value="not_equals">not equals</option><option value="is_empty">is empty</option><option value="is_not_empty">is not empty</option><option value="greater">greater than</option><option value="less">less than</option></select>{!['is_empty', 'is_not_empty'].includes(filter.operator) && <input aria-label="Filter value" className="ml-2 rounded border border-neutral-700 bg-neutral-900 p-1" value={filter.value} onChange={(event) => setFilter({ ...filter, value: event.target.value })} />}<button type="button" className="ml-2 underline" onClick={() => setFilter(null)}>Clear Filter</button></>}</label>
+    </div>
+    <div className="hidden overflow-x-auto sm:block"><div className="min-w-[48rem]">
+      <div className="grid border-b border-neutral-800 bg-neutral-900 text-sm text-neutral-400" style={{ gridTemplateColumns: `repeat(${sheet.columns.length + 1}, minmax(9rem, 1fr))` }}>{sheet.columns.map((column, index) => <div key={column.id} className="p-2"><input aria-label={`${column.name} column name`} className="w-full bg-transparent font-medium" value={column.name} onChange={(event) => setSheet((current) => ({ ...current, columns: current.columns.map((item) => item.id === column.id ? { ...item, name: event.target.value } : item) }))} onBlur={() => void mutate("rename_column", { column_id: column.id, name: column.name })} /><select aria-label={`${column.name} column type`} className="mt-1 w-full bg-neutral-950 text-xs" value={column.type} onChange={(event) => void mutate("change_column_type", { column_id: column.id, type: event.target.value })}>{types.map((type) => <option key={type}>{type}</option>)}</select>{["SELECT", "STATUS"].includes(column.type) && <input aria-label={`${column.name} options`} className="mt-1 w-full bg-neutral-950 text-xs" defaultValue={(column.options ?? []).map((item) => `${item.key}:${item.label}`).join(",")} placeholder="key:label, key:label" onBlur={(event) => configureOptions(event, column.id)} />}<div className="mt-1 flex gap-1"><button type="button" aria-label={`Move ${column.name} left`} disabled={index === 0} onClick={() => void mutate("move_column", { column_id: column.id, delta: -1 })}>←</button><button type="button" aria-label={`Move ${column.name} right`} disabled={index === sheet.columns.length - 1} onClick={() => void mutate("move_column", { column_id: column.id, delta: 1 })}>→</button><button type="button" aria-label={`Remove ${column.name}`} onClick={() => removeColumn(column)}>{confirming === `column:${column.id}` ? "Confirm remove" : "Remove"}</button></div></div>)}<div className="p-2 text-xs">Rows</div></div>
+      {displayRows.map((row) => <div className="grid border-b border-neutral-900" key={row.id} style={{ gridTemplateColumns: `repeat(${sheet.columns.length + 1}, minmax(9rem, 1fr))` }}>{sheet.columns.map((column) => <div key={`${row.id}-${column.id}`}>{cellInput(row, column)}</div>)}<div className="flex gap-1 p-2"><button type="button" aria-label={`Move row ${row.id} up`} onClick={() => void mutate("move_row", { row_id: row.id, delta: -1 })}>↑</button><button type="button" aria-label={`Move row ${row.id} down`} onClick={() => void mutate("move_row", { row_id: row.id, delta: 1 })}>↓</button><button type="button" onClick={() => void mutate("duplicate_row", { row_id: row.id })}>Duplicate</button><button type="button" onClick={() => removeRow(row)}>{confirming === `row:${row.id}` ? "Confirm delete" : "Delete"}</button></div></div>)}
+    </div></div>
+    <div className="space-y-3 p-3 sm:hidden">{displayRows.map((row) => <article className="rounded border border-neutral-800 p-3" key={row.id}><div className="mb-2 flex justify-between text-sm text-neutral-400"><span>{row.id}</span><span className="flex gap-2"><button type="button" onClick={() => void mutate("duplicate_row", { row_id: row.id })}>Duplicate</button><button type="button" onClick={() => removeRow(row)}>{confirming === `row:${row.id}` ? "Confirm delete" : "Delete"}</button></span></div>{sheet.columns.map((column) => <label className="mb-2 block text-sm" key={`${row.id}-mobile-${column.id}`}>{column.name}{cellInput(row, column)}</label>)}</article>)}</div>
+    <div className="border-t border-neutral-800 p-3"><label className="block text-sm text-neutral-400">Import CSV<textarea aria-label="CSV import" className="mt-2 min-h-20 w-full rounded border border-neutral-700 bg-neutral-900 p-2" value={csv} onChange={(event) => setCsv(event.target.value)} placeholder="Paste CSV for preview/import" /></label><button type="button" className="mt-2 rounded border border-neutral-700 px-3 py-1 text-sm" disabled={!csv.trim()} onClick={() => void importCsv()}>Import CSV</button></div>
+  </section>;
 }

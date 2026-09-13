@@ -29,6 +29,9 @@ const access = readFileSync(join(root, "lib/auth/access.ts"), "utf8");
 if (!access.includes("session.user.is_superuser")) failures.push("superuser workspace authorization representation is missing");
 if (access.includes("is_staff")) failures.push("staff must not be treated as application authorization");
 
+const sheetActions = readFileSync(join(root, "components/office-pages.tsx"), "utf8");
+for (const label of ["Add Column", "Add Row", "Sort Sheet", "Filter Sheet", "Remove", "Duplicate"]) if (!sheetActions.includes(label)) failures.push(`office sheet action ${label} is missing`);
+
 const detailContracts = [
   ["components/booking-pages.tsx", ["Edit Booking", "Generate Call Sheet"]],
   ["components/production-pages.tsx", ["Edit Advance", "Generate Call Sheet"]],

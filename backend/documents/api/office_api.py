@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -11,7 +12,12 @@ from documents.models import (
     OfficeDocumentAttachment,
     OfficeDocumentContent,
 )
-from documents.office_services import create_office_document, restore_revision, save_content
+from documents.office_services import (
+    create_office_document,
+    mutate_sheet,
+    restore_revision,
+    save_content,
+)
 from documents.selectors import documents_for_user
 from documents.services import upload_document
 from documents.storage import DocumentStorageUnavailable
@@ -103,6 +109,8 @@ class OfficeContentView(APIView):
             )
         except PermissionError as exc:
             raise PermissionDenied(str(exc)) from exc
+        except DjangoValidationError as exc:
+            raise ValidationError(exc.messages) from exc
         except ValueError as exc:
             if str(exc) == "CONFLICT":
                 return Response(
@@ -333,12 +341,19 @@ class OfficeSheetView(APIView):
         document = document_for(request, document_id)
         current = document.office_content
         try:
+            expected_revision = int(request.data.get("expected_revision", -1))
+            sheet = request.data.get("sheet")
+            operation = request.data.get("operation")
+            if operation:
+                sheet = mutate_sheet(current.content_json, operation, request.data)
             save_content(
                 actor=request.user,
                 document=document,
-                content=request.data.get("sheet"),
-                expected_revision=int(request.data.get("expected_revision", -1)),
-                change_summary="Updated Sheet",
+                content=sheet,
+                expected_revision=expected_revision,
+                change_summary=operation.replace("_", " ").title()
+                if operation
+                else "Updated Sheet",
                 request=request,
             )
         except PermissionError as exc:

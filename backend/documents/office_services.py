@@ -1,4 +1,5 @@
 import json
+import uuid
 from copy import deepcopy
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
@@ -259,3 +260,156 @@ def restore_revision(*, actor, document, revision_number, request=None):
         change_summary=f"Restored revision {revision_number}",
         request=request,
     )
+
+
+def mutate_sheet(sheet, operation, payload):
+    """Apply one allowlisted structural change to a Sheet JSON object."""
+    if not isinstance(sheet, dict) or sheet.get("type") != "sheet":
+        raise ValidationError("Sheet content must be a structured sheet object.")
+    result = deepcopy(sheet)
+    columns = result.setdefault("columns", [])
+    rows = result.setdefault("rows", [])
+    ids = {column["id"] for column in columns}
+
+    def reorder_delta():
+        try:
+            delta = int(payload.get("delta", 0))
+        except (TypeError, ValueError) as exc:
+            raise ValidationError("Reorder delta is invalid.") from exc
+        if delta not in {-1, 1}:
+            raise ValidationError("Reorder delta must be -1 or 1.")
+        return delta
+
+    def validate_options(options):
+        if not isinstance(options, list) or any(
+            not isinstance(item, dict) or not item.get("key") or not item.get("label")
+            for item in options
+        ):
+            raise ValidationError("Select and status columns require labelled options.")
+        keys = [item["key"] for item in options]
+        if len(keys) != len(set(keys)):
+            raise ValidationError("Select and status option keys must be unique.")
+
+    if operation == "add_column":
+        column = payload.get("column")
+        if not isinstance(column, dict) or not column.get("name"):
+            raise ValidationError("Column name is required.")
+        column = deepcopy(column)
+        column.setdefault("id", f"column_{uuid.uuid4().hex[:12]}")
+        column.setdefault("type", "TEXT")
+        if column["id"] in ids or column["type"] not in SHEET_TYPES:
+            raise ValidationError("Column identity or type is invalid.")
+        if column["type"] in {"SELECT", "STATUS"}:
+            options = column.get("options", [])
+            validate_options(options)
+        columns.append(column)
+        for row in rows:
+            row.setdefault("cells", {})[column["id"]] = ""
+    elif operation in {
+        "rename_column",
+        "configure_column",
+        "change_column_type",
+        "remove_column",
+        "move_column",
+    }:
+        column_id = payload.get("column_id")
+        column = next((item for item in columns if item.get("id") == column_id), None)
+        if not column:
+            raise ValidationError("Column was not found.")
+        if operation == "rename_column":
+            name = str(payload.get("name", "")).strip()
+            if not name:
+                raise ValidationError("Column name is required.")
+            column["name"] = name[:120]
+        elif operation == "configure_column":
+            options = payload.get("options", [])
+            if column.get("type") not in {"SELECT", "STATUS"}:
+                raise ValidationError("Controlled options are invalid for this column.")
+            validate_options(options)
+            column["options"] = deepcopy(options)
+        elif operation == "change_column_type":
+            new_type = payload.get("type")
+            if new_type not in SHEET_TYPES:
+                raise ValidationError("Unsupported column type.")
+            incompatible = []
+            for row in rows:
+                value = row.get("cells", {}).get(column_id)
+                if value in (None, ""):
+                    continue
+                try:
+                    validate_sheet(
+                        {
+                            "type": "sheet",
+                            "columns": [
+                                {"id": column_id, "name": column["name"], "type": new_type}
+                            ],
+                            "rows": [{"id": row["id"], "cells": {column_id: value}}],
+                        }
+                    )
+                except ValidationError:
+                    incompatible.append(row["id"])
+            if incompatible:
+                raise ValidationError(f"{len(incompatible)} cells cannot be converted.")
+            column["type"] = new_type
+        elif operation == "remove_column":
+            if any(
+                row.get("cells", {}).get(column_id) not in (None, "") for row in rows
+            ) and not payload.get("confirmed"):
+                raise ValidationError("Removing a populated column requires confirmation.")
+            columns.remove(column)
+            for row in rows:
+                row.get("cells", {}).pop(column_id, None)
+        else:
+            index = columns.index(column)
+            new_index = max(0, min(len(columns) - 1, index + reorder_delta()))
+            columns.insert(new_index, columns.pop(index))
+    elif operation in {
+        "add_row",
+        "insert_row",
+        "duplicate_row",
+        "delete_row",
+        "bulk_delete_rows",
+        "move_row",
+    }:
+        if operation == "add_row" or operation == "insert_row":
+            values = payload.get("cells", {})
+            if not isinstance(values, dict):
+                raise ValidationError("Row cells must be an object.")
+            row = {
+                "id": f"row_{uuid.uuid4().hex[:12]}",
+                "cells": {column["id"]: values.get(column["id"], "") for column in columns},
+            }
+            validate_sheet({"type": "sheet", "columns": columns, "rows": [row]})
+            if operation == "insert_row":
+                try:
+                    index = int(payload.get("index", len(rows)))
+                except (TypeError, ValueError) as exc:
+                    raise ValidationError("Row insertion index is invalid.") from exc
+            else:
+                index = len(rows)
+            rows.insert(max(0, min(len(rows), index)), row)
+        elif operation == "duplicate_row":
+            source = next((item for item in rows if item.get("id") == payload.get("row_id")), None)
+            if not source:
+                raise ValidationError("Row was not found.")
+            row = {"id": f"row_{uuid.uuid4().hex[:12]}", "cells": deepcopy(source.get("cells", {}))}
+            rows.insert(rows.index(source) + 1, row)
+        elif operation == "delete_row" or operation == "move_row":
+            row = next((item for item in rows if item.get("id") == payload.get("row_id")), None)
+            if not row:
+                raise ValidationError("Row was not found.")
+            if operation == "delete_row":
+                rows.remove(row)
+            else:
+                index = rows.index(row)
+                new_index = max(0, min(len(rows) - 1, index + reorder_delta()))
+                rows.insert(new_index, rows.pop(index))
+        else:
+            row_ids = payload.get("row_ids", [])
+            if not isinstance(row_ids, list) or any(not isinstance(item, str) for item in row_ids):
+                raise ValidationError("Row selection is invalid.")
+            rows[:] = [row for row in rows if row.get("id") not in row_ids]
+    else:
+        raise ValidationError("Unsupported Sheet operation.")
+    validate_sheet(result)
+    return result

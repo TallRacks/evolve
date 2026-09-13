@@ -138,5 +138,33 @@
     "destination": "/workspace/office",
     "permission": "music.manage",
     "source": "components/office-generator-actions.tsx"
+  },
+  {
+    "route": "/workspace/office",
+    "label": "Add Column",
+    "destination": "/workspace/office",
+    "permission": "document.manage",
+    "source": "components/office-pages.tsx"
+  },
+  {
+    "route": "/workspace/office",
+    "label": "Add Row",
+    "destination": "/workspace/office",
+    "permission": "document.manage",
+    "source": "components/office-pages.tsx"
+  },
+  {
+    "route": "/workspace/office",
+    "label": "Sort Sheet",
+    "destination": "/workspace/office",
+    "permission": "document.manage",
+    "source": "components/office-pages.tsx"
+  },
+  {
+    "route": "/workspace/office",
+    "label": "Filter Sheet",
+    "destination": "/workspace/office",
+    "permission": "document.manage",
+    "source": "components/office-pages.tsx"
   }
 ]

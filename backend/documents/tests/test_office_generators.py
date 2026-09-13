@@ -1,4 +1,5 @@
 import pytest
+from django.core.exceptions import ValidationError
 from rest_framework.test import APIClient
 
 from artists.models import Artist
@@ -127,3 +128,45 @@ def test_release_api_generators_return_document_and_reuse():
         ).status_code
         == 400
     )
+
+
+def test_sheet_structural_operations_validate_and_preserve_rows():
+    from documents.office_services import mutate_sheet
+
+    sheet = {
+        "type": "sheet",
+        "columns": [{"id": "name", "name": "Name", "type": "TEXT"}],
+        "rows": [{"id": "row-1", "cells": {"name": "Alpha"}}],
+    }
+    sheet = mutate_sheet(
+        sheet, "add_column", {"column": {"id": "amount", "name": "Amount", "type": "NUMBER"}}
+    )
+    with pytest.raises(ValidationError, match="cannot be converted"):
+        mutate_sheet(
+            {**sheet, "rows": [{"id": "row-1", "cells": {"name": "Alpha", "amount": "bad"}}]},
+            "change_column_type",
+            {"column_id": "amount", "type": "DATE"},
+        )
+    sheet = mutate_sheet(sheet, "duplicate_row", {"row_id": "row-1"})
+    sheet = mutate_sheet(sheet, "move_column", {"column_id": "amount", "delta": -1})
+    assert [column["id"] for column in sheet["columns"]] == ["amount", "name"]
+    assert len(sheet["rows"]) == 2 and sheet["rows"][1]["cells"]["name"] == "Alpha"
+
+
+def test_sheet_controlled_options_and_populated_column_confirmation():
+    from documents.office_services import mutate_sheet
+
+    sheet = {
+        "type": "sheet",
+        "columns": [{"id": "status", "name": "Status", "type": "STATUS"}],
+        "rows": [{"id": "row-1", "cells": {"status": "ready"}}],
+    }
+    sheet = mutate_sheet(
+        sheet,
+        "configure_column",
+        {"column_id": "status", "options": [{"key": "ready", "label": "Ready"}]},
+    )
+    with pytest.raises(ValidationError, match="requires confirmation"):
+        mutate_sheet(sheet, "remove_column", {"column_id": "status"})
+    sheet = mutate_sheet(sheet, "remove_column", {"column_id": "status", "confirmed": True})
+    assert sheet["columns"] == [] and sheet["rows"][0]["cells"] == {}
