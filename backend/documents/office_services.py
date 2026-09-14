@@ -171,6 +171,8 @@ def initial_content(format=None):
 def require(actor, document, permission="document.view"):
     if not user_has_organization_permission(actor, document.organization, permission):
         raise PermissionError("Permission denied.")
+    if permission == "document.manage" and document.status == Document.Status.ARCHIVED:
+        raise PermissionError("Archived Office documents must be restored before editing.")
 
 
 def create_office_document(

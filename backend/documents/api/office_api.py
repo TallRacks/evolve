@@ -165,6 +165,10 @@ class OfficeDocumentListView(APIView):
         workspace_id = request.query_params.get("workspace_id")
         if workspace_id:
             rows = rows.filter(workspace_id=workspace_id)
+        if request.query_params.get("status") == Document.Status.ARCHIVED:
+            rows = rows.filter(status=Document.Status.ARCHIVED)
+        elif request.query_params.get("status") == Document.Status.ACTIVE:
+            rows = rows.filter(status=Document.Status.ACTIVE)
         rows = rows.select_related("office_content")
         return Response(
             [

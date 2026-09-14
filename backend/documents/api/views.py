@@ -19,6 +19,9 @@ from documents.models import Document, DocumentLink
 from documents.selectors import developer_documents, documents_for_user, portal_documents
 from documents.services import (
     archive_document,
+    duplicate_office_document,
+    move_document_to_workspace,
+    restore_document,
     create_document,
     create_version,
     link_document,
@@ -167,6 +170,46 @@ class ArchiveView(APIView):
         except PermissionError as exc:
             raise PermissionDenied(str(exc)) from exc
         return Response(DocumentSerializer(document, context={"request": request}).data)
+
+
+class RestoreView(APIView):
+    def post(self, request, document_id):
+        org = org_for(request.user, request)
+        try:
+            document = restore_document(scoped(request.user, org, document_id), actor=request.user, request=request)
+        except PermissionError as exc:
+            raise PermissionDenied(str(exc)) from exc
+        return Response(DocumentSerializer(document, context={"request": request}).data)
+
+
+class OfficeDuplicateView(APIView):
+    def post(self, request, document_id):
+        org = org_for(request.user, request)
+        document = scoped(request.user, org, document_id)
+        try:
+            copy = duplicate_office_document(document, actor=request.user, title=request.data.get("title"), request=request)
+        except PermissionError as exc:
+            raise PermissionDenied(str(exc)) from exc
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
+        return Response(DocumentSerializer(copy, context={"request": request}).data, status=201)
+
+
+class OfficeMoveView(APIView):
+    def post(self, request, document_id):
+        org = org_for(request.user, request)
+        document = scoped(request.user, org, document_id)
+        workspace_id = request.data.get("workspace_id")
+        workspace = None
+        if workspace_id:
+            workspace = get_object_or_404(Workspace, pk=workspace_id, organization=org, archived=False)
+        try:
+            moved = move_document_to_workspace(document, actor=request.user, workspace=workspace, request=request)
+        except PermissionError as exc:
+            raise PermissionDenied(str(exc)) from exc
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
+        return Response(DocumentSerializer(moved, context={"request": request}).data)
 
 
 class VersionView(APIView):
