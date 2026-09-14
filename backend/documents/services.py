@@ -75,6 +75,7 @@ def update_document(document, *, actor, request=None, **data):
 @transaction.atomic
 def archive_document(document, *, actor, request=None):
     require(actor, document.organization, "document.manage")
+    document.refresh_from_db(fields=("status", "source_type"))
     updates = {"status": Document.Status.ARCHIVED, "archived_at": timezone.now()}
     if document.source_type == Document.SourceType.STORED:
         updates["storage_status"] = Document.StorageStatus.ARCHIVED
@@ -94,6 +95,7 @@ def archive_document(document, *, actor, request=None):
 @transaction.atomic
 def restore_document(document, *, actor, request=None):
     require(actor, document.organization, "document.manage")
+    document.refresh_from_db(fields=("status", "source_type"))
     if document.status != Document.Status.ARCHIVED:
         return document
     updates = {"status": Document.Status.ACTIVE, "archived_at": None}
@@ -101,7 +103,14 @@ def restore_document(document, *, actor, request=None):
         updates["storage_status"] = Document.StorageStatus.AVAILABLE
     Document.objects.filter(pk=document.pk).update(**updates)
     document.refresh_from_db()
-    record_event(actor=actor, organization=document.organization, action="document.restored", resource=document, description="Document restored; retained content remains available.", request=request)
+    record_event(
+        actor=actor,
+        organization=document.organization,
+        action="document.restored",
+        resource=document,
+        description="Document restored; retained content remains available.",
+        request=request,
+    )
     return document
 
 
@@ -111,10 +120,33 @@ def duplicate_office_document(document, *, actor, request=None, title=None):
     content = getattr(document, "office_content", None)
     if content is None:
         raise ValueError("Only native Office documents can be duplicated.")
-    copy = Document.objects.create(organization=document.organization, workspace=document.workspace, title=(title or f"Copy of {document.title}")[:220], document_type=document.document_type, description=document.description, source_type=Document.SourceType.GENERATED, rendered_content="Office document", uploaded_by=actor, visibility=document.visibility)
-    OfficeDocumentContent.objects.create(document=copy, format=content.format, content_json=content.content_json, last_edited_by=actor, last_edited_at=timezone.now())
+    copy = Document.objects.create(
+        organization=document.organization,
+        workspace=document.workspace,
+        title=(title or f"Copy of {document.title}")[:220],
+        document_type=document.document_type,
+        description=document.description,
+        source_type=Document.SourceType.GENERATED,
+        rendered_content="Office document",
+        uploaded_by=actor,
+        visibility=document.visibility,
+    )
+    OfficeDocumentContent.objects.create(
+        document=copy,
+        format=content.format,
+        content_json=content.content_json,
+        last_edited_by=actor,
+        last_edited_at=timezone.now(),
+    )
     _copy_links(document, copy)
-    record_event(actor=actor, organization=document.organization, action="document.duplicated", resource=copy, description=f"Created a native Office copy of {document.title}.", request=request)
+    record_event(
+        actor=actor,
+        organization=document.organization,
+        action="document.duplicated",
+        resource=copy,
+        description=f"Created a native Office copy of {document.title}.",
+        request=request,
+    )
     return copy
 
 
@@ -129,7 +161,18 @@ def move_document_to_workspace(document, *, actor, workspace, request=None):
         return document
     document.workspace = workspace
     document.save(update_fields=("workspace", "updated_at"))
-    record_event(actor=actor, organization=document.organization, action="document.moved", resource=document, description=(f"Moved Office document to {workspace.name}." if workspace else "Moved Office document to organization documents."), request=request)
+    record_event(
+        actor=actor,
+        organization=document.organization,
+        action="document.moved",
+        resource=document,
+        description=(
+            f"Moved Office document to {workspace.name}."
+            if workspace
+            else "Moved Office document to organization documents."
+        ),
+        request=request,
+    )
     return document
 
 

@@ -34,6 +34,8 @@ class Document(TimestampedModel):
         ARCHIVED = "archived", "Archived"
 
     class Visibility(models.TextChoices):
+        PRIVATE = "private", "Private"
+        WORKSPACE = "workspace", "Workspace"
         ORGANIZATION = "organization", "Organization"
         RESTRICTED = "restricted", "Restricted"
         ARTIST = "artist", "Artist"
@@ -655,3 +657,66 @@ class OfficeDocumentAttachment(TimestampedModel):
 
     def delete(self, *args, **kwargs):
         return super().delete(*args, **kwargs)
+
+
+class DocumentCollaborator(TimestampedModel):
+    class Role(models.TextChoices):
+        VIEW = "view", "View"
+        COMMENT = "comment", "Comment"
+        EDIT = "edit", "Edit"
+        MANAGE = "manage", "Manage"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    document = models.ForeignKey(Document, on_delete=models.PROTECT, related_name="collaborators")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="document_collaborations"
+    )
+    role = models.CharField(max_length=12, choices=Role.choices, default=Role.VIEW)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="document_collaborators_added",
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("document", "user"), name="unique_document_collaborator"
+            )
+        ]
+
+
+class DocumentFavorite(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="document_favorites"
+    )
+    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name="favorites")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=("user", "document"), name="unique_document_favorite")
+        ]
+
+    def __str__(self):
+        return f"{self.user_id}:{self.document_id}"
+
+
+class DocumentRecentAccess(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="document_recent_accesses"
+    )
+    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name="recent_accesses")
+    last_viewed_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user", "document"), name="unique_document_recent_access"
+            )
+        ]
+        indexes = [models.Index(fields=("user", "last_viewed_at"))]
+
+    def __str__(self):
+        return f"{self.user_id}:{self.document_id}"

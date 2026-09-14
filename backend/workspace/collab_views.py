@@ -13,6 +13,11 @@ from organizations.permissions import user_has_organization_permission
 from organizations.selectors import organizations_for_user
 
 from .collaboration_models import Comment, CommentMention
+from documents.models import DocumentCollaborator
+
+def user_display_name(user):
+    return f"{user.first_name} {user.last_name}".strip() or user.email
+
 
 CONTEXT_PERMISSIONS = {
     "document": "document.view",
@@ -32,6 +37,7 @@ class CommentSerializer(serializers.ModelSerializer):
             "author",
             "context_type",
             "context_id",
+            "parent_comment",
             "body",
             "created_at",
             "updated_at",
@@ -53,7 +59,7 @@ def mention_memberships(body, organization):
         item
         for item in memberships
         if item.user.email.lower() in names
-        or item.user.get_full_name().lower().replace(" ", ".") in names
+        or user_display_name(item.user).lower().replace(" ", ".") in names
     ]
 
 
@@ -64,6 +70,11 @@ class CommentListView(APIView):
         context_id = request.query_params.get("context_id")
         queryset = Comment.objects.filter(organization=organization, archived_at__isnull=True)
         if context_type in CONTEXT_PERMISSIONS and context_id:
+            if context_type == "document":
+                from documents.selectors import documents_for_user
+
+                if not documents_for_user(request.user, organization).filter(pk=context_id).exists():
+                    raise PermissionDenied()
             queryset = queryset.filter(context_type=context_type, context_id=context_id)
         return Response(CommentSerializer(queryset.select_related("author")[:100], many=True).data)
 
@@ -77,16 +88,45 @@ class CommentListView(APIView):
         if context_type == "document":
             from documents.selectors import documents_for_user
 
-            if (
-                not documents_for_user(request.user, organization)
+            document = (
+                documents_for_user(request.user, organization)
                 .filter(pk=request.data.get("context_id"))
-                .exists()
-            ):
+                .first()
+            )
+            if document is None:
                 raise PermissionDenied()
+            collaborator_role = (
+                DocumentCollaborator.objects.filter(document=document, user=request.user)
+                .values_list("role", flat=True)
+                .first()
+            )
+            can_comment = collaborator_role in {
+                DocumentCollaborator.Role.COMMENT,
+                DocumentCollaborator.Role.EDIT,
+                DocumentCollaborator.Role.MANAGE,
+            }
+            can_comment = (
+                can_comment
+                or document.uploaded_by_id == request.user.pk
+                or user_has_organization_permission(request.user, organization, "document.manage")
+            )
+            if not can_comment:
+                raise PermissionDenied()
+        parent = None
+        if request.data.get("parent_comment"):
+            parent = get_object_or_404(
+                Comment,
+                pk=request.data["parent_comment"],
+                organization=organization,
+                context_type=context_type,
+                context_id=request.data.get("context_id"),
+                archived_at__isnull=True,
+            )
         serializer = CommentSerializer(
             data={
                 "context_type": context_type,
                 "context_id": request.data.get("context_id"),
+                "parent_comment": parent.pk if parent else None,
                 "body": request.data.get("body", ""),
             }
         )
@@ -102,7 +142,7 @@ class CommentListView(APIView):
                 organization=organization,
                 notification_type="comment.mentioned",
                 category="team",
-                title=f"{request.user.get_full_name() or request.user.email} mentioned you",
+                title=f"{user_display_name(request.user)} mentioned you",
                 message=comment.body[:1000],
                 users=[item.user for item in mentioned],
                 actor=request.user,

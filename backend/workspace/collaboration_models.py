@@ -24,6 +24,9 @@ class Comment(TimestampedModel):
     )
     context_type = models.CharField(max_length=20, choices=Context.choices)
     context_id = models.UUIDField()
+    parent_comment = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.PROTECT, related_name="replies"
+    )
     body = models.TextField(max_length=5000)
     edited_at = models.DateTimeField(null=True, blank=True)
     archived_at = models.DateTimeField(null=True, blank=True)

@@ -1,13 +1,19 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from audit.services import record_event
 from documents.api.views import DocumentContentView
 from documents.models import (
     Document,
+    DocumentCollaborator,
+    DocumentFavorite,
+    DocumentRecentAccess,
     DocumentRevision,
     OfficeDocumentAttachment,
     OfficeDocumentContent,
@@ -53,6 +59,10 @@ def content_response(document):
             "format": None,
             "content_json": None,
             "revision_number": 0,
+            "status": document.status,
+            "visibility": document.visibility,
+            "workspace": document.workspace.name if document.workspace_id else None,
+            "updated_at": document.updated_at,
         }
     return {
         "document": str(document.id),
@@ -61,6 +71,10 @@ def content_response(document):
         "content_json": content.content_json,
         "revision_number": content.revision_number,
         "last_edited_at": content.last_edited_at,
+        "status": document.status,
+        "visibility": document.visibility,
+        "workspace": document.workspace.name if document.workspace_id else None,
+        "updated_at": document.updated_at,
     }
 
 
@@ -94,7 +108,11 @@ class OfficeDocumentCollectionView(APIView):
 
 class OfficeContentView(APIView):
     def get(self, request, document_id):
-        return Response(content_response(document_for(request, document_id)))
+        document = document_for(request, document_id)
+        DocumentRecentAccess.objects.update_or_create(
+            user=request.user, document=document, defaults={"last_viewed_at": timezone.now()}
+        )
+        return Response(content_response(document))
 
     def patch(self, request, document_id):
         document = document_for(request, document_id)
@@ -169,7 +187,20 @@ class OfficeDocumentListView(APIView):
             rows = rows.filter(status=Document.Status.ARCHIVED)
         elif request.query_params.get("status") == Document.Status.ACTIVE:
             rows = rows.filter(status=Document.Status.ACTIVE)
-        rows = rows.select_related("office_content")
+        if request.query_params.get("favorite") == "true":
+            rows = rows.filter(favorites__user=request.user)
+        if request.query_params.get("shared") == "true":
+            rows = rows.filter(
+                Q(collaborators__user=request.user)
+                | Q(
+                    visibility__in=(Document.Visibility.WORKSPACE, Document.Visibility.ORGANIZATION)
+                )
+            )
+        if request.query_params.get("recent") == "true":
+            rows = rows.filter(recent_accesses__user=request.user).order_by(
+                "-recent_accesses__last_viewed_at"
+            )
+        rows = rows.select_related("office_content").distinct()
         return Response(
             [
                 {
@@ -180,10 +211,147 @@ class OfficeDocumentListView(APIView):
                     "workspace_id": str(row.workspace_id) if row.workspace_id else None,
                     "updated_at": row.updated_at,
                     "revision_number": row.office_content.revision_number,
+                    "favorite": DocumentFavorite.objects.filter(
+                        user=request.user, document=row
+                    ).exists(),
                 }
                 for row in rows[:100]
             ]
         )
+
+
+def sharing_manager(user, document):
+    if document.uploaded_by_id == user.pk:
+        return True
+    if user_has_organization_permission(user, document.organization, "document.manage"):
+        return True
+    return DocumentCollaborator.objects.filter(
+        document=document, user=user, role=DocumentCollaborator.Role.MANAGE
+    ).exists()
+
+
+class OfficeSharingView(APIView):
+    def get(self, request, document_id):
+        document = document_for(request, document_id)
+        return Response(
+            {
+                "visibility": document.visibility,
+                "collaborators": [
+                    {
+                        "id": str(item.id),
+                        "user_id": str(item.user_id),
+                        "email": item.user.email,
+                        "name": f"{item.user.first_name} {item.user.last_name}".strip(),
+                        "role": item.role,
+                    }
+                    for item in document.collaborators.select_related("user")
+                    if item.user.is_active
+                ],
+                "members": [
+                    {
+                        "user_id": str(item.user_id),
+                        "email": item.user.email,
+                        "name": f"{item.user.first_name} {item.user.last_name}".strip(),
+                    }
+                    for item in Membership.objects.filter(
+                        organization=document.organization, is_active=True, user__is_active=True
+                    ).select_related("user")[:200]
+                ],
+            }
+        )
+
+    def patch(self, request, document_id):
+        document = document_for(request, document_id)
+        if not sharing_manager(request.user, document):
+            raise PermissionDenied()
+        visibility = request.data.get("visibility")
+        if visibility not in {choice.value for choice in Document.Visibility}:
+            raise ValidationError("Unsupported document visibility.")
+        document.visibility = visibility
+        document.save(update_fields=("visibility", "updated_at"))
+        return self.get(request, document_id)
+
+    def post(self, request, document_id):
+        document = document_for(request, document_id)
+        if not sharing_manager(request.user, document):
+            raise PermissionDenied()
+        membership = get_object_or_404(
+            Membership.objects.filter(
+                organization=document.organization, is_active=True, user__is_active=True
+            ),
+            user_id=request.data.get("user_id"),
+        )
+        role = request.data.get("role", DocumentCollaborator.Role.VIEW)
+        if role not in {choice.value for choice in DocumentCollaborator.Role}:
+            raise ValidationError("Unsupported collaborator role.")
+        DocumentCollaborator.objects.update_or_create(
+            document=document,
+            user=membership.user,
+            defaults={"role": role, "created_by": request.user},
+        )
+        record_event(
+            actor=request.user,
+            organization=document.organization,
+            action="document.shared",
+            resource=document,
+            description="Updated Office document collaboration access.",
+            request=request,
+        )
+        return self.get(request, document_id)
+
+
+class OfficeCollaboratorDetailView(APIView):
+    def delete(self, request, document_id, collaborator_id):
+        document = document_for(request, document_id)
+        if not sharing_manager(request.user, document):
+            raise PermissionDenied()
+        collaborator = get_object_or_404(
+            DocumentCollaborator, pk=collaborator_id, document=document
+        )
+        collaborator.delete()
+        record_event(
+            actor=request.user,
+            organization=document.organization,
+            action="document.shared",
+            resource=document,
+            description="Removed Office document collaboration access.",
+            request=request,
+        )
+        return Response(status=204)
+
+    def patch(self, request, document_id, collaborator_id):
+        document = document_for(request, document_id)
+        if not sharing_manager(request.user, document):
+            raise PermissionDenied()
+        collaborator = get_object_or_404(
+            DocumentCollaborator, pk=collaborator_id, document=document
+        )
+        role = request.data.get("role")
+        if role not in {choice.value for choice in DocumentCollaborator.Role}:
+            raise ValidationError("Unsupported collaborator role.")
+        collaborator.role = role
+        collaborator.save(update_fields=("role", "updated_at"))
+        return OfficeSharingView().get(request, document_id)
+
+
+class OfficeFavoriteView(APIView):
+    def post(self, request, document_id):
+        document = document_for(request, document_id)
+        favorite, created = DocumentFavorite.objects.get_or_create(
+            user=request.user, document=document
+        )
+        if not created:
+            favorite.delete()
+        return Response({"favorite": created})
+
+
+class OfficeAccessView(APIView):
+    def post(self, request, document_id):
+        document = document_for(request, document_id)
+        DocumentRecentAccess.objects.update_or_create(
+            user=request.user, document=document, defaults={"last_viewed_at": timezone.now()}
+        )
+        return Response(status=204)
 
 
 class OfficeAttachmentView(APIView):

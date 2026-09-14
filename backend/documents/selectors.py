@@ -1,3 +1,5 @@
+from django.db.models import Q
+
 from artists.selectors import portal_artists_for_user
 from organizations.permissions import user_has_organization_permission
 
@@ -20,8 +22,12 @@ def documents_for_user(user, organization):
         return qs
     if not user_has_organization_permission(user, organization, "document.view"):
         return qs.none()
+    collaborator = Q(collaborators__user=user)
+    qs = qs.filter(~Q(visibility=Document.Visibility.PRIVATE) | Q(uploaded_by=user) | collaborator)
     if not user_has_organization_permission(user, organization, "document.restricted.view"):
-        qs = qs.exclude(visibility=Document.Visibility.RESTRICTED)
+        qs = qs.filter(
+            ~Q(visibility=Document.Visibility.RESTRICTED) | Q(uploaded_by=user) | collaborator
+        )
     if not user_has_organization_permission(user, organization, "contract.view"):
         qs = qs.exclude(contract_links__isnull=False)
     if not user_has_organization_permission(user, organization, "rights.view"):

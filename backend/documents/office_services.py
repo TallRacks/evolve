@@ -11,7 +11,13 @@ from django.utils import timezone
 from audit.services import record_event
 from organizations.permissions import user_has_organization_permission
 
-from .models import Document, DocumentRevision, OfficeDocumentAttachment, OfficeDocumentContent
+from .models import (
+    Document,
+    DocumentCollaborator,
+    DocumentRevision,
+    OfficeDocumentAttachment,
+    OfficeDocumentContent,
+)
 
 ALLOWED_NODES = {
     "doc",
@@ -169,10 +175,27 @@ def initial_content(format=None):
 
 
 def require(actor, document, permission="document.view"):
+    if permission == "document.manage":
+        collaborator = (
+            DocumentCollaborator.objects.filter(document=document, user=actor)
+            .values_list("role", flat=True)
+            .first()
+        )
+        is_collaborator_editor = collaborator in {
+            DocumentCollaborator.Role.EDIT,
+            DocumentCollaborator.Role.MANAGE,
+        }
+        if (
+            not user_has_organization_permission(actor, document.organization, permission)
+            and document.uploaded_by_id != actor.pk
+            and not is_collaborator_editor
+        ):
+            raise PermissionError("Permission denied.")
+        if document.status == Document.Status.ARCHIVED:
+            raise PermissionError("Archived Office documents must be restored before editing.")
+        return
     if not user_has_organization_permission(actor, document.organization, permission):
         raise PermissionError("Permission denied.")
-    if permission == "document.manage" and document.status == Document.Status.ARCHIVED:
-        raise PermissionError("Archived Office documents must be restored before editing.")
 
 
 def create_office_document(
