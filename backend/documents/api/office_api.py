@@ -7,6 +7,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from audit.models import AuditEvent
 from audit.services import record_event
 from documents.api.views import DocumentContentView
 from documents.models import (
@@ -76,6 +77,24 @@ def content_response(document):
         "workspace": document.workspace.name if document.workspace_id else None,
         "updated_at": document.updated_at,
     }
+
+
+class OfficeActivityView(APIView):
+    def get(self, request, document_id):
+        document = document_for(request, document_id)
+        rows = (
+            AuditEvent.objects.filter(
+                organization=document.organization,
+                resource_type="Document",
+                resource_id=str(document.pk),
+            )
+            .select_related("actor")[:100]
+        )
+        return Response([{
+            "id": str(row.id), "action": row.action,
+            "actor": (row.actor.get_full_name() or row.actor.email) if row.actor else "System",
+            "description": row.description, "created_at": row.created_at,
+        } for row in rows])
 
 
 class OfficeDocumentCollectionView(APIView):

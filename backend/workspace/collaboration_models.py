@@ -29,6 +29,14 @@ class Comment(TimestampedModel):
     )
     body = models.TextField(max_length=5000)
     edited_at = models.DateTimeField(null=True, blank=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="comments_resolved",
+    )
     archived_at = models.DateTimeField(null=True, blank=True)
 
     def clean(self):

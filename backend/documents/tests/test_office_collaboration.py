@@ -17,6 +17,7 @@ from documents.services import (
 )
 from organizations.models import Membership, Organization
 from users.models import User
+from workspace.collaboration_models import Comment
 from workspace.models import Workspace
 
 pytestmark = pytest.mark.django_db
@@ -136,3 +137,29 @@ def test_favorite_recent_duplicate_and_archive_lifecycle_are_persistent():
     assert copy.__class__.objects.get(pk=copy.pk).workspace_id == workspace.pk
     archive_document(copy, actor=owner)
     assert restore_document(copy, actor=owner).status == Document.Status.ACTIVE
+
+
+def test_document_comment_can_resolve_and_reopen():
+    owner, _member, organization, document = make_fixture()
+    client = APIClient()
+    client.force_authenticate(owner)
+    created = client.post(
+        "/api/workspace/comments/",
+        {
+            "organization_id": organization.pk,
+            "context_type": "document",
+            "context_id": document.pk,
+            "body": "Review this section",
+        },
+        format="json",
+    )
+    assert created.status_code == 201
+    comment = Comment.objects.get(pk=created.json()["id"])
+    resolved = client.patch(
+        f"/api/workspace/comments/{comment.pk}/", {"action": "resolve"}, format="json"
+    )
+    assert resolved.status_code == 200 and resolved.json()["resolved_at"]
+    reopened = client.patch(
+        f"/api/workspace/comments/{comment.pk}/", {"action": "reopen"}, format="json"
+    )
+    assert reopened.status_code == 200 and reopened.json()["resolved_at"] is None

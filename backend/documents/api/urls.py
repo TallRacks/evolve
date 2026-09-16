@@ -3,6 +3,7 @@ from django.urls import path
 from documents.api.generator_api import BookingOfficeGeneratorView, ReleaseOfficeGeneratorView
 from documents.api.office_api import (
     OfficeAccessView,
+    OfficeActivityView,
     OfficeAttachmentContentView,
     OfficeAttachmentView,
     OfficeCollaboratorDetailView,
@@ -58,6 +59,7 @@ urlpatterns = [
     path("office/documents/", OfficeDocumentCollectionView.as_view()),
     path("office/documents/list/", OfficeDocumentListView.as_view()),
     path("documents/<uuid:document_id>/office-content/", OfficeContentView.as_view()),
+    path("documents/<uuid:document_id>/office-activity/", OfficeActivityView.as_view()),
     path("documents/<uuid:document_id>/office-access/", OfficeAccessView.as_view()),
     path("documents/<uuid:document_id>/office-favorite/", OfficeFavoriteView.as_view()),
     path("documents/<uuid:document_id>/office-sharing/", OfficeSharingView.as_view()),

@@ -42,8 +42,10 @@ class CommentSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "edited_at",
+            "resolved_at",
+            "resolved_by",
         )
-        read_only_fields = ("id", "organization", "author", "created_at", "updated_at", "edited_at")
+        read_only_fields = ("id", "organization", "author", "created_at", "updated_at", "edited_at", "resolved_at", "resolved_by")
 
 
 def scoped_org(request, organization_id):
@@ -159,6 +161,17 @@ class CommentDetailView(APIView):
             organization__in=organizations_for_user(request.user),
             archived_at__isnull=True,
         )
+        action = request.data.get("action")
+        if action in {"resolve", "reopen"}:
+            can_manage = comment.author_id == request.user.pk or user_has_organization_permission(
+                request.user, comment.organization, "document.manage"
+            )
+            if not can_manage:
+                raise PermissionDenied()
+            comment.resolved_at = timezone.now() if action == "resolve" else None
+            comment.resolved_by = request.user if action == "resolve" else None
+            comment.save(update_fields=["resolved_at", "resolved_by", "updated_at"])
+            return Response(CommentSerializer(comment).data)
         if comment.author_id != request.user.pk:
             raise PermissionDenied()
         body = request.data.get("body", "")
