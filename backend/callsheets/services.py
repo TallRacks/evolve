@@ -32,6 +32,10 @@ BOOKING_SNAPSHOT_FIELDS = {
     "country",
     "venue_phone",
     "promoter_name",
+    "point_of_contact",
+    "point_of_contact_details",
+    "onsite_contact",
+    "onsite_contact_details",
 }
 
 
@@ -58,6 +62,14 @@ def booking_snapshot(booking):
             )
             if value
         )
+    promoter_contact = ""
+    if booking.promoter:
+        promoter_contact = ", ".join(
+            value for value in (booking.promoter.email, booking.promoter.phone) if value
+        )
+    venue_contact = ""
+    if venue:
+        venue_contact = ", ".join(value for value in (venue.public_phone, venue.public_email) if value)
     return {
         "event_name": booking.title,
         "artist_name": booking.artist.stage_name,
@@ -72,6 +84,10 @@ def booking_snapshot(booking):
         "country": booking.country_snapshot,
         "venue_phone": venue.public_phone if venue else "",
         "promoter_name": booking.promoter_name_snapshot,
+        "point_of_contact": booking.promoter_name_snapshot,
+        "point_of_contact_details": promoter_contact,
+        "onsite_contact": venue.name if venue else "",
+        "onsite_contact_details": venue_contact,
     }
 
 

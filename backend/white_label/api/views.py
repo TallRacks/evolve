@@ -1,3 +1,5 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
@@ -5,21 +7,27 @@ from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.parsers import FormParser, MultiPartParser
 
 from audit.services import record_event
 from organizations.api.permissions import PlatformSuperuser
 from organizations.models import Organization
 from organizations.selectors import organizations_for_user
-from white_label.models import APIClient, APIKey, OrganizationBranding, OrganizationDomain
+from white_label.models import APIClient, APIKey, GlobalBranding, GlobalBrandingAsset, OrganizationBranding, OrganizationDomain
+from documents.models import Document
+from documents.services import upload_document
+from documents.storage import DocumentStorageUnavailable, get_storage_backend
 from white_label.services import (
     ALLOWED_SCOPES,
     authenticate_api_key,
     create_api_client_key,
     create_domain,
     effective_branding,
+    effective_global_branding,
     organization_for_host,
     require_manage,
     verify_domain,
+    upload_global_branding_asset,
 )
 
 from .serializers import (
@@ -27,6 +35,7 @@ from .serializers import (
     APIClientSerializer,
     BrandingSerializer,
     DomainSerializer,
+    GlobalBrandingSerializer,
 )
 
 
@@ -45,13 +54,40 @@ class CurrentBrandingView(APIView):
             if host_organization:
                 organization_id = host_organization.pk
         if not organization_id:
-            organization_id = (
-                organizations_for_user(request.user).values_list("pk", flat=True).first()
-            )
-        if not organization_id:
-            raise PermissionDenied("Select an organization.")
+            return Response({"organization_id": None, **effective_global_branding()})
         organization = scoped_organization(request.user, organization_id)
         return Response({"organization_id": organization.id, **effective_branding(organization)})
+
+
+class PublicBrandingAssetView(APIView):
+    permission_classes = (AllowAny,)
+
+    def get(self, request, asset_type):
+        if asset_type not in {GlobalBrandingAsset.AssetType.LOGO, GlobalBrandingAsset.AssetType.DARK_LOGO, GlobalBrandingAsset.AssetType.FAVICON, GlobalBrandingAsset.AssetType.MOBILE_ICON}:
+            raise PermissionDenied("Asset type must be logo or favicon.")
+        branding = get_object_or_404(GlobalBranding, assets__asset_type=asset_type)
+        asset = get_object_or_404(GlobalBrandingAsset, branding=branding, asset_type=asset_type)
+        try:
+            stored = get_storage_backend(asset.storage_provider).open_stream(asset.storage_key)
+        except DocumentStorageUnavailable as error:
+            raise PermissionDenied(str(error)) from error
+
+        def stream():
+            try:
+                while chunk := stored.body.read(64 * 1024):
+                    yield chunk
+            finally:
+                close = getattr(stored.body, "close", None)
+                if close:
+                    close()
+
+        response = StreamingHttpResponse(stream(), content_type=asset.content_type)
+        response["Content-Disposition"] = f'inline; filename="{asset.original_filename}"'
+        response["Cache-Control"] = "public, max-age=300"
+        response["X-Content-Type-Options"] = "nosniff"
+        if stored.content_length:
+            response["Content-Length"] = stored.content_length
+        return response
 
 
 class OrganizationBrandingView(APIView):
@@ -80,6 +116,30 @@ class OrganizationBrandingView(APIView):
         return Response(serializer.data)
 
 
+class OrganizationBrandingAssetView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request, organization_id):
+        organization = scoped_organization(request.user, organization_id)
+        require_manage(request.user, organization, "branding.manage")
+        asset_type = request.data.get("asset_type")
+        if asset_type not in {"logo", "favicon", "mobile_icon"}:
+            raise PermissionDenied("Asset type must be logo or favicon.")
+        file = request.FILES.get("file")
+        if not file:
+            raise PermissionDenied("Choose an image file.")
+        if not str(file.content_type or "").lower().startswith(("image/png", "image/jpeg", "image/webp")):
+            raise PermissionDenied("Brand assets must be PNG, JPEG, or WebP images.")
+        try:
+            document = upload_document(actor=request.user, organization=organization, file=file, request=request, title="Brand " + asset_type, document_type=Document.Type.ARTWORK, visibility=Document.Visibility.ORGANIZATION)
+        except DocumentStorageUnavailable as error:
+            raise PermissionDenied(str(error)) from error
+        url = request.build_absolute_uri("/api/documents/" + str(document.pk) + "/preview/?organization=" + str(organization.pk))
+        branding, _ = OrganizationBranding.objects.get_or_create(organization=organization)
+        setattr(branding, asset_type + "_url", url)
+        branding.save(update_fields=(asset_type + "_url", "updated_at"))
+        record_event(actor=request.user, organization=organization, action="branding." + asset_type + "_uploaded", resource=branding, description="Uploaded organization " + asset_type + ".", request=request)
+        return Response(BrandingSerializer(branding).data)
 class OrganizationDomainListView(APIView):
     def get(self, request, organization_id):
         organization = scoped_organization(request.user, organization_id)
@@ -111,6 +171,84 @@ class OrganizationDomainListView(APIView):
             request=request,
         )
         return Response(DomainSerializer(domain).data, status=status.HTTP_201_CREATED)
+
+
+class GlobalBrandingView(APIView):
+    permission_classes = (PlatformSuperuser,)
+
+    def get(self, request):
+        branding = GlobalBranding.objects.first()
+        if branding is None:
+            branding = GlobalBranding()
+        return Response(GlobalBrandingSerializer(branding).data)
+
+    def patch(self, request):
+        branding, _ = GlobalBranding.objects.get_or_create()
+        serializer = GlobalBrandingSerializer(branding, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        record_event(actor=request.user, action="branding.global_updated", resource=branding, description="Updated global platform branding.", request=request)
+        return Response(serializer.data)
+
+
+class GlobalBrandingAssetView(APIView):
+    permission_classes = (PlatformSuperuser,)
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request):
+        branding, _ = GlobalBranding.objects.get_or_create()
+        asset_type = request.data.get("asset_type")
+        file = request.FILES.get("file")
+        if not file:
+            raise PermissionDenied("Choose an image file.")
+        try:
+            upload_global_branding_asset(
+                actor=request.user, branding=branding, asset_type=asset_type,
+                file=file, request=request,
+            )
+        except DjangoValidationError as error:
+            raise PermissionDenied(getattr(error, "message", error.messages)) from error
+        except DocumentStorageUnavailable as error:
+            raise PermissionDenied(str(error)) from error
+        return Response(GlobalBrandingSerializer(branding).data)
+
+
+class GlobalBrandingAssetPreviewView(APIView):
+    permission_classes = (PlatformSuperuser,)
+
+    def get(self, request, asset_type):
+        if asset_type not in {GlobalBrandingAsset.AssetType.LOGO, GlobalBrandingAsset.AssetType.DARK_LOGO, GlobalBrandingAsset.AssetType.FAVICON, GlobalBrandingAsset.AssetType.MOBILE_ICON}:
+            raise PermissionDenied("Asset type must be logo or favicon.")
+        branding = get_object_or_404(GlobalBranding, assets__asset_type=asset_type)
+        asset = get_object_or_404(
+            GlobalBrandingAsset, branding=branding, asset_type=asset_type
+        )
+        try:
+            stored = get_storage_backend(asset.storage_provider).open_stream(asset.storage_key)
+        except DocumentStorageUnavailable as error:
+            raise PermissionDenied(str(error)) from error
+
+        def stream():
+            try:
+                while chunk := stored.body.read(64 * 1024):
+                    yield chunk
+            finally:
+                close = getattr(stored.body, "close", None)
+                if close:
+                    close()
+
+        response = StreamingHttpResponse(stream(), content_type=asset.content_type)
+        response["Content-Disposition"] = f'inline; filename="{asset.original_filename}"'
+        response["Cache-Control"] = "private, no-store, max-age=0"
+        response["Pragma"] = "no-cache"
+        response["X-Content-Type-Options"] = "nosniff"
+        if stored.content_length:
+            response["Content-Length"] = stored.content_length
+        record_event(
+            actor=request.user, action="branding.global_asset_previewed", resource=branding,
+            description=f"Previewed global {asset_type} asset.", request=request,
+        )
+        return response
 
 
 class PlatformBrandingListView(APIView):

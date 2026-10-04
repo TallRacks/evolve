@@ -1,10 +1,16 @@
+import json
+import logging
+import os
+
 from django.db import transaction
 from django.utils import timezone
 
 from audit.services import record_event
 
 from .email_policy import CATEGORY_POLICIES, EMAIL_NOTIFICATION_TYPES
-from .models import Notification, NotificationPreference, NotificationRecipient
+from .models import DevicePushSubscription, Notification, NotificationPreference, NotificationRecipient
+
+logger = logging.getLogger(__name__)
 
 
 def active_users(users, organization=None):
@@ -66,7 +72,47 @@ def create_notification(
         from .email_delivery import schedule_notification_email
 
         schedule_notification_email(item, ids)
+    transaction.on_commit(lambda: send_web_push(item, in_app_ids))
     return item
+
+
+def send_web_push(notification, user_ids):
+    """Best-effort self-hosted push; notification persistence never depends on delivery."""
+    private_key = os.environ.get("EVOLVE_WEB_PUSH_PRIVATE_KEY", "")
+    subject = os.environ.get("EVOLVE_WEB_PUSH_SUBJECT", "")
+    if not private_key or not subject or not user_ids:
+        return
+    try:
+        from pywebpush import WebPushException, webpush
+    except ImportError:
+        logger.warning("Web Push dependency is not installed")
+        return
+    payload = json.dumps({
+        "title": notification.title,
+        "body": notification.message,
+        "url": notification.action_url or "/workspace/notifications",
+        "priority": notification.priority,
+    })
+    subscriptions = DevicePushSubscription.objects.filter(user_id__in=user_ids, is_active=True)
+    for subscription in subscriptions:
+        try:
+            webpush(
+                subscription_info={
+                    "endpoint": subscription.endpoint,
+                    "keys": {"p256dh": subscription.p256dh, "auth": subscription.auth},
+                },
+                data=payload,
+                vapid_private_key=private_key,
+                vapid_claims={"sub": subject},
+            )
+        except WebPushException as exc:
+            if getattr(exc.response, "status_code", None) in (404, 410):
+                subscription.is_active = False
+                subscription.save(update_fields=("is_active", "updated_at"))
+            else:
+                logger.warning("Web Push delivery failed for device %s", subscription.id)
+        except Exception:
+            logger.warning("Web Push delivery failed for device %s", subscription.id, exc_info=True)
 
 
 def booking_team_users(booking):

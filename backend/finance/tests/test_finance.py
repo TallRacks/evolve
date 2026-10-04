@@ -11,7 +11,13 @@ from artists.models import Artist
 from audit.models import AuditEvent
 from bookings.models import Booking
 from finance.admin import AllocationAdmin, InvoiceAdmin
-from finance.models import Invoice, InvoiceLineItem, Payment, PaymentAllocation
+from finance.models import (
+    EmployeeInvoiceSubmission,
+    Invoice,
+    InvoiceLineItem,
+    Payment,
+    PaymentAllocation,
+)
 from finance.services import (
     add_line_item,
     allocate_payment,
@@ -23,7 +29,7 @@ from finance.services import (
     void_payment,
 )
 from notifications.models import Notification
-from organizations.models import Membership, Organization
+from organizations.models import Membership, Organization, RoleProfile
 from promoters.models import Promoter
 from users.models import User
 from white_label.services import create_api_client_key
@@ -250,6 +256,47 @@ def test_developer_finance_scope_and_curated_fields(client, foundation):
     assert not (
         {"billed_to_address", "internal_notes", "billed_to_email"} & response.json()[0].keys()
     )
+
+
+def test_employee_invoice_list_is_scoped_to_employee_without_finance_manage(client, foundation):
+    organization, owner, _, _ = foundation
+    profile = RoleProfile.objects.create(
+        organization=organization,
+        key="employee-finance-viewer",
+        name="Employee finance viewer",
+        permissions=["organization.view", "finance.view"],
+    )
+    employee = User.objects.create_user(email="employee@example.invalid", password=PASSWORD)
+    Membership.objects.create(
+        organization=organization,
+        user=employee,
+        role=Membership.Role.MEMBER,
+        role_profile=profile,
+    )
+    own = EmployeeInvoiceSubmission.objects.create(
+        organization=organization,
+        employee=employee,
+        submission_number="EMP-OWN-001",
+        invoice_date=date.today(),
+        currency="ZAR",
+        line_items=[{"description": "Own work", "quantity": "1", "unit_amount": "10.00"}],
+        total_amount=Decimal("10.00"),
+    )
+    EmployeeInvoiceSubmission.objects.create(
+        organization=organization,
+        employee=owner,
+        submission_number="EMP-OTHER-001",
+        invoice_date=date.today(),
+        currency="ZAR",
+        line_items=[{"description": "Other work", "quantity": "1", "unit_amount": "20.00"}],
+        total_amount=Decimal("20.00"),
+    )
+
+    client.force_login(employee)
+    response = client.get(f"/api/finance/employee-invoices/?organization_id={organization.id}")
+
+    assert response.status_code == 200
+    assert [row["id"] for row in response.json()] == [str(own.id)]
 
 
 def test_postgresql_concurrent_allocation_cannot_overallocate(foundation):

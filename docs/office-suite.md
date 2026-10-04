@@ -14,4 +14,4 @@ Documents may now be assigned to a same-organization Workspace. Office list, rea
 
 ## Intentionally remaining for the next Office slice
 
-Typed/persisted Sheets with CSV import/export, Document-to-Task service integration, private attachments/image resolution, Booking/Music Office generators, comments/mentions in the editor, and Google interoperability are not represented as complete here. The functional-completion gate must remain FAIL until those contracts and authenticated production smoke tests exist.
+Google interoperability, realtime cursors/presence, and CRDT-based collaboration remain intentionally deferred. Office Sheets, CSV import/export, tasks, attachments, generators, comments, and mentions are now represented by the current implementation. The functional-completion gate must remain FAIL until those contracts and authenticated production smoke tests exist.

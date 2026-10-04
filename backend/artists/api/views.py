@@ -7,7 +7,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from artists.models import Artist, ArtistPortalLink, ArtistTeamAssignment
+from artists.models import Artist, ArtistPortalLink, ArtistTeamAssignment, ArtistToolkit
 from artists.selectors import artist_activity, artists_for_user, portal_artists_for_user
 from artists.services import (
     assign_team_member,
@@ -32,6 +32,7 @@ from white_label.services import authenticate_api_key
 
 from .serializers import (
     ArtistSerializer,
+    ArtistToolkitSerializer,
     ArtistWriteSerializer,
     DeveloperArtistSerializer,
     PortalArtistSerializer,
@@ -220,17 +221,34 @@ class Artist360View(APIView):
                         "title": item.title,
                         "date": item.planned_release_date,
                         "status": item.status,
+                        "artwork_url": item.artwork_url,
+                        "upc_ean": item.upc_ean,
+                        "public_url": item.public_url,
                     }
                     for item in releases
                 ],
                 "tracks": [
-                    {"id": item.id, "title": item.title, "status": item.status} for item in tracks
+                    {
+                        "id": item.id,
+                        "title": item.title,
+                        "status": item.status,
+                        "isrc": item.isrc,
+                        "artwork_url": item.artwork_url,
+                    }
+                    for item in tracks
                 ],
                 "campaigns": [
                     {"id": item.id, "name": item.name, "status": item.status} for item in campaigns
                 ],
                 "documents": [
-                    {"id": item.id, "title": item.title, "type": item.document_type}
+                    {
+                        "id": item.id,
+                        "title": item.title,
+                        "type": item.document_type,
+                        "content_type": item.content_type,
+                        "original_filename": item.original_filename,
+                        "external_url": item.external_url if item.external_url.startswith("https://") else "",
+                    }
                     for item in documents
                 ],
                 "rights": {
@@ -241,6 +259,31 @@ class Artist360View(APIView):
                 },
             }
         )
+
+
+class ArtistToolkitView(APIView):
+    def get(self, request, artist_id):
+        artist = scoped_artist(request.user, artist_id)
+        require_artist_permission(request.user, artist.organization, "artist.view")
+        toolkit = ArtistToolkit.objects.filter(artist=artist).first()
+        return Response(ArtistToolkitSerializer(toolkit).data if toolkit else {
+            "short_bio": "",
+            "long_bio": "",
+            "rate_card": "",
+            "stats_summary": "",
+        })
+
+    def patch(self, request, artist_id):
+        artist = scoped_artist(request.user, artist_id)
+        require_artist_permission(request.user, artist.organization, "artist.manage")
+        toolkit, _ = ArtistToolkit.objects.get_or_create(artist=artist)
+        serializer = ArtistToolkitSerializer(toolkit, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        toolkit = serializer.save()
+        from audit.services import record_event
+
+        record_event(actor=request.user, organization=artist.organization, action="artist.toolkit_updated", resource=toolkit, description=f"Updated toolkit for {artist.stage_name}.", request=request)
+        return Response(ArtistToolkitSerializer(toolkit).data)
 
 
 class ArtistTeamView(APIView):

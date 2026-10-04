@@ -48,6 +48,8 @@ INSTALLED_APPS = [
     "audit",
     "core",
     "workspace",
+    "trackers",
+    "signing",
 ]
 
 MIDDLEWARE = [
@@ -187,6 +189,16 @@ UNFOLD = {
                         "link": reverse_lazy("admin:white_label_organizationbranding_changelist"),
                     },
                     {
+                        "title": "Global branding",
+                        "icon": "public",
+                        "link": reverse_lazy("admin:white_label_globalbranding_changelist"),
+                    },
+                    {
+                        "title": "Branding assets",
+                        "icon": "image",
+                        "link": reverse_lazy("admin:white_label_globalbrandingasset_changelist"),
+                    },
+                    {
                         "title": "Domains",
                         "icon": "language",
                         "link": reverse_lazy("admin:white_label_organizationdomain_changelist"),
@@ -207,6 +219,12 @@ UNFOLD = {
                         "icon": "cloud",
                         "link": reverse_lazy("admin:integrations_storageprovider_changelist"),
                         "permission": "config.admin_navigation.storage_providers",
+                    },
+                    {
+                        "title": "Google Workspace",
+                        "icon": "apps",
+                        "link": reverse_lazy("admin:integrations_googleworkspaceconnector_changelist"),
+                        "permission": "config.admin_navigation.google_workspace",
                     },
                     {
                         "title": "API keys",
@@ -472,6 +490,57 @@ UNFOLD = {
                 ],
             },
             {
+                "title": "Workspace intelligence",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Workspaces",
+                        "icon": "workspaces",
+                        "link": reverse_lazy("admin:workspace_workspace_changelist"),
+                    },
+                    {
+                        "title": "Boards",
+                        "icon": "view_kanban",
+                        "link": reverse_lazy("admin:workspace_board_changelist"),
+                    },
+                    {
+                        "title": "AI provider config",
+                        "icon": "smart_toy",
+                        "link": reverse_lazy("admin:workspace_aiproviderconfig_changelist"),
+                    },
+                    {
+                        "title": "Automations",
+                        "icon": "bolt",
+                        "link": reverse_lazy("admin:workspace_automation_changelist"),
+                    },
+                    {
+                        "title": "Action requests",
+                        "icon": "pending_actions",
+                        "link": reverse_lazy("admin:workspace_actionrequest_changelist"),
+                    },
+                    {
+                        "title": "Mailbox access",
+                        "icon": "mail_lock",
+                        "link": reverse_lazy("admin:workspace_mailboxaccess_changelist"),
+                    },
+                    {
+                        "title": "Mailbox replies",
+                        "icon": "reply",
+                        "link": reverse_lazy("admin:workspace_mailboxreply_changelist"),
+                    },
+                    {
+                        "title": "Mailbox sent messages",
+                        "icon": "outgoing_mail",
+                        "link": reverse_lazy("admin:workspace_mailboxsentmessage_changelist"),
+                    },
+                    {
+                        "title": "Inbound messages",
+                        "icon": "mark_email_unread",
+                        "link": reverse_lazy("admin:workspace_inboundmessage_changelist"),
+                    },
+                ],
+            },
+            {
                 "title": "Communication",
                 "collapsible": True,
                 "items": [
@@ -503,6 +572,32 @@ UNFOLD = {
                         "title": "Email delivery attempts",
                         "icon": "outgoing_mail",
                         "link": reverse_lazy("admin:notifications_emaildeliveryattempt_changelist"),
+                    },
+                ],
+            },
+            {
+                "title": "Sync & signing",
+                "collapsible": True,
+                "items": [
+                    {
+                        "title": "Bookings trackers",
+                        "icon": "sync",
+                        "link": reverse_lazy("admin:trackers_tracker_changelist"),
+                    },
+                    {
+                        "title": "Tracker sync events",
+                        "icon": "history",
+                        "link": reverse_lazy("admin:trackers_trackersyncevent_changelist"),
+                    },
+                    {
+                        "title": "Signing requests",
+                        "icon": "draw",
+                        "link": reverse_lazy("admin:signing_signingrequest_changelist"),
+                    },
+                    {
+                        "title": "Signing events",
+                        "icon": "history_edu",
+                        "link": reverse_lazy("admin:signing_signingevent_changelist"),
                     },
                 ],
             },

@@ -1,9 +1,22 @@
 # Evolve v2
 
-Private artist-management and operations platform. The repository contains the identity,
+Evolve is a private artist-management and operations workspace for teams running live
+bookings, artist services, releases, campaigns, documents, finance, rights, royalties,
+travel, and production workflows. It is designed around organization-scoped access,
+versioned operational documents, auditable mutations, and a white-label interface for
+artist teams and their partners.
 
-Evolve is a multi-client product: `frontend/` is the Next.js web/PWA client and `mobile/` is the genuine React Native/Expo client. Both consume the Django API; the PWA is not a substitute for native mobile. See `docs/page-parity.md`, `docs/mobile-architecture.md`, and `docs/mobile-ios.md`.
-organization, white-label, artist, relationship, and booking foundations.
+## What is in this repository
+
+- `frontend/` — Next.js, React, TypeScript, Tailwind CSS, and shadcn/ui web/PWA client.
+- `backend/` — Django, Django REST Framework, PostgreSQL-backed domain API, and Django admin.
+- `mobile/` — React Native/Expo client foundation consuming the same Django API.
+- `infrastructure/` — Docker, Compose, and independently managed Caddy configuration.
+- `docs/` — domain, architecture, security, deployment, and operational documentation.
+
+The web/PWA and native clients are separate clients of the Django API. Browser navigation
+and client-side organization selection never replace server-side authentication or
+authorization.
 
 Milestone 14 adds a dedicated Finance domain for invoice snapshots, line items, recorded external
 payments, allocations, currency-aware balances, authenticated print views, and scoped

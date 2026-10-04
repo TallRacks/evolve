@@ -29,4 +29,6 @@ urlpatterns = [
     path("api/", include("audit.api.urls")),
     path("api/", include("white_label.api.urls")),
     path("api/", include("workspace.api.urls")),
+    path("api/", include("trackers.api.urls")),
+    path("api/", include("signing.api.urls")),
 ]

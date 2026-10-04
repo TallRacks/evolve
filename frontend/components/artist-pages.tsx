@@ -127,16 +127,25 @@ interface ArtistOverview {
     title: string;
     date: string | null;
     status: string;
+    artwork_url: string;
+    upc_ean: string;
+    public_url: string;
   }[];
   tracks: { id: string; title: string; status: string }[];
   campaigns: { id: string; name: string; status: string }[];
-  documents: { id: string; title: string; type: string }[];
+  documents: { id: string; title: string; type: string; content_type: string; original_filename: string; external_url: string }[];
   rights: {
     works: number;
     tracks_with_master_rights: number;
     incomplete_master_splits: number;
     incomplete_publishing_splits: number;
   };
+}
+interface ArtistToolkit {
+  short_bio: string;
+  long_bio: string;
+  rate_card: string;
+  stats_summary: string;
 }
 
 function Workspace({ children }: { children: React.ReactNode }) {
@@ -347,7 +356,7 @@ export function ArtistDirectoryPage() {
         <div className="mt-7 grid gap-3">
           {filtered.map((artist) => (
             <Link
-              className="grid gap-4 rounded-md border border-neutral-800 bg-neutral-900 p-5 hover:border-neutral-600 sm:grid-cols-[auto_1fr_auto_auto] sm:items-center"
+              className="grid gap-4 evolve-panel p-5 hover:border-neutral-600 sm:grid-cols-[auto_1fr_auto_auto] sm:items-center"
               href={`/workspace/artists/${artist.id}`}
               key={artist.id}
             >
@@ -426,14 +435,19 @@ function ArtistDetailContent({
   reload: () => Promise<void>;
 }) {
   const { activeOrganizationId, session } = useAuth();
+  const router = useRouter();
   const organizationId = platform ? data.organization.id : activeOrganizationId;
   const [members, setMembers] = useState<Member[]>([]);
   const [overview, setOverview] = useState<ArtistOverview | null>(null);
+  const [toolkit, setToolkit] = useState<ArtistToolkit | null>(null);
+  const [selectedReleases, setSelectedReleases] = useState<string[]>([]);
+  const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const canManage =
     platform || hasOrganizationPermission(session, activeOrganizationId, "artist.manage");
   const canManageTeam =
     platform || hasOrganizationPermission(session, activeOrganizationId, "artist.team.manage");
+  const pressImages = overview?.documents.filter((item) => item.content_type.startsWith("image/") || item.type === "artwork") ?? [];
   useEffect(() => {
     if (!organizationId || !canManageTeam) return;
     void apiRequest<Member[]>(
@@ -444,6 +458,7 @@ function ArtistDetailContent({
     void apiRequest<ArtistOverview>(`/api/artists/${data.id}/overview/`).then(
       setOverview,
     );
+    void apiRequest<ArtistToolkit>(`/api/artists/${data.id}/toolkit/`).then(setToolkit);
   }, [data.id]);
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -464,6 +479,13 @@ function ArtistDetailContent({
         caught instanceof Error ? caught.message : "Unable to update artist.",
       );
     }
+  }
+  async function saveToolkit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
+    const saved = await apiRequest<ArtistToolkit>(`/api/artists/${data.id}/toolkit/`, { method: "PATCH", body: JSON.stringify(payload) });
+    setToolkit(saved);
+    setMessage("Artist press kit updated.");
   }
   async function lifecycle(status: string) {
     if (!await confirmAction(`Change artist status to ${status}?`)) return;
@@ -521,6 +543,27 @@ function ArtistDetailContent({
     );
     await reload();
   }
+  function prepareToolkitEmail() {
+    if (!overview) return;
+    const releases = overview.releases.filter((item) => selectedReleases.includes(item.id));
+    const documents = overview.documents.filter((item) => selectedDocuments.includes(item.id));
+    const lines = [
+      `${data.stage_name} toolkit`,
+      "",
+      "Selected materials:",
+      ...releases.map((item) => `Release: ${item.title} — https://evolve.nastycsa.com/workspace/music/releases/${item.id}`),
+      ...documents.map((item) => `Document: ${item.title} — https://evolve.nastycsa.com/workspace/documents/${item.id}`),
+      "",
+      "Please sign in to Evolve to view authorized materials.",
+    ];
+    const params = new URLSearchParams({
+      subject: `${data.stage_name} toolkit`,
+      body: lines.join("\n"),
+    });
+    const recipient = data.booking_email || data.management_email || "";
+    if (recipient) params.set("to", recipient);
+    router.push(`/inbox?${params.toString()}`);
+  }
   return (
     <>
       <Breadcrumbs
@@ -576,6 +619,13 @@ function ArtistDetailContent({
       <div className="mt-5">
         <Notice message={message} />
       </div>
+      {overview && (
+        <section className="mt-7 evolve-panel p-6">
+          <div><p className="evolve-eyebrow text-xs font-semibold uppercase tracking-[0.14em]">Press kit</p><h2 className="mt-1 text-xl font-semibold">Artist information and rate card</h2><p className="mt-1 text-sm text-[var(--text-muted)]">Maintain approved copy for press, promoters, brands, and booking enquiries.</p></div>
+          {canManage && toolkit && <form className="mt-5 grid gap-4" onSubmit={(event) => void saveToolkit(event)}><div className="grid gap-4 lg:grid-cols-2"><label className="grid gap-2 text-sm">Short bio<textarea className={`${fieldClass} min-h-28`} name="short_bio" defaultValue={toolkit.short_bio} placeholder="Approved short biography"/></label><label className="grid gap-2 text-sm">Statistics summary<textarea className={`${fieldClass} min-h-28`} name="stats_summary" defaultValue={toolkit.stats_summary} placeholder="Approved stats, milestones, and highlights"/></label><label className="grid gap-2 text-sm">Long bio<textarea className={`${fieldClass} min-h-40`} name="long_bio" defaultValue={toolkit.long_bio} placeholder="Approved press biography"/></label><label className="grid gap-2 text-sm">Rate card<textarea className={`${fieldClass} min-h-40`} name="rate_card" defaultValue={toolkit.rate_card} placeholder="Approved rates, inclusions, exclusions, and booking notes"/></label></div><button className={buttonClass}>Save press kit</button></form>}
+          {!canManage && toolkit && <div className="mt-5 grid gap-4 lg:grid-cols-2"><div><h3 className="text-sm font-semibold">Short bio</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--text-secondary)]">{toolkit.short_bio || data.biography || "No approved short bio."}</p></div><div><h3 className="text-sm font-semibold">Rate card</h3><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[var(--text-secondary)]">{toolkit.rate_card || "No rate card published."}</p></div></div>}
+        </section>
+      )}
       {overview && (
         <section className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="rounded-md border border-neutral-800 p-4">
@@ -652,7 +702,7 @@ function ArtistDetailContent({
           </section>
           {canManage && (
             <form
-              className="rounded-md border border-neutral-800 bg-neutral-900 p-6"
+              className="evolve-panel p-6"
               onSubmit={save}
             >
               <ArtistFields data={data} />
@@ -663,7 +713,7 @@ function ArtistDetailContent({
             <h2 className="font-semibold">Team</h2>
             {canManageTeam && (
               <form
-                className="mt-4 grid gap-3 rounded-md border border-neutral-800 bg-neutral-900 p-4 sm:grid-cols-[1fr_10rem_auto_auto]"
+                className="mt-4 grid gap-3 evolve-panel p-4 sm:grid-cols-[1fr_10rem_auto_auto]"
                 onSubmit={assign}
               >
                 <select className={fieldClass} name="membership_id" required>
@@ -751,7 +801,7 @@ function ArtistDetailContent({
             <section>
               <h2 className="font-semibold">Portal users</h2>
               <form
-                className="mt-4 grid gap-3 rounded-md border border-neutral-800 bg-neutral-900 p-4 sm:grid-cols-[1fr_12rem_auto]"
+                className="mt-4 grid gap-3 evolve-panel p-4 sm:grid-cols-[1fr_12rem_auto]"
                 onSubmit={link}
               >
                 <select className={fieldClass} name="membership_id" required>
@@ -811,7 +861,7 @@ function ArtistDetailContent({
             </div>
           </section>
         </div>
-        <aside className="h-fit rounded-md border border-neutral-800 bg-neutral-900 p-5">
+        <aside className="h-fit evolve-panel p-5">
           <h2 className="font-semibold">Contacts</h2>
           <dl className="mt-4 grid gap-3 text-sm">
             <dt className="text-neutral-500">Management</dt>
@@ -822,16 +872,49 @@ function ArtistDetailContent({
             <dd className="break-all">{data.website || "Not set"}</dd>
           </dl>
           <div className="mt-6 border-t border-neutral-800 pt-5">
-            <p className="text-xs text-neutral-500">Coming soon</p>
-            <p className="mt-2 text-sm text-neutral-400">
-              Bookings / Music / Campaigns / Documents
-            </p>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-neutral-500">Artist toolkit</p>
+            <div className="mt-3 grid gap-2 text-sm">
+              <Link className="rounded border border-neutral-800 px-3 py-2 hover:border-amber-400" href={`/workspace/artists/${data.id}`}>Profile and team</Link>
+              <Link className="rounded border border-neutral-800 px-3 py-2 hover:border-amber-400" href={`/workspace/calendar?artist=${data.id}`}>Upcoming schedule</Link>
+              <Link className="rounded border border-neutral-800 px-3 py-2 hover:border-amber-400" href={`/workspace/music/releases?artist=${data.id}`}>Release catalogue</Link>
+              <Link className="rounded border border-neutral-800 px-3 py-2 hover:border-amber-400" href={`/workspace/documents?artist=${data.id}`}>Approved toolkit files</Link>
+            </div>
           </div>
         </aside>
       </div>
+      {overview && (
+        <section className="mt-7 evolve-panel p-6">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div><p className="evolve-eyebrow text-xs font-semibold uppercase tracking-[0.14em]">Artist toolkit</p><h2 className="mt-1 text-xl font-semibold">Approved catalogue and materials</h2><p className="mt-1 text-sm text-[var(--text-muted)]">Select current releases and approved files, then open a permissioned Mailroom draft for review before sending.</p></div>
+            <Link className={secondaryButtonClass} href={`/workspace/documents?artist=${data.id}`}>Open all files</Link>
+          </div>
+          <div className="mt-5 grid gap-4 lg:grid-cols-[1.25fr_0.75fr]">
+            <div>
+              <h3 className="text-sm font-semibold">Latest releases</h3>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {overview.releases.slice(0, 6).map((release) => <div className="flex gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] p-3" key={release.id}>
+                  <input aria-label={`Select ${release.title}`} checked={selectedReleases.includes(release.id)} className="mt-1" type="checkbox" onChange={(event) => setSelectedReleases((current) => event.target.checked ? [...current, release.id] : current.filter((id) => id !== release.id))}/>
+                  {release.artwork_url ? <img className="size-16 rounded-lg object-cover" src={release.artwork_url} alt="" /> : <span className="grid size-16 place-items-center rounded-lg bg-[var(--background-soft)] text-xs font-semibold">{release.title.slice(0, 2).toUpperCase()}</span>}
+                  <Link className="min-w-0" href={`/workspace/music/releases/${release.id}`}><strong className="block truncate">{release.title}</strong><span className="mt-1 block text-xs text-[var(--text-muted)]">{release.status} · {release.date || "Date not set"}</span>{release.upc_ean && <span className="mt-1 block text-xs text-[var(--text-muted)]">UPC {release.upc_ean}</span>}</Link>
+                </div>)}
+                {!overview.releases.length && <p className="text-sm text-[var(--text-muted)]">No releases linked to this artist.</p>}
+              </div>
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold">Shared documents</h3>
+              <div className="mt-3 grid gap-2">{overview.documents.slice(0, 6).map((document) => <div className="flex items-start gap-3 rounded-lg border border-[var(--border)] p-3 text-sm" key={document.id}><input aria-label={`Select ${document.title}`} checked={selectedDocuments.includes(document.id)} className="mt-1" type="checkbox" onChange={(event) => setSelectedDocuments((current) => event.target.checked ? [...current, document.id] : current.filter((id) => id !== document.id))}/><Link className="min-w-0 hover:text-[var(--accent-strong)]" href={`/workspace/documents/${document.id}`}><span className="font-medium">{document.title}</span><span className="mt-1 block text-xs text-[var(--text-muted)]">{document.type}</span></Link></div>)}{!overview.documents.length && <p className="text-sm text-[var(--text-muted)]">No approved toolkit files linked.</p>}</div>
+            </div>
+          </div>
+          <div className="mt-6 border-t border-[var(--border)] pt-5">
+            <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="text-sm font-semibold">Press images</h3><p className="mt-1 text-sm text-[var(--text-muted)]">Artist-linked image assets for press, promoters, campaigns, and approved outreach.</p></div><Link className={secondaryButtonClass} href={`/workspace/documents?artist=${data.id}&type=artwork`}>Manage image assets</Link></div>
+            {pressImages.length ? <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{pressImages.slice(0, 8).map((image) => <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-raised)]" key={image.id}>{image.external_url ? <img className="aspect-[4/3] w-full object-cover" src={image.external_url} alt={image.title} /> : <div className="grid aspect-[4/3] place-items-center bg-[var(--background-soft)] px-4 text-center text-xs text-[var(--text-muted)]">Private image<br />Open to view securely</div>}<div className="flex items-start gap-2 p-3"><input aria-label={`Select ${image.title}`} checked={selectedDocuments.includes(image.id)} className="mt-1" type="checkbox" onChange={(event) => setSelectedDocuments((current) => event.target.checked ? [...current, image.id] : current.filter((id) => id !== image.id))}/><Link className="min-w-0 text-sm hover:text-[var(--accent-strong)]" href={`/workspace/documents/${image.id}`}><span className="block truncate font-medium">{image.title}</span><span className="mt-1 block truncate text-xs text-[var(--text-muted)]">{image.original_filename || image.content_type || "Image asset"}</span></Link></div></div>)}</div> : <p className="mt-3 rounded-lg border border-dashed border-[var(--border)] p-5 text-sm text-[var(--text-muted)]">No press images linked yet. Upload an artwork/image document below and link it to this artist.</p>}
+          </div>
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-4"><p className="text-sm text-[var(--text-muted)]">{selectedReleases.length + selectedDocuments.length} toolkit item(s) selected.</p><button className={buttonClass} disabled={!selectedReleases.length && !selectedDocuments.length} onClick={prepareToolkitEmail} type="button">Prepare email in Mailroom</button></div>
+        </section>
+      )}
       {!platform && (
         <div className="mt-7">
-          <EntityDocumentsSection entityType="artist" entityId={data.id} />
+          <EntityDocumentsSection allowUpload={canManage} entityType="artist" entityId={data.id} />
         </div>
       )}
     </>
@@ -923,7 +1006,7 @@ export function PlatformArtistsPage() {
       <div className="mt-7 grid gap-3">
         {filtered.map((artist) => (
           <Link
-            className="grid gap-3 rounded-md border border-neutral-800 bg-neutral-900 p-5 sm:grid-cols-[1fr_auto_auto_auto]"
+            className="grid gap-3 evolve-panel p-5 sm:grid-cols-[1fr_auto_auto_auto]"
             href={`/platform/artists/${artist.id}`}
             key={artist.id}
           >
@@ -1044,7 +1127,7 @@ export function ArtistPortalPage() {
                     </div>
                   </div>
                 </section>
-                <aside className="rounded-md border border-neutral-800 bg-neutral-900 p-5">
+                <aside className="evolve-panel p-5">
                   <h2 className="font-semibold">Your team</h2>
                   {artist.team.map((item) => (
                     <div

@@ -54,6 +54,8 @@ class Booking(TimestampedModel):
     )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.ENQUIRY)
     priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.NORMAL)
+    performance_type = models.CharField(max_length=80, blank=True)
+    event_type = models.CharField(max_length=80, blank=True)
     event_date = models.DateField()
     event_start_datetime = models.DateTimeField(null=True, blank=True)
     event_end_datetime = models.DateTimeField(null=True, blank=True)
@@ -84,6 +86,7 @@ class Booking(TimestampedModel):
     deposit_due_date = models.DateField(null=True, blank=True)
     balance_due_date = models.DateField(null=True, blank=True)
     internal_notes = models.TextField(blank=True, max_length=10000)
+    custom_fields = models.JSONField(default=dict, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -247,3 +250,23 @@ class BookingContactAssignment(TimestampedModel):
                 raise ValidationError("Inactive contacts cannot be assigned to a booking.")
         if self.is_primary and not self.is_active:
             raise ValidationError("A primary booking contact must be active.")
+
+
+class BookingOption(TimestampedModel):
+    class Category(models.TextChoices):
+        PERFORMANCE = "performance", "Performance type"
+        EVENT = "event", "Event type"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey("organizations.Organization", on_delete=models.PROTECT, related_name="booking_options")
+    category = models.CharField(max_length=20, choices=Category.choices)
+    name = models.CharField(max_length=80)
+    is_active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
+
+    class Meta:
+        ordering = ("category", "name")
+        constraints = [models.UniqueConstraint(fields=("organization", "category", "name"), name="unique_booking_option_name")]
+
+    def __str__(self):
+        return f"{self.category}: {self.name}"

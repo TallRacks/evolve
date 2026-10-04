@@ -11,11 +11,13 @@ from .views import (
     PreferenceView,
     ReadView,
     UnreadCountView,
+    PushSubscriptionView,
 )
 
 urlpatterns = [
     path("notifications/", ListView.as_view()),
     path("notifications/unread-count/", UnreadCountView.as_view()),
+    path("notifications/push-subscription/", PushSubscriptionView.as_view()),
     path("notifications/<uuid:notification_id>/read/", ReadView.as_view()),
     path("notifications/<uuid:notification_id>/archive/", ArchiveView.as_view()),
     path("notifications/read-all/", MarkAllReadView.as_view()),

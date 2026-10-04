@@ -1,7 +1,7 @@
 from django.contrib import admin
 from unfold.admin import ModelAdmin
 
-from .models import EmailConnector, StorageProvider
+from .models import EmailConnector, GoogleWorkspaceConnector, StorageProvider
 
 
 class PlatformConfigurationAdmin(ModelAdmin):
@@ -52,6 +52,7 @@ class EmailConnectorAdmin(PlatformConfigurationAdmin):
         "use_tls",
         "use_ssl",
         "username",
+        "secret_backend",
         "secret_reference",
         "is_active",
         "is_default",
@@ -83,6 +84,7 @@ class StorageProviderAdmin(PlatformConfigurationAdmin):
         "bucket",
         "path_prefix",
         "public_base_url",
+        "secret_backend",
         "access_key_reference",
         "secret_key_reference",
         "use_ssl",
@@ -94,3 +96,11 @@ class StorageProviderAdmin(PlatformConfigurationAdmin):
         "created_at",
         "updated_at",
     )
+
+
+@admin.register(GoogleWorkspaceConnector)
+class GoogleWorkspaceConnectorAdmin(PlatformConfigurationAdmin):
+    list_display = ("name", "is_active", "connection_status", "last_tested_at")
+    list_filter = ("is_active", "connection_status")
+    search_fields = ("name", "redirect_uri", "refresh_token_reference")
+    readonly_fields = ("id", "created_at", "updated_at", "last_tested_at", "last_test_message", "credentials_configured")

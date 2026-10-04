@@ -86,7 +86,7 @@ export function ReportsHubPage() {
       {groups.map((group) => <section key={group}>
         <h2 className="text-xs font-semibold uppercase text-neutral-500">{group}</h2>
         <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {visible.filter((report) => report.group === group).map((report) => <Link className="rounded-md border border-neutral-800 bg-neutral-900 p-5 hover:border-neutral-600" href={`/workspace/reports/${report.key}`} key={report.key}>
+          {visible.filter((report) => report.group === group).map((report) => <Link className="evolve-panel p-5 hover:border-neutral-600" href={`/workspace/reports/${report.key}`} key={report.key}>
             <h3 className="font-semibold">{report.title}</h3>
             <p className="mt-2 text-sm text-neutral-400">{report.description}</p>
             <span className="mt-4 inline-block text-sm text-amber-300">Open report</span>
@@ -186,7 +186,7 @@ export function ReportPage({ reportKey }: { reportKey: string }) {
     {message && <p aria-live="polite" className="mt-4 text-sm text-amber-300">{message}</p>}
     {data && <>
       <div className="mt-6 grid gap-3 sm:grid-cols-3"><StatCard label="Records" value={data.summary.total} />{Object.entries(data.summary.by_status ?? {}).slice(0, 2).map(([key, value]) => <StatCard label={key.replaceAll("_", " ")} value={value} key={key} />)}</div>
-      {data.summary.currencies && <div className="mt-5 overflow-x-auto rounded-md border border-neutral-800 bg-neutral-900 p-4"><pre className="text-xs">{JSON.stringify(data.summary.currencies, null, 2)}</pre></div>}
+      {data.summary.currencies && <div className="mt-5 overflow-x-auto evolve-panel p-4"><pre className="text-xs">{JSON.stringify(data.summary.currencies, null, 2)}</pre></div>}
       <div className="mt-6 overflow-x-auto rounded-md border border-neutral-800">{data.rows.length === 0 ? <EmptyState title="No report rows" detail="No records match these filters." /> : <table className="min-w-full text-left text-sm"><thead className="bg-neutral-900"><tr>{Object.keys(data.rows[0]).map((key) => <th className="px-4 py-3" key={key}>{key.replaceAll("_", " ")}</th>)}</tr></thead><tbody>{data.rows.map((row, index) => <tr className="border-t border-neutral-800" key={index}>{Object.values(row).map((value, cell) => <td className="whitespace-nowrap px-4 py-3" key={cell}>{String(value)}</td>)}</tr>)}</tbody></table>}</div>
       <div className="mt-4 flex items-center justify-between text-sm"><span>Page {data.pagination.page} of {data.pagination.pages}</span><div className="flex gap-2"><button className={secondaryButtonClass} disabled={filters.page <= 1} onClick={() => update("page", filters.page - 1)}>Previous</button><button className={secondaryButtonClass} disabled={filters.page >= data.pagination.pages} onClick={() => update("page", filters.page + 1)}>Next</button></div></div>
     </>}

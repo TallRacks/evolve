@@ -38,6 +38,7 @@ class Task(TimestampedModel):
         on_delete=models.PROTECT,
         related_name="assigned_tasks",
     )
+    additional_assignees = models.ManyToManyField("organizations.Membership", blank=True, related_name="shared_tasks")
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="tasks_created"
     )
@@ -143,6 +144,8 @@ class Task(TimestampedModel):
             raise ValidationError(
                 {"assigned_membership": "Use an active membership from this organization."}
             )
+        if self.pk and self.additional_assignees.filter(organization_id=self.organization_id, is_active=True, user__is_active=True).count() != self.additional_assignees.count():
+            raise ValidationError({"additional_assignees": "Use active members from this organization."})
         if self.source_document_id and self.source_document.organization_id != self.organization_id:
             raise ValidationError("Source Document must belong to the task organization.")
         contexts = [

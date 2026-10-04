@@ -15,19 +15,25 @@ from .views import (
     PlatformTrackListView,
     ReleaseDetailView,
     ReleaseListView,
+    ReleaseMetadataExportView,
     ReleasePrepareView,
     ReleaseReadinessView,
     ReleaseStatusView,
     ReleaseTrackDetailView,
     ReleaseTracksView,
+    ReleaseWorkbookImportView,
+    TrackAudioUploadView,
     TrackDetailView,
     TrackListView,
+    TrackPublishingSplitExportView,
 )
 
 urlpatterns = [
     path("music/releases/", ReleaseListView.as_view()),
+    path("music/releases/import-workbook/", ReleaseWorkbookImportView.as_view()),
     path("music/releases/<uuid:release_id>/", ReleaseDetailView.as_view()),
     path("music/releases/<uuid:release_id>/status/", ReleaseStatusView.as_view()),
+    path("music/releases/<uuid:release_id>/metadata.csv", ReleaseMetadataExportView.as_view()),
     path("music/releases/<uuid:release_id>/readiness/", ReleaseReadinessView.as_view()),
     path("music/releases/<uuid:release_id>/prepare/", ReleasePrepareView.as_view()),
     path("music/releases/<uuid:release_id>/tracks/", ReleaseTracksView.as_view()),
@@ -47,6 +53,15 @@ urlpatterns = [
     path("music/releases/<uuid:release_id>/links/<uuid:link_id>/", LinkDetailView.as_view()),
     path("music/tracks/", TrackListView.as_view()),
     path("music/tracks/<uuid:track_id>/", TrackDetailView.as_view()),
+    path("music/tracks/<uuid:track_id>/audio/", TrackAudioUploadView.as_view()),
+    path(
+        "music/tracks/<uuid:track_id>/publishing-split.csv",
+        TrackPublishingSplitExportView.as_view(),
+    ),
+    path(
+        "music/tracks/<uuid:track_id>/publishing-split.pdf",
+        TrackPublishingSplitExportView.as_view(),
+    ),
     path("music/tracks/<uuid:resource_id>/credits/", CreditListView.as_view(resource_type="track")),
     path(
         "music/tracks/<uuid:resource_id>/credits/<uuid:credit_id>/",

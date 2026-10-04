@@ -9,6 +9,7 @@ from callsheets.models import (
     CallSheetTravelItem,
     CallSheetVersion,
 )
+from white_label.services import effective_branding
 
 
 class ScheduleSerializer(serializers.ModelSerializer):
@@ -67,6 +68,21 @@ VERSION_EDIT_FIELDS = (
     "country",
     "venue_phone",
     "promoter_name",
+    "promoter_contact_details",
+    "point_of_contact",
+    "point_of_contact_details",
+    "onsite_contact",
+    "onsite_contact_details",
+    "performance_length_minutes",
+    "transportation_mode",
+    "meet_up_point",
+    "meet_up_address",
+    "meet_up_url",
+    "call_time",
+    "emergency_contact",
+    "nearest_police_station",
+    "nearest_hospital",
+    "nearest_fueling_station",
     "access_notes",
     "loading_access",
     "parking_notes",
@@ -99,6 +115,7 @@ class VersionWriteSerializer(serializers.ModelSerializer):
 class VersionSerializer(serializers.ModelSerializer):
     booking = serializers.SerializerMethodField()
     organization = serializers.SerializerMethodField()
+    branding = serializers.SerializerMethodField()
     published_by = serializers.EmailField(source="published_by.email", allow_null=True)
     created_by = serializers.EmailField(source="created_by.email", allow_null=True)
     schedule = ScheduleSerializer(source="schedule_items", many=True, read_only=True)
@@ -122,6 +139,7 @@ class VersionSerializer(serializers.ModelSerializer):
             "superseded_at",
             "booking",
             "organization",
+            "branding",
             *VERSION_EDIT_FIELDS,
             "schedule",
             "team",
@@ -137,6 +155,9 @@ class VersionSerializer(serializers.ModelSerializer):
     def get_organization(self, version):
         organization = version.call_sheet.organization
         return {"id": organization.id, "name": organization.name}
+
+    def get_branding(self, version):
+        return effective_branding(version.call_sheet.organization)
 
 
 class VersionSummarySerializer(serializers.ModelSerializer):
@@ -154,6 +175,7 @@ class VersionSummarySerializer(serializers.ModelSerializer):
             "venue_name",
             "published_at",
             "created_at",
+            "updated_at",
             "created_by",
             "published_by",
         )

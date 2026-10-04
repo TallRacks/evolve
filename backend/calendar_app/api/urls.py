@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     CalendarView,
+    CalendarExportView,
     DeveloperCalendarView,
     EventDetailView,
     EventListView,
@@ -12,6 +13,7 @@ from .views import (
 
 urlpatterns = [
     path("calendar/", CalendarView.as_view()),
+    path("calendar/export.ics", CalendarExportView.as_view()),
     path("calendar/events/", EventListView.as_view()),
     path("calendar/events/<uuid:event_id>/", EventDetailView.as_view()),
     path("calendar/events/<uuid:event_id>/status/", EventStatusView.as_view()),

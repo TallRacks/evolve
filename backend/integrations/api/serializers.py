@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from integrations.models import EmailConnector, StorageProvider
+from integrations.models import EmailConnector, GoogleWorkspaceConnector, StorageProvider
 
 
 class EmailConnectorSerializer(serializers.ModelSerializer):
@@ -50,3 +50,15 @@ class StorageProviderSerializer(serializers.ModelSerializer):
 
 class TestEmailSerializer(serializers.Serializer):
     recipient = serializers.EmailField()
+
+
+class GoogleWorkspaceConnectorSerializer(serializers.ModelSerializer):
+    credentials_configured = serializers.BooleanField(read_only=True)
+
+    class Meta:
+        model = GoogleWorkspaceConnector
+        exclude = ("created_by",)
+        read_only_fields = (
+            "id", "connection_status", "last_tested_at", "last_test_message",
+            "created_at", "updated_at", "credentials_configured",
+        )

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from organizations.models import Membership, Organization
-from organizations.permissions import permissions_for_role
+from organizations.permissions import permissions_for_membership
 
 
 class ActiveMembershipSerializer(serializers.ModelSerializer):
@@ -20,7 +20,7 @@ class ActiveMembershipSerializer(serializers.ModelSerializer):
         }
 
     def get_permissions(self, membership):
-        return permissions_for_role(membership.role)
+        return permissions_for_membership(membership)
 
 
 class CurrentUserSerializer(serializers.Serializer):
@@ -28,6 +28,7 @@ class CurrentUserSerializer(serializers.Serializer):
     email = serializers.EmailField(read_only=True)
     first_name = serializers.CharField(read_only=True)
     last_name = serializers.CharField(read_only=True)
+    profile_image_url = serializers.CharField(read_only=True, allow_blank=True)
     is_superuser = serializers.BooleanField(read_only=True)
 
 

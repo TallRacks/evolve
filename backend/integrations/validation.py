@@ -7,7 +7,22 @@ from django.core.exceptions import ValidationError
 
 SECRET_REFERENCE = re.compile(r"^EVOLVE_[A-Z0-9_]{3,100}$")
 EMAIL_SECRET_REFERENCE = re.compile(r"^EVOLVE_EMAIL_[A-Z0-9_]{3,94}$")
-STORAGE_SECRET_REFERENCE = re.compile(r"^EVOLVE_STORAGE_[A-Z0-9_]{3,92}$")
+STORAGE_SECRET_REFERENCE = re.compile(r"^EVOLVE_(?:STORAGE|S3)_[A-Z0-9_]{3,92}$")
+GOOGLE_SECRET_REFERENCE = re.compile(r"^EVOLVE_GOOGLE_[A-Z0-9_]{3,90}$")
+EXTERNAL_SECRET_REFERENCE = re.compile(
+    r"^[A-Za-z0-9][A-Za-z0-9_./:-]{0,200}(?:#[A-Za-z0-9_.:-]{1,80})?$"
+)
+
+
+def _valid_reference(value, environment_pattern):
+    if environment_pattern.fullmatch(value):
+        return True
+    if value.startswith("EVOLVE_"):
+        return False
+    if not EXTERNAL_SECRET_REFERENCE.fullmatch(value):
+        return False
+    path = value.split("#", 1)[0]
+    return all(segment not in {"", ".", ".."} for segment in path.split("/"))
 
 
 def validate_secret_reference(value):
@@ -16,13 +31,20 @@ def validate_secret_reference(value):
 
 
 def validate_email_secret_reference(value):
-    if value and not EMAIL_SECRET_REFERENCE.fullmatch(value):
-        raise ValidationError("Use an EVOLVE_EMAIL_ secret reference.")
+    if value and not _valid_reference(value, EMAIL_SECRET_REFERENCE):
+        raise ValidationError("Use an EVOLVE_EMAIL_ reference or a provider path#key reference.")
+
+
+def validate_google_secret_reference(value):
+    if value and not _valid_reference(value, GOOGLE_SECRET_REFERENCE):
+        raise ValidationError("Use an EVOLVE_GOOGLE_ reference or a provider path#key reference.")
 
 
 def validate_storage_secret_reference(value):
-    if value and not STORAGE_SECRET_REFERENCE.fullmatch(value):
-        raise ValidationError("Use an EVOLVE_STORAGE_ secret reference.")
+    if value and not _valid_reference(value, STORAGE_SECRET_REFERENCE):
+        raise ValidationError(
+            "Use an EVOLVE_STORAGE_ or EVOLVE_S3_ reference, or a provider path#key reference."
+        )
 
 
 def validate_path_prefix(value):

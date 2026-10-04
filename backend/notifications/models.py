@@ -113,6 +113,26 @@ class NotificationRecipient(models.Model):
         raise ValidationError("Recipient state must be archived, not deleted.")
 
 
+class DevicePushSubscription(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="push_subscriptions",
+    )
+    endpoint = models.URLField(max_length=2000, unique=True)
+    p256dh = models.CharField(max_length=255)
+    auth = models.CharField(max_length=255)
+    user_agent = models.CharField(max_length=500, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        indexes = [models.Index(fields=("user", "is_active"))]
+
+    def __str__(self):
+        return f"Push device for {self.user}"
+
+
 class NotificationPreference(TimestampedModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(

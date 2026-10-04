@@ -5,6 +5,7 @@ from campaigns.models import Campaign, Rollout
 from .views import (
     ArtistPortalCampaignView,
     CampaignDetailView,
+    CampaignAssetView,
     CampaignListView,
     CampaignResponsibilityDetailView,
     CampaignResponsibilityView,
@@ -34,6 +35,7 @@ urlpatterns = [
     path("campaigns/<uuid:campaign_id>/", CampaignDetailView.as_view()),
     path("campaigns/<uuid:campaign_id>/status/", CampaignStatusView.as_view()),
     path("campaigns/<uuid:campaign_id>/channels/", ChannelView.as_view()),
+    path("campaigns/<uuid:campaign_id>/assets/", CampaignAssetView.as_view()),
     path("campaigns/<uuid:campaign_id>/responsibilities/", CampaignResponsibilityView.as_view()),
     path(
         "campaigns/<uuid:campaign_id>/responsibilities/<uuid:responsibility_id>/",

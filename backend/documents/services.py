@@ -115,6 +115,47 @@ def restore_document(document, *, actor, request=None):
 
 
 @transaction.atomic
+def duplicate_document(document, *, actor, request=None, title=None):
+    """Create a reusable organization-scoped copy without copying or exposing private bytes."""
+    require(actor, document.organization, "document.manage")
+    if document.source_type == Document.SourceType.STORED:
+        data = {
+            "source_type": Document.SourceType.STORED,
+            "storage_key": document.storage_key,
+            "storage_provider": document.storage_provider,
+            "checksum_sha256": document.checksum_sha256,
+            "detected_content_type": document.detected_content_type,
+            "file_size": document.file_size,
+            "storage_status": document.storage_status,
+            "original_filename": document.original_filename,
+            "content_type": document.content_type,
+        }
+    elif document.source_type == Document.SourceType.GENERATED:
+        data = {"source_type": Document.SourceType.GENERATED, "rendered_content": document.rendered_content}
+    else:
+        data = {"source_type": Document.SourceType.EXTERNAL, "external_url": document.external_url}
+    copy = Document.objects.create(
+        organization=document.organization,
+        workspace=document.workspace,
+        title=(title or f"Copy of {document.title}")[:220],
+        document_type=document.document_type,
+        description=document.description,
+        uploaded_by=actor,
+        visibility=document.visibility,
+        **data,
+    )
+    record_event(
+        actor=actor,
+        organization=document.organization,
+        action="document.duplicated",
+        resource=copy,
+        description=f"Created a reusable copy of {document.title}.",
+        request=request,
+    )
+    return copy
+
+
+@transaction.atomic
 def duplicate_office_document(document, *, actor, request=None, title=None):
     require(actor, document.organization, "document.manage")
     content = getattr(document, "office_content", None)

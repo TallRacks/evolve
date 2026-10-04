@@ -14,6 +14,13 @@ ALLOWED_VARIABLES = {
     "venue.name",
     "venue.address",
     "promoter.name",
+    "promoter.email",
+    "booking.city",
+    "booking.currency",
+    "booking.performance_fee",
+    "booking.deposit_amount",
+    "booking.performance_type",
+    "booking.event_type",
 }
 
 

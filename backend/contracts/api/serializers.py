@@ -91,12 +91,18 @@ class ApprovalSerializer(serializers.ModelSerializer):
 class DocumentSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField(source="document.id")
     title = serializers.CharField(source="document.title")
-    external_url = serializers.URLField(source="document.external_url")
+    external_url = serializers.URLField(source="document.external_url", allow_null=True)
+    download_url = serializers.SerializerMethodField()
     link_id = serializers.UUIDField(source="id")
 
     class Meta:
         model = ContractDocument
-        fields = ("id", "title", "external_url", "link_id")
+        fields = ("id", "title", "external_url", "download_url", "link_id")
+
+    def get_download_url(self, obj):
+        if obj.document.source_type != "stored":
+            return obj.document.external_url or ""
+        return f"/api/documents/{obj.document_id}/download/?organization_id={obj.contract.organization_id}"
 
 
 class ContractWriteSerializer(serializers.ModelSerializer):

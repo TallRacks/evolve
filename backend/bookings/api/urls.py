@@ -5,6 +5,8 @@ from .views import (
     BookingContactsView,
     BookingDetailView,
     BookingListView,
+    BookingOptionView,
+    BookingOptionDetailView,
     BookingSetupView,
     BookingStatusHistoryView,
     BookingStatusView,
@@ -17,6 +19,8 @@ from .views import (
 
 urlpatterns = [
     path("bookings/", BookingListView.as_view(), name="booking-list"),
+    path("booking-options/", BookingOptionView.as_view(), name="booking-options"),
+    path("booking-options/<uuid:option_id>/", BookingOptionDetailView.as_view(), name="booking-option-detail"),
     path("bookings/<uuid:booking_id>/", BookingDetailView.as_view(), name="booking-detail"),
     path("bookings/<uuid:booking_id>/setup/", BookingSetupView.as_view(), name="booking-setup"),
     path("bookings/<uuid:booking_id>/status/", BookingStatusView.as_view(), name="booking-status"),

@@ -20,10 +20,14 @@ import {
   Mail,
   MapPin,
   Menu,
+  Moon,
+  Sun,
   Megaphone,
   MoreHorizontal,
   Music2,
   Palette,
+  Plug,
+  Sparkles,
   Plane,
   Search,
   Server,
@@ -46,6 +50,10 @@ import { apiRequest } from "@/lib/api/client";
 interface Branding {
   brand_name: string;
   logo_url: string;
+  dark_logo_url?: string;
+  favicon_url: string;
+  mobile_icon_url: string;
+  application_title: string;
   primary: string;
   accent: string;
   background: string;
@@ -83,12 +91,16 @@ interface SearchResponse {
 const defaultBranding: Branding = {
   brand_name: "Evolve",
   logo_url: "",
-  primary: "#D6A84B",
-  accent: "#F0C96B",
-  background: "#0A0A0A",
-  surface: "#171717",
-  text_primary: "#FAFAFA",
-  text_muted: "#A3A3A3",
+  dark_logo_url: "",
+  favicon_url: "/icon",
+  mobile_icon_url: "/icon",
+  application_title: "Evolve",
+  primary: "#8A5A00",
+  accent: "#A86B00",
+  background: "#F4F1EA",
+  surface: "#FFFDF8",
+  text_primary: "#171717",
+  text_muted: "#77736B",
 };
 
 export function AppShell({
@@ -104,6 +116,7 @@ export function AppShell({
   const { session, activeOrganizationId, selectOrganization, logout, activeWorkspaceId, selectWorkspace } =
     useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => typeof window !== "undefined" && localStorage.getItem("evolve-theme") === "dark");
   const [createOpen, setCreateOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -113,6 +126,7 @@ export function AppShell({
   const [searchError, setSearchError] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [workspaces, setWorkspaces] = useState<Array<{ id: string; name: string }>>([]);
+  const [featureSwitches, setFeatureSwitches] = useState<Record<string, boolean>>({});
   const [brandingState, setBrandingState] = useState<{
     organizationId: string;
     data: Branding;
@@ -135,6 +149,19 @@ export function AppShell({
   const platform = pathname.startsWith("/platform");
   const artistPortal = pathname.startsWith("/artist");
   useEffect(() => {
+    document.documentElement.dataset.theme = darkMode ? "dark" : "light";
+  }, [darkMode]);
+  function toggleTheme() {
+    const next = !darkMode;
+    setDarkMode(next);
+    localStorage.setItem("evolve-theme", next ? "dark" : "light");
+    document.documentElement.dataset.theme = next ? "dark" : "light";
+  }
+  useEffect(() => {
+    if (!organizationScoped || !activeOrganizationId) { queueMicrotask(() => setFeatureSwitches({})); return; }
+    void apiRequest<Array<{key:string;is_enabled:boolean}>>(`/api/organizations/${activeOrganizationId}/features/`).then((items) => setFeatureSwitches(Object.fromEntries(items.map((item) => [item.key, item.is_enabled])))).catch(() => setFeatureSwitches({}));
+  }, [activeOrganizationId, organizationScoped]);
+  useEffect(() => {
     if (!organizationScoped || !activeOrganizationId) { queueMicrotask(() => setWorkspaces([])); return; }
     void apiRequest<Array<{ id: string; name: string }>>(`/api/workspaces/?organization_id=${activeOrganizationId}`)
       .then((next) => {
@@ -145,22 +172,23 @@ export function AppShell({
       .catch(() => setWorkspaces([]));
   }, [activeOrganizationId, activeWorkspaceId, organizationScoped, selectWorkspace]);
   useEffect(() => {
-    if (!organizationScoped || !activeOrganizationId) return;
+    if (organizationScoped && !activeOrganizationId) return;
     let cancelled = false;
-    apiRequest<Branding>(
-      `/api/branding/current/?organization_id=${activeOrganizationId}`,
-    )
+    const brandingPath = organizationScoped
+      ? `/api/branding/current/?organization_id=${activeOrganizationId}`
+      : "/api/branding/current/";
+    apiRequest<Branding>(brandingPath)
       .then((next) => {
         if (!cancelled)
           setBrandingState({
-            organizationId: activeOrganizationId,
+            organizationId: organizationScoped ? activeOrganizationId ?? "" : "global",
             data: next,
           });
       })
       .catch(() => {
         if (!cancelled)
           setBrandingState({
-            organizationId: activeOrganizationId,
+            organizationId: organizationScoped ? activeOrganizationId ?? "" : "global",
             data: defaultBranding,
           });
       });
@@ -168,6 +196,17 @@ export function AppShell({
       cancelled = true;
     };
   }, [activeOrganizationId, organizationScoped]);
+  useEffect(() => {
+    const branding = brandingState?.data || defaultBranding;
+    const href = branding.favicon_url || defaultBranding.favicon_url;
+    let link = document.querySelector<HTMLLinkElement>('link[data-evolve-favicon]');
+    if (!link) { link = document.createElement("link"); link.rel = "icon"; link.dataset.evolveFavicon = "true"; document.head.appendChild(link); }
+    link.href = href;
+    let apple = document.querySelector<HTMLLinkElement>('link[data-evolve-apple-icon]');
+    if (!apple) { apple = document.createElement("link"); apple.rel = "apple-touch-icon"; apple.dataset.evolveAppleIcon = "true"; document.head.appendChild(apple); }
+    apple.href = branding.mobile_icon_url || href;
+    document.title = branding.application_title || branding.brand_name || "Evolve";
+  }, [brandingState]);
   useEffect(() => {
     function key(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
@@ -179,6 +218,17 @@ export function AppShell({
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, []);
+  useEffect(() => {
+    const stored = sessionStorage.getItem("evolve.sidebarScrollTop");
+    if (stored === null) return;
+    const top = Number(stored);
+    window.requestAnimationFrame(() => {
+      document.querySelectorAll<HTMLElement>('nav[aria-label="Application navigation"]').forEach((nav) => {
+        nav.scrollTop = Number.isFinite(top) ? top : 0;
+      });
+    });
+  }, [pathname]);
+
   useEffect(() => {
     if (!paletteOpen || query.trim().length < 2) return;
     const timer = setTimeout(() => {
@@ -201,11 +251,12 @@ export function AppShell({
     return () => clearTimeout(timer);
   }, [query, paletteOpen, activeOrganizationId]);
   const branding =
-    brandingState?.organizationId === activeOrganizationId
+    brandingState?.organizationId === (organizationScoped ? activeOrganizationId : "global")
       ? brandingState.data
       : defaultBranding;
   const can = (permission: string) =>
     (superuser && activeOrganizationId !== null) || permissions.includes(permission);
+  const feature = (key: string) => featureSwitches[key] !== false;
   const organizations = superuser
     ? (session?.organizations ?? [])
     : (session?.memberships.map((item) => item.organization) ?? []);
@@ -272,6 +323,12 @@ export function AppShell({
             show: can("calendar.view"),
           },
           {
+            href: "/copilot",
+            label: "Copilot",
+            icon: Sparkles,
+            show: !!session,
+          },
+          {
             href: "/workspace/tasks",
             label: "Tasks",
             icon: ClipboardList,
@@ -287,26 +344,30 @@ export function AppShell({
             href: "/workspace/activity",
             label: "Activity",
             icon: ShieldCheck,
-            show: can("activity.view"),
+            show: superuser && feature("activity"),
           },
           {
             href: "/workspace/reports",
             label: "Reports",
             icon: BarChart3,
-            show: can("reporting.view"),
+            show: superuser && feature("reports"),
           },
         ],
       },
       {
         label: "Workspace",
         items: [
-          { href: "/workspace", label: "Workspace home", icon: LayoutDashboard, show: !!membership },
-          { href: "/workspace/boards", label: "Boards", icon: LayoutDashboard, show: !!membership },
+          { href: "/workspace", label: "Workspace home", icon: LayoutDashboard, show: superuser && feature("office") },
+          { href: "/workspace/boards", label: "Boards", icon: LayoutDashboard, show: superuser && feature("boards") },
           { href: "/workspace/automations", label: "Automations", icon: Code2, show: can("organization.manage") },
-          { href: "/workspace/office", label: "Office", icon: FileText, show: can("document.view") },
-          { href: "/workspace/documents", label: "Documents", icon: FileText, show: can("document.view") },
-          { href: "/workspace/calendar", label: "Calendar", icon: CalendarDays, show: can("calendar.view") },
-          { href: "/workspace/reports", label: "Reports", icon: BarChart3, show: can("reporting.view") },
+          { href: "/workspace/office", label: "Office home", icon: FileText, show: superuser && feature("office") },
+          { href: "/workspace/settings/trackers", label: "Bookings tracker", icon: ClipboardList, show: superuser && feature("booking-tracker") },
+          { href: "/workspace/settings/booking-options", label: "Booking options", icon: ClipboardList, show: superuser && feature("booking-options") },
+          { href: "/workspace/documents", label: "File uploader", icon: FileText, show: superuser && feature("file-uploader") },
+          { href: "/workspace/drive", label: "Google Drive", icon: HardHat, show: can("document.view") },
+          { href: "/vault", label: "Vault", icon: ShieldCheck, show: can("document.restricted.view") },
+          { href: "/inbox", label: "Mailroom", icon: Mail, show: superuser && feature("mailroom") },
+          { href: "/workspace/signing", label: "Signing workspace", icon: FileSignature, show: superuser && feature("signing") },
         ],
       },
       {
@@ -389,6 +450,12 @@ export function AppShell({
             show: can("music.view"),
           },
           {
+            href: "/workspace/music/distribution",
+            label: "Distribution readiness",
+            icon: Music2,
+            show: can("music.view"),
+          },
+          {
             href: "/workspace/campaigns",
             label: "Campaigns",
             icon: Megaphone,
@@ -412,9 +479,27 @@ export function AppShell({
             show: can("finance.view"),
           },
           {
+            href: "/workspace/finance/quotes",
+            label: "Quotes",
+            icon: WalletCards,
+            show: can("finance.view"),
+          },
+          {
             href: "/workspace/finance/payments",
             label: "Payments",
             icon: CircleDollarSign,
+            show: can("finance.view"),
+          },
+          {
+            href: "/workspace/finance/settings",
+            label: "Company billing",
+            icon: WalletCards,
+            show: can("finance.manage"),
+          },
+          {
+            href: "/workspace/finance/employee-invoices",
+            label: "Employee invoices",
+            icon: WalletCards,
             show: can("finance.view"),
           },
           {
@@ -422,6 +507,12 @@ export function AppShell({
             label: "Rights",
             icon: Scale,
             show: can("rights.view"),
+          },
+          {
+            href: "/workspace/royalties",
+            label: "Royalty reporting hub",
+            icon: CircleDollarSign,
+            show: can("royalties.view"),
           },
           {
             href: "/workspace/royalties/statements",
@@ -441,16 +532,10 @@ export function AppShell({
             show: can("contract.view"),
           },
           {
-            href: "/workspace/documents",
-            label: "Documents",
-            icon: FileText,
-            show: can("document.view"),
-          },
-          {
             href: "/workspace/settings/templates",
-            label: "Document Templates",
+            label: "Template editor",
             icon: ClipboardList,
-            show: can("document_template.view"),
+            show: superuser && feature("template-editor"),
           },
         ],
       },
@@ -474,6 +559,12 @@ export function AppShell({
             label: "Organization",
             icon: Building2,
             show: !!membership,
+          },
+          {
+            href: "/workspace/settings/roles",
+            label: "Roles & access",
+            icon: UsersRound,
+            show: superuser || can("membership.manage"),
           },
           {
             href: "/workspace/branding",
@@ -500,8 +591,9 @@ export function AppShell({
         items: [
           { href: "/platform/organizations", label: "Organizations", icon: Building2, show: superuser },
           { href: "/platform/users", label: "Users", icon: UsersRound, show: superuser },
-          { href: "/platform/connectors", label: "Connectors", icon: Mail, show: superuser },
-          { href: "/platform/google-workspace", label: "Google Workspace", icon: FileText, show: superuser },
+          { href: "/platform/connectors", label: "Connectors", icon: Plug, show: superuser },
+          { href: "/platform/global-branding", label: "Global branding", icon: Palette, show: superuser },
+          { href: "/platform/google-workspace", label: "Google Workspace", icon: Sparkles, show: superuser },
           { href: "/platform/email-delivery", label: "Email delivery", icon: Mail, show: superuser },
           { href: "/platform/storage", label: "Storage", icon: Server, show: superuser },
           { href: "/platform/audit", label: "Audit", icon: ShieldCheck, show: superuser },
@@ -521,9 +613,21 @@ export function AppShell({
       },
     ];
   })();
-  const commands = groups
-    .flatMap((group) => group.items)
-    .filter((item) => item.show);
+  const uniqueGroups = groups.map((group) => {
+    const seen = new Set<string>();
+    return { ...group, items: group.items.filter((item) => {
+      if (!item.show || seen.has(item.href)) return false;
+      seen.add(item.href);
+      return true;
+    }) };
+  });
+  const globallyUniqueGroups = uniqueGroups.reduce<NavGroup[]>((result, group) => {
+    const previous = new Set(result.flatMap((item) => item.items.map((nav) => nav.href)));
+    const items = group.items.filter((item) => !previous.has(item.href));
+    if (items.length) result.push({ ...group, items });
+    return result;
+  }, []);
+  const commands = globallyUniqueGroups.flatMap((group) => group.items).filter((item) => item.show);
   const mobilePreferred = artistPortal
     ? ["Overview", "Production", "Travel", "Notifications"]
     : platform
@@ -650,30 +754,33 @@ export function AppShell({
   const theme = {
     "--brand-primary": branding.primary,
     "--brand-accent": branding.accent,
-    backgroundColor: branding.background,
-    color: branding.text_primary,
+    backgroundColor: "var(--background)",
+    color: "var(--text-primary)",
   } as CSSProperties;
   const sidebar = (
     <aside
-      className="flex h-full w-72 flex-col border-r border-neutral-800"
-      style={{ backgroundColor: branding.background }}
+      className="evolve-sidebar flex h-full w-72 flex-col border-r"
     >
-      <div className="flex h-16 items-center justify-between border-b border-neutral-800 px-5">
+      <div className="flex h-16 items-center justify-between border-b border-white/10 px-5">
         <Link
           className="flex min-w-0 items-center gap-3 text-lg font-semibold"
           href={artistPortal ? "/artist" : "/dashboard"}
           style={{ color: branding.primary }}
         >
-          {branding.logo_url && (
-            <span
-              aria-label="Organization logo"
-              className="size-8 shrink-0 rounded bg-contain bg-center bg-no-repeat"
-              style={{ backgroundImage: `url(${branding.logo_url})` }}
-            />
+          {(darkMode ? branding.dark_logo_url || branding.logo_url : branding.logo_url) ? (
+            <>
+              <span
+                aria-hidden="true"
+                className="flex h-9 max-w-40 shrink-0 items-center rounded bg-contain bg-left bg-no-repeat"
+                style={{ backgroundImage: `url(${darkMode ? branding.dark_logo_url || branding.logo_url : branding.logo_url})`, width: "10rem" }}
+              />
+              <span className="sr-only">{branding.brand_name || "Evolve"}</span>
+            </>
+          ) : (
+            <span className="truncate">
+              {organizationScoped ? branding.brand_name : "Evolve v2"}
+            </span>
           )}
-          <span className="truncate">
-            {organizationScoped ? branding.brand_name : "Evolve v2"}
-          </span>
         </Link>
         <button
           className="lg:hidden"
@@ -702,7 +809,7 @@ export function AppShell({
         className="flex-1 overflow-y-auto p-3"
         aria-label="Application navigation"
       >
-        {groups.map((group) => {
+        {globallyUniqueGroups.map((group) => {
           const visible = group.items.filter((item) => item.show);
           if (!visible.length) return null;
           return (
@@ -726,11 +833,15 @@ export function AppShell({
                   return (
                     <Link
                       aria-current={active ? "page" : undefined}
-                      className={`mb-1 flex items-center gap-3 rounded-md px-3 py-2.5 text-sm ${active ? "bg-neutral-800" : "text-neutral-400 hover:bg-neutral-900 hover:text-neutral-100"}`}
+                      className={`evolve-nav-item mb-1 flex items-center gap-3 rounded-[var(--radius)] px-3 py-2.5 text-sm text-[var(--text-secondary)]`}
                       href={href}
                       key={href}
-                      onClick={() => setMenuOpen(false)}
-                      style={active ? { color: branding.accent } : undefined}
+                      onClick={(event) => {
+                        const nav = event.currentTarget.closest("nav");
+                        sessionStorage.setItem("evolve.sidebarScrollTop", String(nav?.scrollTop ?? 0));
+                        setMenuOpen(false);
+                      }}
+                      data-active={active}
                     >
                       <Icon size={17} />
                       {label}
@@ -742,7 +853,7 @@ export function AppShell({
         })}
       </nav>
       <button
-        className="m-3 flex items-center gap-3 rounded-md border border-neutral-800 px-3 py-2.5 text-sm text-neutral-300"
+        className="m-3 flex items-center gap-3 rounded-[var(--radius)] border border-[var(--border)] px-3 py-2.5 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
         disabled={signingOut}
         onClick={signOut}
       >
@@ -752,7 +863,7 @@ export function AppShell({
     </aside>
   );
   return (
-    <div className="evolve-app-shell min-h-screen" style={theme}>
+    <div className="evolve-app-shell min-h-screen" data-theme={darkMode ? "dark" : "light"} style={theme}>
       <div className="fixed inset-y-0 left-0 z-30 hidden lg:block">
         {sidebar}
       </div>
@@ -768,11 +879,10 @@ export function AppShell({
       )}
       <div className="lg:pl-72">
         <header
-          className="evolve-topbar sticky top-0 z-20 flex min-h-16 items-center gap-3 border-b border-neutral-800 px-4 backdrop-blur sm:px-7"
-          style={{ backgroundColor: `${branding.background}F2` }}
+          className="evolve-topbar sticky top-0 z-20 flex min-h-16 items-center gap-3 border-b px-4 backdrop-blur sm:px-7"
         >
           <button
-            className="grid size-10 place-items-center rounded-md border border-neutral-800 lg:hidden"
+            className="grid size-10 place-items-center rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] lg:hidden"
             aria-label="Open navigation"
             onClick={() => setMenuOpen(true)}
           >
@@ -810,13 +920,29 @@ export function AppShell({
             </label>
             </div>
           )}
+          <button aria-label={darkMode ? "Use light mode" : "Use dark mode"} className="evolve-tool-button" onClick={toggleTheme} type="button">{darkMode ? <Sun size={17}/> : <Moon size={17}/>}</button>
           <NotificationBell />
+          {session && <button
+            aria-label="Sign out"
+            className="hidden h-10 items-center gap-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)] px-3 text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] sm:flex"
+            disabled={signingOut}
+            onClick={() => void signOut()}
+          >
+            <LogOut size={16} />
+            {signingOut ? "Signing out…" : "Sign out"}
+          </button>}
           <Link
-            className="pwa-profile-link grid size-10 place-items-center rounded-md border border-neutral-800"
+            className="pwa-profile-link grid size-10 place-items-center rounded-[var(--radius)] border border-[var(--border)] bg-[var(--surface)]"
             href="/profile"
             aria-label="Profile"
           >
-            <UserRound size={18} />
+            {session?.user.profile_image_url ? (
+              <img alt="" className="size-8 rounded-full object-cover" src={session.user.profile_image_url} />
+            ) : (
+              <span className="grid size-8 place-items-center rounded-full bg-[var(--accent-soft)] text-xs font-semibold text-[var(--accent-strong)]">
+                {(session?.user.first_name?.[0] || session?.user.email[0] || "U").toUpperCase()}
+              </span>
+            )}
           </Link>
         </header>
         <main className="evolve-content mx-auto max-w-[var(--content-width)] px-4 py-6 sm:px-7 sm:py-9">

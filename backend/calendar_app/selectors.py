@@ -14,10 +14,36 @@ from music.models import Release
 from organizations.permissions import user_has_organization_permission
 from production.models import ProductionAdvance, ProductionScheduleItem
 from travel.models import AccommodationStay, TravelSegment
+from tasks.models import Task
 
 from .models import CalendarEvent
 
 MAX_WINDOW_DAYS = 366
+
+CALENDAR_SOURCE_COLORS = {
+    "booking": "emerald",
+    "callsheet": "cyan",
+    "release": "fuchsia",
+    "campaign": "amber",
+    "rollout_milestone": "blue",
+    "rollout_task": "rose",
+    "task": "violet",
+    "travel": "sky",
+    "accommodation": "teal",
+    "contract": "slate",
+    "production": "orange",
+    "calendar_event": "neutral",
+}
+
+CALENDAR_STATUS_COLORS = {
+    "enquiry": "amber",
+    "hold": "sky",
+    "pending": "orange",
+    "confirmed": "emerald",
+    "completed": "violet",
+    "cancelled": "slate",
+    "declined": "red",
+}
 
 
 def _aware(value, tz_name=settings.TIME_ZONE):
@@ -58,6 +84,7 @@ def _item(
         "url": url,
         "category": source_type,
         "priority": priority,
+        "color": CALENDAR_STATUS_COLORS.get(status, CALENDAR_SOURCE_COLORS.get(source_type, "neutral")),
     }
 
 
@@ -247,6 +274,16 @@ def get_calendar_items(user, organization, start, end, filters=None, portal=Fals
                     all_day=True,
                 )
             )
+    if not portal and include("task") and user_has_organization_permission(user, organization, "task.view"):
+        task_qs = Task.objects.filter(
+            organization=organization, due_at__range=(start, end)
+        ).exclude(status=Task.Status.CANCELLED)
+        if user and not user.is_superuser:
+            task_qs = task_qs.filter(
+                Q(assigned_membership__user=user) | Q(additional_assignees__user=user)
+            ).distinct()
+        for o in task_qs:
+            items.append(_item("task", o, o.title, o.due_at, status=o.status, url=f"/workspace/tasks/{o.pk}", priority=o.priority))
     travel_allowed = portal or user_has_organization_permission(user, organization, "travel.view")
     if travel_allowed and include("travel"):
         qs = (

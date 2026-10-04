@@ -1,5 +1,7 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils.http import content_disposition_header
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.permissions import AllowAny
@@ -13,6 +15,7 @@ from callsheets.models import (
     CallSheetTeamEntry,
     CallSheetVersion,
 )
+from callsheets.pdf_services import render_call_sheet_pdf
 from callsheets.selectors import call_sheets_for_user, versions_for_user
 from callsheets.services import (
     cancel_version,
@@ -122,7 +125,27 @@ class VersionDetailView(APIView):
         require_callsheet_permission(
             request.user, version.call_sheet.organization, "callsheet.view"
         )
-        return Response(VersionSerializer(version).data)
+        response = Response(VersionSerializer(version).data)
+        response["Cache-Control"] = "private, no-store, max-age=0"
+        response["Pragma"] = "no-cache"
+        return response
+
+
+class VersionPDFView(APIView):
+    def get(self, request, version_id):
+        version = scoped_version(request.user, version_id)
+        require_callsheet_permission(
+            request.user, version.call_sheet.organization, "callsheet.view"
+        )
+        content = render_call_sheet_pdf(version)
+        response = StreamingHttpResponse(iter((content,)), content_type="application/pdf")
+        response["Content-Disposition"] = content_disposition_header(
+            True, f"{version.title.strip() or 'call-sheet'}-v{version.version_number}.pdf"
+        )
+        response["Cache-Control"] = "private, no-store, max-age=0"
+        response["Pragma"] = "no-cache"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
 
     def patch(self, request, version_id):
         version = scoped_version(request.user, version_id)

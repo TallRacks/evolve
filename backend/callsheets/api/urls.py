@@ -26,6 +26,7 @@ from .views import (
     PlatformCallSheetListView,
     VersionDetailView,
     VersionListView,
+    VersionPDFView,
 )
 
 urlpatterns = [
@@ -33,6 +34,7 @@ urlpatterns = [
     path("call-sheets/<uuid:call_sheet_id>/", CallSheetDetailView.as_view()),
     path("call-sheets/<uuid:call_sheet_id>/versions/", VersionListView.as_view()),
     path("call-sheet-versions/<uuid:version_id>/", VersionDetailView.as_view()),
+    path("call-sheet-versions/<uuid:version_id>/pdf/", VersionPDFView.as_view()),
     path("call-sheet-versions/<uuid:version_id>/ready/", LifecycleView.as_view(operation="ready")),
     path(
         "call-sheet-versions/<uuid:version_id>/publish/", LifecycleView.as_view(operation="publish")

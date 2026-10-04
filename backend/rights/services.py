@@ -15,6 +15,7 @@ from .models import (
     PublishingRight,
     RightsParty,
     RoyaltyAllocation,
+    RoyaltySource,
     RoyaltyStatement,
     RoyaltyStatementLine,
     TrackWork,
@@ -224,6 +225,15 @@ def add_publishing_right(*, actor, work, data, request=None):
 @transaction.atomic
 def create_statement(*, actor, organization, data, request=None):
     require(actor, organization, "royalties.manage")
+    if not data.get("source") and data.get("source_name"):
+        data = {
+            **data,
+            "source": RoyaltySource.objects.filter(
+                organization=organization,
+                name__iexact=data["source_name"].strip(),
+                is_active=True,
+            ).first(),
+        }
     statement = RoyaltyStatement(organization=organization, created_by=actor, **data)
     statement.save()
     emit(

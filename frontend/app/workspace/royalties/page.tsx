@@ -1,1 +1,1 @@
-import {RoyaltiesOverviewPage} from "@/components/rights-pages"; export default function Page(){return <RoyaltiesOverviewPage/>}
+import {RoyaltyHubPage} from "@/components/royalty-hub-page"; export default function Page(){return <RoyaltyHubPage/>}

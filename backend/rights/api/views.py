@@ -2,6 +2,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -10,11 +11,14 @@ from music.models import Track
 from organizations.api.permissions import PlatformSuperuser
 from organizations.models import Organization
 from organizations.selectors import organizations_for_user
+from audit.services import record_event
 from rights.models import (
     MasterRight,
     RightsParty,
     RoyaltyAllocation,
     RoyaltyStatement,
+    RoyaltySource,
+    RoyaltyAdvance,
     RoyaltyStatementLine,
     Work,
 )
@@ -37,6 +41,7 @@ from rights.services import (
     update_statement,
     void_statement,
 )
+from rights.import_services import import_statement_csv
 from white_label.services import authenticate_api_key
 
 from .serializers import (
@@ -48,6 +53,8 @@ from .serializers import (
     PartySerializer,
     PublishingSerializer,
     StatementSerializer,
+    RoyaltyAdvanceSerializer,
+    RoyaltySourceSerializer,
     WorkSerializer,
 )
 
@@ -178,6 +185,7 @@ class WorkContributorView(APIView):
         values = {
             "party": party,
             "role": request.data.get("role"),
+            "share_percentage": request.data.get("share_percentage", 0),
             "sequence": request.data.get("sequence", 1),
             "notes": request.data.get("notes", ""),
         }
@@ -407,6 +415,17 @@ class StatementLineView(APIView):
         )
 
 
+class StatementImportView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request, pk):
+        statement = statement_for(request.user, pk)
+        uploaded = request.FILES.get("file")
+        if not uploaded:
+            raise ValidationError({"file": "Upload a CSV statement export."})
+        return Response(valid(lambda: import_statement_csv(actor=request.user, statement=statement, uploaded=uploaded, request=request)))
+
+
 class GenerateView(APIView):
     def post(self, request, pk):
         line = get_object_or_404(
@@ -571,3 +590,116 @@ class DeveloperTracks(APIView):
             organization=key.client.organization
         ).prefetch_related("master_rights__party", "work_links__work")
         return Response(DeveloperTrackRightsSerializer(queryset[:250], many=True).data)
+
+
+class RoyaltySourceListCreate(APIView):
+    def get(self, request):
+        organization = organization_for(request.user, request.query_params.get("organization_id"), "royalties.view")
+        return Response(RoyaltySourceSerializer(RoyaltySource.objects.filter(organization=organization), many=True).data)
+
+    def post(self, request):
+        organization = organization_for(request.user, request.data.get("organization"), "royalties.manage")
+        serializer = RoyaltySourceSerializer(data={**request.data, "organization": organization.id})
+        serializer.is_valid(raise_exception=True)
+        return Response(RoyaltySourceSerializer(serializer.save()).data, status=201)
+
+
+class RoyaltyCatalogMapView(APIView):
+    def post(self, request, pk):
+        statement = statement_for(request.user, pk)
+        require(request.user, statement.organization, "royalties.manage")
+        create_missing_releases = request.data.get("create_missing_releases", False)
+        if not isinstance(create_missing_releases, bool):
+            raise ValidationError({"create_missing_releases": "Expected a boolean value."})
+        from django.utils.text import slugify
+        from music.models import Release, ReleaseTrack
+        from music.services import create_release, create_track
+        artist = next((line.artist for line in statement.lines.all() if line.artist_id), None)
+        artist = artist or statement.organization.artists.filter(status="active").first()
+        if not artist:
+            raise ValidationError("Link an artist to at least one statement line or create an active artist before mapping releases.")
+        created = []
+        warnings = []
+        for line in statement.lines.select_related("artist", "release", "track"):
+            if line.release_id and line.track_id:
+                continue
+            title = line.release_title.strip() or line.description.strip() or f"Release {line.upc_ean or line.sequence}"
+            release = line.release or (Release.objects.filter(organization=statement.organization, upc_ean=line.upc_ean).first() if line.upc_ean else Release.objects.filter(organization=statement.organization, title__iexact=title).first())
+            if not release:
+                if not create_missing_releases:
+                    warnings.append(f"{title}: no matching release found; enable auto-create to add it to the catalog.")
+                    continue
+                base = slugify(title)[:130] or "royalty-release"
+                slug = base
+                suffix = 2
+                while Release.objects.filter(organization=statement.organization, slug=slug).exists():
+                    slug = f"{base}-{suffix}"
+                    suffix += 1
+                release = create_release(actor=request.user, organization=statement.organization, data={"primary_artist": line.artist or artist, "title": title, "slug": slug, "release_type": "single", "planned_release_date": statement.period_end, "upc_ean": line.upc_ean}, request=request)
+                created.append({"release": str(release.id), "title": release.title})
+            track = line.track or (Track.objects.filter(organization=statement.organization, isrc=line.isrc).first() if line.isrc else None)
+            if not track and line.isrc:
+                base = slugify(line.description or title)[:130] or "royalty-track"
+                slug = base
+                suffix = 2
+                while Track.objects.filter(organization=statement.organization, slug=slug).exists():
+                    slug = f"{base}-{suffix}"
+                    suffix += 1
+                track = create_track(actor=request.user, organization=statement.organization, data={"primary_artist": line.artist or artist, "title": line.description or title, "slug": slug, "isrc": line.isrc}, request=request)
+            if track:
+                line.release, line.track = release, track
+                line.save(update_fields=("release", "track", "updated_at"))
+                if not release.track_placements.filter(track=track).exists():
+                    ReleaseTrack.objects.create(release=release, track=track, track_number=line.sequence, sequence=line.sequence)
+            else:
+                warnings.append(f"{title}: add an ISRC to create or match its track.")
+        record_event(actor=request.user, organization=statement.organization, action="royalties.catalog_mapped", resource=statement, description=f"Mapped royalty statement {statement.statement_reference} to music catalog records.", request=request)
+        return Response({"created": created, "warnings": warnings})
+
+
+class RoyaltyAdvanceListCreate(APIView):
+    def get(self, request):
+        organization = organization_for(request.user, request.query_params.get("organization_id"), "royalties.view")
+        queryset = RoyaltyAdvance.objects.filter(organization=organization)
+        source = request.query_params.get("source")
+        if source:
+            queryset = queryset.filter(source_name__iexact=source)
+        return Response(RoyaltyAdvanceSerializer(queryset[:250], many=True).data)
+
+    def post(self, request):
+        organization = organization_for(request.user, request.data.get("organization"), "royalties.manage")
+        serializer = RoyaltyAdvanceSerializer(data={**request.data, "organization": organization.id})
+        serializer.is_valid(raise_exception=True)
+        advance = serializer.save(created_by=request.user)
+        return Response(RoyaltyAdvanceSerializer(advance).data, status=201)
+
+
+class RoyaltyAdvanceDetail(APIView):
+    def patch(self, request, pk):
+        organization = organization_for(
+            request.user,
+            request.data.get("organization") or request.query_params.get("organization_id"),
+            "royalties.manage",
+        )
+        advance = get_object_or_404(
+            RoyaltyAdvance, pk=pk, organization=organization
+        )
+        serializer = RoyaltyAdvanceSerializer(advance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        allowed = {
+            key: value
+            for key, value in serializer.validated_data.items()
+            if key in {"recouped_amount", "notes"}
+        }
+        for key, value in allowed.items():
+            setattr(advance, key, value)
+        valid(advance.save)
+        record_event(
+            actor=request.user,
+            organization=organization,
+            action="royalties.advance_updated",
+            resource=advance,
+            description="Updated royalty advance recoupment tracking.",
+            request=request,
+        )
+        return Response(RoyaltyAdvanceSerializer(advance).data)

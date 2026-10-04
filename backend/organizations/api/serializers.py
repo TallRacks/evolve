@@ -1,9 +1,10 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from organizations.models import Invitation, Membership, Organization
+from organizations.models import FeatureSetting, Invitation, Membership, Organization, RoleProfile
 from users.managers import UserManager
 from users.models import User
+from organizations.permissions import all_permissions, permissions_for_membership
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -68,14 +69,14 @@ class MembershipSerializer(serializers.ModelSerializer):
     class Meta:
         model = Membership
         fields = (
-            "id",
-            "user",
-            "organization",
-            "role",
-            "is_active",
-            "created_at",
-            "updated_at",
+            "id", "user", "organization", "role", "is_active",
+            "permission_overrides", "role_profile", "permissions", "created_at", "updated_at",
         )
+
+    permissions = serializers.SerializerMethodField()
+
+    def get_permissions(self, membership):
+        return permissions_for_membership(membership)
 
     def get_user(self, membership):
         return {
@@ -94,10 +95,60 @@ class MembershipSerializer(serializers.ModelSerializer):
         }
 
 
+
+
+class MembershipCreateSerializer(serializers.Serializer):
+    user_id = serializers.UUIDField()
+    role = serializers.ChoiceField(choices=Membership.Role.choices, default=Membership.Role.MEMBER)
+    is_active = serializers.BooleanField(default=True)
+    permission_overrides = serializers.JSONField(required=False, default=dict)
+    role_profile = serializers.PrimaryKeyRelatedField(queryset=RoleProfile.objects.all(), required=False, allow_null=True)
+
+    def validate_permission_overrides(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Permission overrides must be an object.")
+        allowed = all_permissions()
+        for key in ("grant", "deny"):
+            values = value.get(key, [])
+            if not isinstance(values, list) or any(item not in allowed for item in values):
+                raise serializers.ValidationError({key: "Use only known permission names."})
+        return {"grant": sorted(set(value.get("grant", []))), "deny": sorted(set(value.get("deny", [])))}
+
+    def validate(self, attrs):
+        if attrs["role"] == Membership.Role.OWNER and any((attrs.get("permission_overrides") or {}).get(key, []) for key in ("grant", "deny")):
+            raise serializers.ValidationError("Owner memberships inherit all permissions and cannot use overrides.")
+        if not attrs.get("is_active", True) and attrs["role"] == Membership.Role.OWNER:
+            raise serializers.ValidationError("An owner membership must be active.")
+        return attrs
+
 class MembershipUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Membership
-        fields = ("role", "is_active")
+        fields = ("role", "is_active", "permission_overrides", "role_profile")
+
+    def validate_permission_overrides(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Permission overrides must be an object.")
+        allowed = all_permissions()
+        for key in ("grant", "deny"):
+            values = value.get(key, [])
+            if not isinstance(values, list) or any(item not in allowed for item in values):
+                raise serializers.ValidationError({key: "Use only known permission names."})
+        return {"grant": sorted(set(value.get("grant", []))), "deny": sorted(set(value.get("deny", [])))}
+
+    def validate(self, attrs):
+        role = attrs.get("role", self.instance.role if self.instance else None)
+        overrides = attrs.get("permission_overrides", self.instance.permission_overrides if self.instance else {})
+        if role == Membership.Role.OWNER and any((overrides or {}).get(key, []) for key in ("grant", "deny")):
+            raise serializers.ValidationError("Owner memberships cannot have permission overrides.")
+        return attrs
+
+
+class FeatureSettingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FeatureSetting
+        fields = ("id", "organization", "key", "label", "description", "is_enabled", "created_at", "updated_at")
+        read_only_fields = ("id", "organization", "created_at", "updated_at")
 
 
 class InvitationSerializer(serializers.ModelSerializer):
@@ -140,7 +191,14 @@ class InvitationAcceptSerializer(serializers.Serializer):
     token = serializers.CharField(max_length=200, trim_whitespace=True)
 
 
+class InvitationSignupSerializer(serializers.Serializer):
+    token = serializers.CharField(max_length=200, trim_whitespace=True)
+    full_name = serializers.CharField(max_length=300, trim_whitespace=True, min_length=2)
+    password = serializers.CharField(write_only=True, min_length=12, trim_whitespace=False)
+
+
 class ProfileSerializer(serializers.ModelSerializer):
+    profile_image_url = serializers.CharField(required=False, allow_blank=True)
     memberships = serializers.SerializerMethodField()
 
     class Meta:
@@ -150,10 +208,20 @@ class ProfileSerializer(serializers.ModelSerializer):
             "email",
             "first_name",
             "last_name",
+            "username",
+            "profile_image_url",
             "is_superuser",
             "memberships",
         )
         read_only_fields = ("id", "email", "is_superuser", "memberships")
+
+    def to_representation(self, user):
+        data = super().to_representation(user)
+        if user.profile_image_document_id:
+            request = self.context.get("request")
+            path = "/api/profile/image/"
+            data["profile_image_url"] = request.build_absolute_uri(path) if request else path
+        return data
 
     def get_memberships(self, user):
         return MembershipSerializer(
@@ -187,3 +255,15 @@ class PlatformUserSerializer(serializers.ModelSerializer):
             "date_joined",
             "last_login",
         )
+
+
+class RoleProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RoleProfile
+        fields = ("id", "organization", "key", "name", "description", "permissions", "is_active", "created_at", "updated_at")
+        read_only_fields = ("id", "created_at", "updated_at")
+
+    def validate_permissions(self, value):
+        if not isinstance(value, list) or any(item not in all_permissions() for item in value):
+            raise serializers.ValidationError("Permissions must be a list of known permission names.")
+        return sorted(set(value))

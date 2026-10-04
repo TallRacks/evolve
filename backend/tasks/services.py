@@ -45,26 +45,45 @@ def _event(actor, task, action, description, request=None):
 
 
 def _notify_assignee(task, actor, action):
-    if not task.assigned_membership:
+    memberships = list(task.additional_assignees.select_related("user"))
+    if task.assigned_membership_id:
+        memberships.insert(0, task.assigned_membership)
+    if not memberships:
         return
+    users = list({item.user_id: item.user for item in memberships}.values())
     create_notification(
         organization=task.organization,
         notification_type=action,
         category="team",
         title=action.replace("task.", "Task ").replace("_", " ").title(),
         message=task.title,
-        users=[task.assigned_membership.user],
+        users=users,
         actor=actor,
         source=task,
         action_url=f"/workspace/tasks/{task.pk}",
     )
 
 
+def _validate_additional_assignees(organization, memberships):
+    invalid = [
+        membership
+        for membership in memberships
+        if membership.organization_id != organization.id
+        or not membership.is_active
+        or not membership.user.is_active
+    ]
+    if invalid:
+        raise ValidationError("Additional assignees must be active members of the task organization.")
+
+
 @transaction.atomic
 def create_task(*, actor, organization, data, request=None):
     require(actor, organization, "task.manage")
+    additional_assignees = data.pop("additional_assignees", [])
+    _validate_additional_assignees(organization, additional_assignees)
     task = Task(organization=organization, created_by=actor, **data)
     task.save()
+    task.additional_assignees.set(additional_assignees)
     _event(actor, task, "task.created", f"Created task {task.title}.", request)
     _notify_assignee(task, actor, "task.assigned")
     return task
@@ -90,14 +109,24 @@ def update_task(*, actor, task, data, request=None):
         for field in context_fields - supplied_contexts:
             setattr(task, field, None)
     previous_assignee = task.assigned_membership_id
+    previous_additional = set(task.additional_assignees.values_list("pk", flat=True))
+    additional_assignees = data.pop("additional_assignees", None)
+    if additional_assignees is not None:
+        _validate_additional_assignees(task.organization, additional_assignees)
     for field, value in data.items():
         setattr(task, field, value)
     task.save()
+    if additional_assignees is not None:
+        task.additional_assignees.set(additional_assignees)
     action = (
-        "task.reassigned" if previous_assignee != task.assigned_membership_id else "task.updated"
+        "task.reassigned" if previous_assignee != task.assigned_membership_id or previous_additional != set(task.additional_assignees.values_list("pk", flat=True)) else "task.updated"
     )
     _event(actor, task, action, f"Updated task {task.title}.", request)
-    if previous_assignee != task.assigned_membership_id:
+    if (
+        previous_assignee != task.assigned_membership_id
+        or previous_additional
+        != set(task.additional_assignees.values_list("pk", flat=True))
+    ):
         _notify_assignee(task, actor, action)
     return task
 

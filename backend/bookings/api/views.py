@@ -7,7 +7,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from bookings.models import Booking, BookingContactAssignment, BookingTeamAssignment
+from bookings.models import Booking, BookingContactAssignment, BookingOption, BookingTeamAssignment
 from bookings.selectors import booking_activity, bookings_for_user
 from bookings.services import (
     allowed_transitions,
@@ -31,6 +31,7 @@ from white_label.services import authenticate_api_key
 
 from .serializers import (
     BookingContactAssignmentSerializer,
+    BookingOptionSerializer,
     BookingContactCreateSerializer,
     BookingCreateSerializer,
     BookingDetailSerializer,
@@ -453,3 +454,41 @@ class DeveloperBookingListView(APIView):
             booking_queryset().filter(organization=key.client.organization), request
         )
         return Response(DeveloperBookingSerializer(bookings, many=True).data)
+
+
+class BookingOptionView(APIView):
+    def get(self, request):
+        organization = scoped_organization(request.user, request.query_params.get("organization_id"))
+        require_booking_permission(request.user, organization, "booking.view")
+        defaults = {
+            BookingOption.Category.PERFORMANCE: ("Live Band", "DJ"),
+            BookingOption.Category.EVENT: ("Festival", "Concert", "Club"),
+        }
+        for category, names in defaults.items():
+            for name in names:
+                BookingOption.objects.get_or_create(
+                    organization=organization, category=category, name=name,
+                    defaults={"created_by": request.user},
+                )
+        include_inactive = request.query_params.get("include_inactive") == "true" and user_has_organization_permission(request.user, organization, "booking.manage")
+        queryset = BookingOption.objects.filter(organization=organization)
+        if not include_inactive:
+            queryset = queryset.filter(is_active=True)
+        return Response(BookingOptionSerializer(queryset, many=True).data)
+
+    def post(self, request):
+        organization = scoped_organization(request.user, request.data.get("organization_id"))
+        require_booking_permission(request.user, organization, "booking.manage")
+        serializer = BookingOptionSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        option = serializer.save(organization=organization, created_by=request.user)
+        return Response(BookingOptionSerializer(option).data, status=status.HTTP_201_CREATED)
+
+
+class BookingOptionDetailView(APIView):
+    def patch(self, request, option_id):
+        option = get_object_or_404(BookingOption, pk=option_id)
+        require_booking_permission(request.user, option.organization, "booking.manage")
+        serializer = BookingOptionSerializer(option, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        return Response(BookingOptionSerializer(serializer.save()).data)

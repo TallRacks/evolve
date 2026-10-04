@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from rest_framework import serializers
 
-from finance.models import Invoice, InvoiceLineItem, Payment, PaymentAllocation
+from finance.models import Invoice, InvoiceLineItem, Payment, PaymentAllocation, FinanceProfile, Quote, QuoteLineItem, EmployeeInvoiceSubmission
 
 
 class LineItemSerializer(serializers.ModelSerializer):
@@ -51,6 +51,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
     financial_state = serializers.CharField(read_only=True)
     line_items = LineItemSerializer(many=True, read_only=True)
     allocations = AllocationSerializer(many=True, read_only=True)
+    proof_document_id = serializers.UUIDField(read_only=True)
+    proof_document_name = serializers.CharField(source="proof_document.original_filename", read_only=True, allow_null=True)
 
     class Meta:
         model = Invoice
@@ -151,6 +153,8 @@ class PaymentSerializer(serializers.ModelSerializer):
             "external_reference",
             "payer_name",
             "notes",
+            "proof_document_id",
+            "proof_document_name",
             "allocations",
             "voided_at",
             "created_at",
@@ -218,3 +222,71 @@ class DeveloperPaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
         fields = ("id", "reference", "currency", "amount", "date", "status")
+
+
+class FinanceProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FinanceProfile
+        exclude = ("organization",)
+
+class QuoteLineItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = QuoteLineItem
+        read_only_fields = ("id", "line_total", "created_at", "updated_at")
+        fields = "__all__"
+
+class QuoteSerializer(serializers.ModelSerializer):
+    subtotal = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
+    total_amount = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
+    line_items = QuoteLineItemSerializer(many=True, read_only=True)
+    class Meta:
+        model = Quote
+        fields = "__all__"
+        read_only_fields = ("id", "quote_number", "organization", "created_by", "created_at", "updated_at")
+
+
+class EmployeeInvoiceSubmissionSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(source="employee.get_full_name", read_only=True)
+    employee_email = serializers.EmailField(source="employee.email", read_only=True)
+
+    class Meta:
+        model = EmployeeInvoiceSubmission
+        fields = (
+            "id", "organization", "employee", "employee_name", "employee_email",
+            "submission_number", "status", "invoice_date", "currency",
+            "line_items", "total_amount", "notes", "settled_invoice",
+            "created_at", "updated_at",
+        )
+        read_only_fields = (
+            "id", "organization", "employee", "employee_name", "employee_email",
+            "submission_number", "status", "total_amount", "settled_invoice",
+            "created_at", "updated_at",
+        )
+
+
+class EmployeeInvoiceCreateSerializer(serializers.Serializer):
+    organization_id = serializers.UUIDField()
+    invoice_date = serializers.DateField()
+    currency = serializers.RegexField(r"^[A-Z]{3}$")
+    line_items = serializers.ListField(child=serializers.DictField(), allow_empty=False)
+    notes = serializers.CharField(max_length=5000, required=False, allow_blank=True, default="")
+
+    def validate_line_items(self, value):
+        cleaned = []
+        total = Decimal("0.00")
+        for index, item in enumerate(value, start=1):
+            description = str(item.get("description", "")).strip()
+            if not description:
+                raise serializers.ValidationError(f"Line {index} requires a description.")
+            try:
+                quantity = Decimal(str(item.get("quantity", "1")))
+                unit_amount = Decimal(str(item.get("unit_amount", "0")))
+            except Exception as exc:
+                raise serializers.ValidationError(f"Line {index} has invalid numbers.") from exc
+            if quantity <= 0 or unit_amount < 0:
+                raise serializers.ValidationError(f"Line {index} must have positive quantity and non-negative amount.")
+            line_total = (quantity * unit_amount).quantize(Decimal("0.01"))
+            total += line_total
+            cleaned.append({"description": description, "quantity": str(quantity), "unit_amount": str(unit_amount), "line_total": str(line_total), "sequence": index})
+        self.context["total_amount"] = total
+        return cleaned

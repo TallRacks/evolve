@@ -40,6 +40,8 @@ ALLOWED_NODES = {
     "sheet",
     "sheet_column",
     "sheet_row",
+    "presentation",
+    "slide",
 }
 ALLOWED_FORMATS = {choice.value for choice in OfficeDocumentContent.Format}
 
@@ -47,6 +49,9 @@ ALLOWED_FORMATS = {choice.value for choice in OfficeDocumentContent.Format}
 def validate_content(value, depth=0):
     if isinstance(value, dict) and value.get("type") == "sheet":
         validate_sheet(value)
+        return
+    if isinstance(value, dict) and value.get("type") == "presentation":
+        validate_presentation(value)
         return
     if depth > 30:
         raise ValidationError("Office content is too deeply nested.")
@@ -92,6 +97,28 @@ SHEET_TYPES = {
     "ENTITY_LINK",
 }
 SHEET_ENTITIES = {"artist", "booking", "release", "task", "contact", "venue", "promoter"}
+
+
+def validate_presentation(value):
+    if not isinstance(value, dict) or value.get("type") != "presentation":
+        raise ValidationError("Presentation content must be a structured presentation object.")
+    slides = value.get("slides", [])
+    if not isinstance(slides, list) or len(slides) > 200:
+        raise ValidationError("Presentation slide count exceeds the supported limit.")
+    for slide in slides:
+        if not isinstance(slide, dict) or not slide.get("id"):
+            raise ValidationError("Presentation slides require an id.")
+        if (
+            not isinstance(slide.get("title", ""), str)
+            or not isinstance(slide.get("body", ""), str)
+        ):
+            raise ValidationError("Presentation slide text is invalid.")
+        if len(slide.get("title", "")) > 500 or len(slide.get("body", "")) > 20000:
+            raise ValidationError("Presentation slide text is too long.")
+        if slide.get("accent") not in {"orange", "blue", "green", "yellow", "black"}:
+            raise ValidationError("Presentation slide accent is invalid.")
+    if len(json.dumps(value, separators=(",", ":"))) > 1_000_000:
+        raise ValidationError("Presentation content exceeds the 1 MB limit.")
 
 
 def validate_sheet(value):
@@ -171,6 +198,16 @@ def _walk_nodes(value):
 def initial_content(format=None):
     if format == OfficeDocumentContent.Format.SHEET:
         return {"type": "sheet", "columns": [], "rows": []}
+    if format == OfficeDocumentContent.Format.PRESENTATION:
+        return {
+            "type": "presentation",
+            "slides": [{
+                "id": "slide_1",
+                "title": "Untitled slide",
+                "body": "Add a clear idea, image, or talking point.",
+                "accent": "orange",
+            }],
+        }
     return {"type": "doc", "content": [{"type": "paragraph", "content": []}]}
 
 

@@ -12,6 +12,8 @@ from .channel_models import (
     InboundMessage,
     MessagingConnector,
     MessagingIdentity,
+    MailboxAccess,
+    MailboxReply,
 )
 from .collaboration_models import Comment, CommentMention
 

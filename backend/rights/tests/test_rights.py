@@ -1,6 +1,8 @@
 from datetime import date
 from decimal import Decimal
+from io import BytesIO
 from threading import Barrier, Thread
+from zipfile import ZipFile
 
 import pytest
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -10,7 +12,8 @@ from artists.models import Artist, ArtistPortalLink
 from contacts.models import Contact
 from music.models import Track
 from organizations.models import Membership, Organization
-from rights.models import MasterRight, RightsParty, RoyaltyStatement, Work
+from rights.import_services import _xlsx_rows
+from rights.models import MasterRight, RightsParty, RoyaltySource, RoyaltyStatement, Work
 from rights.services import (
     add_master_right,
     add_publishing_right,
@@ -81,6 +84,11 @@ def party(owner, organization, artist=None, name="Writer"):
 
 def statement_line(foundation, basis="master", amount="100.00"):
     organization, owner, _, _, artist, track = foundation
+    source = RoyaltySource.objects.create(
+        organization=organization,
+        name="Test distributor",
+        source_type=RoyaltySource.Type.DISTRIBUTOR,
+    )
     statement = create_statement(
         actor=owner,
         organization=organization,
@@ -92,6 +100,7 @@ def statement_line(foundation, basis="master", amount="100.00"):
             "declared_total": Decimal(amount),
         },
     )
+    assert statement.source_id == source.id
     line = add_statement_line(
         actor=owner,
         statement=statement,
@@ -423,3 +432,33 @@ def test_postgresql_concurrent_generation_and_finalization(foundation):
         )
     )
     assert outcomes.count("ok") == 1 and outcomes.count("rejected") == 1
+
+
+def test_xlsx_rows_reads_first_worksheet_headers_and_values():
+    workbook = BytesIO()
+    with ZipFile(workbook, "w") as archive:
+        archive.writestr(
+            "xl/workbook.xml",
+            '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+            'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+            '<sheets><sheet name="Statement" sheetId="1" r:id="rId1"/></sheets></workbook>',
+        )
+        archive.writestr(
+            "xl/_rels/workbook.xml.rels",
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            '<Relationship Id="rId1" '
+            'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" '
+            'Target="worksheets/sheet1.xml"/></Relationships>',
+        )
+        archive.writestr(
+            "xl/worksheets/sheet1.xml",
+            '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>'
+            '<row r="1"><c r="A1" t="inlineStr"><is><t>Track</t></is></c>'
+            '<c r="B1" t="inlineStr"><is><t>Gross</t></is></c></row>'
+            '<row r="2"><c r="A2" t="inlineStr"><is><t>Song One</t></is></c>'
+            '<c r="B2"><v>125.50</v></c></row>'
+            '</sheetData></worksheet>',
+        )
+    headers, rows = _xlsx_rows(BytesIO(workbook.getvalue()))
+    assert headers == ["Track", "Gross"]
+    assert rows == [{"Track": "Song One", "Gross": "125.50"}]

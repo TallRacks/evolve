@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from campaigns.models import (
     Campaign,
+    CampaignAsset,
     CampaignChannel,
     CampaignResponsibility,
     Rollout,
@@ -15,6 +16,13 @@ class ChannelSerializer(serializers.ModelSerializer):
         model = CampaignChannel
         exclude = ("campaign",)
         read_only_fields = ("id", "created_at")
+
+
+class CampaignAssetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CampaignAsset
+        exclude = ("campaign", "created_by")
+        read_only_fields = ("id", "status", "created_at", "updated_at")
 
 
 class CampaignResponsibilitySerializer(serializers.ModelSerializer):
@@ -53,6 +61,7 @@ class CampaignSummarySerializer(serializers.ModelSerializer):
             "release_id",
             "release_title",
             "name",
+            "brand_name",
             "slug",
             "status",
             "objective",
@@ -198,6 +207,7 @@ class RolloutDetailSerializer(RolloutSummarySerializer):
 class CampaignDetailSerializer(CampaignSummarySerializer):
     responsibilities = CampaignResponsibilitySerializer(many=True, read_only=True)
     channels = ChannelSerializer(many=True)
+    assets = CampaignAssetSerializer(many=True, read_only=True)
     rollouts = RolloutSummarySerializer(many=True)
     activity = serializers.ListField()
     target_audience = serializers.CharField()
@@ -210,6 +220,7 @@ class CampaignDetailSerializer(CampaignSummarySerializer):
             "target_audience",
             "summary",
             "channels",
+            "assets",
             "responsibilities",
             "rollouts",
             "activity",

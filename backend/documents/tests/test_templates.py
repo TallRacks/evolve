@@ -5,7 +5,9 @@ from django.core.exceptions import ValidationError
 
 from artists.models import Artist
 from bookings.services import create_booking
+from documents.docx_services import render_generated_document_docx
 from documents.models import DocumentTemplate, DocumentTemplateSection
+from documents.pdf_services import render_generated_document_pdf
 from documents.template_services import (
     add_template_section,
     generate_booking_document,
@@ -80,3 +82,5 @@ def test_render_missing_values_and_generated_snapshot_remain_immutable():
     update_template_section(actor=user, section=section, data={"body": "Changed"})
     document.refresh_from_db()
     assert document.rendered_content == snapshot
+    assert render_generated_document_pdf(document).startswith(b"%PDF")
+    assert render_generated_document_docx(document).startswith(b"PK")

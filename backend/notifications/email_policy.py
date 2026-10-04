@@ -40,7 +40,7 @@ CATEGORY_POLICIES = {
         default_email=True,
     ),
     Notification.Category.FINANCE: CategoryPolicy(
-        Notification.Category.FINANCE, "Finance", "Internal finance workflow updates."
+        Notification.Category.FINANCE, "Finance", "Internal finance workflow updates.", default_email=True
     ),
     Notification.Category.SECURITY: CategoryPolicy(
         Notification.Category.SECURITY,
@@ -72,6 +72,8 @@ EMAIL_NOTIFICATION_TYPES = {
     "task.reassigned": "task_reassigned",
     "contract.approval_requested": "contract_approval_requested",
     "callsheet.published": "call_sheet_published",
+    "invoice.issued": "invoice_issued",
+    "invoice.paid": "invoice_paid",
 }
 
 

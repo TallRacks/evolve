@@ -38,12 +38,13 @@ class SafeDocumentFieldsMixin(serializers.Serializer):
     checksum = serializers.SerializerMethodField()
     download_url = serializers.SerializerMethodField()
     preview_url = serializers.SerializerMethodField()
+    docx_url = serializers.SerializerMethodField()
 
     def get_checksum(self, obj):
         return f"{obj.checksum_sha256[:12]}..." if obj.checksum_sha256 else ""
 
     def _url(self, obj, action):
-        if obj.source_type != Document.SourceType.STORED:
+        if obj.source_type not in {Document.SourceType.STORED, Document.SourceType.GENERATED}:
             return None
         request = self.context.get("request")
         suffix = f"?organization={obj.organization_id}"
@@ -54,10 +55,22 @@ class SafeDocumentFieldsMixin(serializers.Serializer):
         return self._url(obj, "download")
 
     def get_preview_url(self, obj):
-        inline_types = {"application/pdf", "image/png", "image/jpeg", "image/webp"}
+        if obj.source_type == Document.SourceType.GENERATED:
+            return self._url(obj, "preview")
+        inline_types = {
+            "application/pdf", "image/png", "image/jpeg", "image/webp",
+            "audio/mpeg", "audio/wav", "audio/mp4", "audio/flac",
+        }
         if obj.detected_content_type not in inline_types:
             return None
         return self._url(obj, "preview")
+
+    def get_docx_url(self, obj):
+        if obj.source_type != Document.SourceType.GENERATED:
+            return None
+        request = self.context.get("request")
+        path = f"/api/documents/{obj.pk}/docx/?organization={obj.organization_id}"
+        return request.build_absolute_uri(path) if request else path
 
 
 class DocumentSerializer(SafeDocumentFieldsMixin, serializers.ModelSerializer):
@@ -75,6 +88,7 @@ class DocumentSerializer(SafeDocumentFieldsMixin, serializers.ModelSerializer):
             "source_type",
             "external_url",
             "rendered_content",
+            "rendered_branding",
             "template",
             "template_version",
             "original_filename",
@@ -85,6 +99,7 @@ class DocumentSerializer(SafeDocumentFieldsMixin, serializers.ModelSerializer):
             "storage_status",
             "download_url",
             "preview_url",
+            "docx_url",
             "uploaded_at",
             "version_number",
             "parent_document",
@@ -108,6 +123,7 @@ class DocumentSerializer(SafeDocumentFieldsMixin, serializers.ModelSerializer):
             "storage_status",
             "download_url",
             "preview_url",
+            "docx_url",
             "uploaded_at",
             "version_number",
             "parent_document",
@@ -169,6 +185,7 @@ class PortalDocumentSerializer(SafeDocumentFieldsMixin, serializers.ModelSeriali
             "storage_status",
             "download_url",
             "preview_url",
+            "docx_url",
             "links",
             "updated_at",
         )

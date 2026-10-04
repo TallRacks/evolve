@@ -14,13 +14,16 @@ from audit.services import record_event
 from bookings.models import Booking
 from callsheets.models import CallSheet
 from campaigns.models import Campaign
+from documents.docx_services import render_generated_document_docx
 from documents.file_validation import INLINE_TYPES
 from documents.models import Document, DocumentLink
+from documents.pdf_services import render_generated_document_pdf
 from documents.selectors import developer_documents, documents_for_user, portal_documents
 from documents.services import (
     archive_document,
     create_document,
     create_version,
+    duplicate_document,
     duplicate_office_document,
     link_document,
     move_document_to_workspace,
@@ -185,6 +188,17 @@ class RestoreView(APIView):
         return Response(DocumentSerializer(document, context={"request": request}).data)
 
 
+class DocumentDuplicateView(APIView):
+    def post(self, request, document_id):
+        org = org_for(request.user, request)
+        document = scoped(request.user, org, document_id)
+        try:
+            copy = duplicate_document(document, actor=request.user, title=request.data.get("title"), request=request)
+        except PermissionError as exc:
+            raise PermissionDenied(str(exc)) from exc
+        return Response(DocumentSerializer(copy, context={"request": request}).data, status=201)
+
+
 class OfficeDuplicateView(APIView):
     def post(self, request, document_id):
         org = org_for(request.user, request)
@@ -287,6 +301,33 @@ class DocumentContentView(APIView):
     def get(self, request, document_id):
         org = org_for(request.user, request)
         document = scoped(request.user, org, document_id)
+        if document.source_type == Document.SourceType.GENERATED:
+            is_pdf = not self.preview
+            content = (
+                render_generated_document_pdf(document)
+                if is_pdf
+                else document.rendered_content.encode("utf-8")
+            )
+            response = StreamingHttpResponse(
+                iter((content,)),
+                content_type="application/pdf" if is_pdf else "text/plain; charset=utf-8",
+            )
+            filename = document.title.strip() or "evolve-document"
+            response["Content-Disposition"] = content_disposition_header(
+                not self.preview, f"{filename}.pdf" if is_pdf else f"{filename}.txt"
+            )
+            response["Cache-Control"] = "private, no-store, max-age=0"
+            response["Pragma"] = "no-cache"
+            response["X-Content-Type-Options"] = "nosniff"
+            record_event(
+                actor=request.user,
+                organization=document.organization,
+                action="document.previewed" if self.preview else "document.downloaded",
+                resource=document,
+                description=f"Generated document version {document.version_number} accessed.",
+                request=request,
+            )
+            return response
         if document.source_type != Document.SourceType.STORED:
             raise ValidationError("This Document does not contain a stored file.")
         if document.storage_status != Document.StorageStatus.AVAILABLE:
@@ -327,6 +368,61 @@ class DocumentDownloadView(DocumentContentView):
 
 class DocumentPreviewView(DocumentContentView):
     preview = True
+
+
+class DocumentPDFView(APIView):
+    def get(self, request, document_id):
+        org = org_for(request.user, request)
+        document = scoped(request.user, org, document_id)
+        try:
+            content = render_generated_document_pdf(document)
+        except DocumentStorageUnavailable as exc:
+            raise StorageUnavailable("The document logo is temporarily unavailable.") from exc
+        response = StreamingHttpResponse(iter((content,)), content_type="application/pdf")
+        response["Content-Disposition"] = content_disposition_header(
+            True, f"{document.title.strip() or 'evolve-document'}.pdf"
+        )
+        response["Cache-Control"] = "private, no-store, max-age=0"
+        response["Pragma"] = "no-cache"
+        response["X-Content-Type-Options"] = "nosniff"
+        record_event(
+            actor=request.user,
+            organization=document.organization,
+            action="document.pdf_downloaded",
+            resource=document,
+            description=f"Generated PDF version {document.version_number} downloaded.",
+            request=request,
+        )
+        return response
+
+
+class DocumentDOCXView(APIView):
+    def get(self, request, document_id):
+        org = org_for(request.user, request)
+        document = scoped(request.user, org, document_id)
+        try:
+            content = render_generated_document_docx(document)
+        except DocumentStorageUnavailable as exc:
+            raise StorageUnavailable("The document logo is temporarily unavailable.") from exc
+        response = StreamingHttpResponse(
+            iter((content,)),
+            content_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        response["Content-Disposition"] = content_disposition_header(
+            True, f"{document.title.strip() or 'evolve-document'}.docx"
+        )
+        response["Cache-Control"] = "private, no-store, max-age=0"
+        response["Pragma"] = "no-cache"
+        response["X-Content-Type-Options"] = "nosniff"
+        record_event(
+            actor=request.user,
+            organization=document.organization,
+            action="document.docx_downloaded",
+            resource=document,
+            description=f"Generated DOCX version {document.version_number} downloaded.",
+            request=request,
+        )
+        return response
 
 
 ENTITY_MODELS = {

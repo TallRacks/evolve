@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from rest_framework.test import APIClient
 
 from integrations.models import EmailConnector, StorageProvider
+from integrations.services import _smtp
 from integrations.validation import (
     validate_email_secret_reference,
     validate_path_prefix,
@@ -154,3 +155,17 @@ def test_secret_reference_namespaces_cannot_cross_domains():
         validate_email_secret_reference("EVOLVE_STORAGE_PRIMARY_SECRET")
     with pytest.raises(ValidationError):
         validate_storage_secret_reference("EVOLVE_EMAIL_PRIMARY_PASSWORD")
+
+
+def test_smtp_relay_allows_unauthenticated_connection(monkeypatch):
+    connector = EmailConnector(
+        name="Google relay", from_name="Evolve", from_email="bookings@example.test",
+        host="smtp.example.test", port=587, use_tls=True, username="", secret_reference="",
+    )
+    class Client:
+        def __enter__(self): return self
+        def __exit__(self, *args): return False
+        def starttls(self, context): pass
+        def login(self, username, password): raise AssertionError("relay must not authenticate")
+    monkeypatch.setattr("integrations.services.smtplib.SMTP", lambda *args, **kwargs: Client())
+    assert _smtp(connector)

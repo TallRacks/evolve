@@ -18,8 +18,15 @@ ALLOWED_TYPES = {
     ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
     ".csv": "text/csv",
     ".txt": "text/plain",
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/wav",
+    ".m4a": "audio/mp4",
+    ".flac": "audio/flac",
 }
-INLINE_TYPES = {"application/pdf", "image/png", "image/jpeg", "image/webp"}
+INLINE_TYPES = {
+    "application/pdf", "image/png", "image/jpeg", "image/webp",
+    "audio/mpeg", "audio/wav", "audio/mp4", "audio/flac",
+}
 CONTROL = re.compile(r"[\x00-\x1f\x7f]+")
 UNSAFE_TRAVEL_NAMES = re.compile(r"(?:passport|national[-_ ]?id|identity[-_ ]?card|visa)", re.I)
 
@@ -65,6 +72,14 @@ def _detect(file, filename):
         return "image/jpeg"
     if head.startswith(b"RIFF") and head[8:12] == b"WEBP":
         return "image/webp"
+    if head.startswith(b"RIFF") and head[8:12] == b"WAVE":
+        return "audio/wav"
+    if head.startswith(b"fLaC"):
+        return "audio/flac"
+    if head.startswith(b"ID3") or (len(head) > 1 and head[0] == 0xFF and head[1] & 0xE0 == 0xE0):
+        return "audio/mpeg"
+    if len(head) >= 12 and head[4:8] == b"ftyp" and head[8:12] in {b"M4A ", b"M4B ", b"isom", b"mp42"}:
+        return "audio/mp4"
     if head.startswith(b"PK\x03\x04"):
         return _ooxml_type(file)
     if suffix in {".txt", ".csv"}:
@@ -95,9 +110,13 @@ def validate_upload(file, *, document_type=None):
         configured = (
             policy.max_image_size_bytes
             if expected.startswith("image/")
+            else policy.max_audio_size_bytes
+            if expected.startswith("audio/")
             else policy.max_document_size_bytes
         )
         limit = min(limit, configured)
+        if expected.startswith("audio/") and not policy.audio_upload_enabled:
+            raise ValidationError({"file": "Audio uploads are disabled by the platform policy."})
     if size is None or size > limit:
         raise ValidationError({"file": f"File exceeds the {limit // (1024 * 1024)} MB limit."})
     detected = _detect(file, filename)

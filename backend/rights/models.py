@@ -219,6 +219,12 @@ class WorkContributor(TimestampedModel):
         RightsParty, on_delete=models.PROTECT, related_name="work_contributions"
     )
     role = models.CharField(max_length=20, choices=Role.choices)
+    share_percentage = models.DecimalField(
+        max_digits=7,
+        decimal_places=4,
+        default=0,
+        validators=[MinValueValidator(Decimal("0")), MaxValueValidator(Decimal("100"))],
+    )
     sequence = models.PositiveIntegerField(default=1)
     notes = models.CharField(max_length=500, blank=True)
 
@@ -242,6 +248,16 @@ class WorkContributor(TimestampedModel):
             raise ValidationError(
                 "Contributor relationships must remain in one organization."
             )
+        if self.work_id and self.share_percentage:
+            total = sum(
+                (
+                    row.share_percentage
+                    for row in type(self).objects.filter(work_id=self.work_id).exclude(pk=self.pk)
+                ),
+                Decimal("0"),
+            )
+            if total + self.share_percentage > Decimal("100"):
+                raise ValidationError("Split-sheet contributor shares cannot exceed 100%.")
 
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -380,6 +396,27 @@ class PublishingRight(OwnershipBase):
         return f"{self.work} / {self.party} / {self.ownership_percentage}%"
 
 
+class RoyaltySource(TimestampedModel):
+    class Type(models.TextChoices):
+        DISTRIBUTOR = "distributor", "Distributor"
+        LABEL = "label", "Label"
+        PUBLISHER = "publisher", "Publisher"
+        SOCIETY = "society", "Collection society"
+        OTHER = "other", "Other"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey("organizations.Organization", on_delete=models.PROTECT, related_name="royalty_sources")
+    name = models.CharField(max_length=220)
+    source_type = models.CharField(max_length=24, choices=Type.choices, default=Type.DISTRIBUTOR)
+    is_active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True, max_length=2000)
+
+    class Meta:
+        ordering = ("name",)
+        constraints = [models.UniqueConstraint(fields=("organization", "name"), name="unique_royalty_source_name")]
+
+
+
 class RoyaltyStatement(TimestampedModel):
     class Status(models.TextChoices):
         DRAFT = "draft", "Draft"
@@ -396,6 +433,8 @@ class RoyaltyStatement(TimestampedModel):
         max_length=32, unique=True, default=statement_reference, editable=False
     )
     source_name = models.CharField(max_length=220)
+    source_type = models.CharField(max_length=24, default="distributor")
+    source = models.ForeignKey(RoyaltySource, null=True, blank=True, on_delete=models.PROTECT, related_name="statements")
     status = models.CharField(
         max_length=16, choices=Status.choices, default=Status.DRAFT
     )
@@ -497,6 +536,38 @@ class RoyaltyStatement(TimestampedModel):
         )
 
 
+class RoyaltyAdvance(TimestampedModel):
+    """Advance ledger per label, distributor, or other royalty supplier."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey("organizations.Organization", on_delete=models.PROTECT, related_name="royalty_advances")
+    source_name = models.CharField(max_length=220)
+    source_type = models.CharField(max_length=24, default="label")
+    reference = models.CharField(max_length=120, blank=True)
+    currency = models.CharField(max_length=3, validators=[CURRENCY])
+    amount = models.DecimalField(max_digits=16, decimal_places=2, validators=[MinValueValidator(Decimal("0"))])
+    recouped_amount = models.DecimalField(max_digits=16, decimal_places=2, default=Decimal("0.00"), validators=[MinValueValidator(Decimal("0"))])
+    received_on = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True, max_length=2000)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="royalty_advances_created")
+
+    class Meta:
+        ordering = ("-received_on", "-created_at")
+
+    def clean(self):
+        self.currency = self.currency.upper()
+        if self.recouped_amount > self.amount:
+            raise ValidationError({"recouped_amount": "Recouped amount cannot exceed the advance."})
+
+    @property
+    def outstanding_amount(self):
+        return self.amount - self.recouped_amount
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+
 class RoyaltyStatementLine(TimestampedModel):
     class Basis(models.TextChoices):
         MASTER = "master", "Master"
@@ -530,6 +601,9 @@ class RoyaltyStatementLine(TimestampedModel):
         related_name="royalty_lines",
     )
     external_track_reference = models.CharField(max_length=180, blank=True)
+    release_title = models.CharField(max_length=220, blank=True)
+    upc_ean = models.CharField(max_length=14, blank=True)
+    isrc = models.CharField(max_length=12, blank=True)
     territory_code = models.CharField(
         max_length=10, default="WORLDWIDE", validators=[TERRITORY]
     )

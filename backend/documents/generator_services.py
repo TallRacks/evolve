@@ -7,7 +7,7 @@ from audit.services import record_event
 from organizations.permissions import user_has_organization_permission
 
 from .models import Document, DocumentLink, OfficeDocumentContent
-from .office_services import create_office_document, validate_content
+from .office_services import create_office_document, save_content, validate_content
 
 BOOKING_GENERATORS = {
     "booking-brief": (
@@ -214,15 +214,34 @@ def _create(
     relation,
     request=None,
     idempotent=True,
+    refresh_document=None,
     extra_links=(),
 ):
     if not user_has_organization_permission(actor, source.organization, "document.manage"):
         raise PermissionError("You do not have permission to create Office documents.")
     with transaction.atomic():
-        existing = (
+        existing = refresh_document or (
             _find_existing(source.organization, key, relation, source.pk) if idempotent else None
         )
         if existing:
+            if refresh_document is not None:
+                save_content(
+                    actor=actor,
+                    document=existing,
+                    content=content,
+                    expected_revision=existing.office_content.revision_number,
+                    change_summary="Refreshed from source",
+                    request=request,
+                )
+                record_event(
+                    actor=actor,
+                    organization=source.organization,
+                    action="office.content_refreshed",
+                    resource=existing,
+                    description=f"Refreshed {title} from its source record.",
+                    request=request,
+                )
+                return existing, False
             return existing, True
         document = create_office_document(
             actor=actor,
@@ -253,7 +272,7 @@ def _create(
 
 
 @transaction.atomic
-def generate_booking_office(*, actor, booking, generator, request=None):
+def generate_booking_office(*, actor, booking, generator, request=None, refresh_document=None):
     if generator not in BOOKING_GENERATORS:
         raise ValueError("Unsupported Booking Office generator.")
     if not user_has_organization_permission(actor, booking.organization, "booking.view"):
@@ -288,12 +307,13 @@ def generate_booking_office(*, actor, booking, generator, request=None):
         "booking",
         request=request,
         idempotent=idempotent,
+        refresh_document=refresh_document,
         extra_links=(("artist", booking.artist),),
     )
 
 
 @transaction.atomic
-def generate_release_office(*, actor, release, generator, request=None):
+def generate_release_office(*, actor, release, generator, request=None, refresh_document=None):
     if generator not in RELEASE_GENERATORS:
         raise ValueError("Unsupported Release Office generator.")
     if not user_has_organization_permission(actor, release.organization, "music.view"):
@@ -395,5 +415,6 @@ def generate_release_office(*, actor, release, generator, request=None):
         content,
         "release",
         request=request,
+        refresh_document=refresh_document,
         extra_links=(("artist", release.primary_artist),),
     )

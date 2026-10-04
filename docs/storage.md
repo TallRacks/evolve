@@ -1,10 +1,14 @@
 # Storage Providers
 
 Evolve reuses the `integrations.StorageProvider` configuration for private Document objects. Provider
-rows contain endpoint, region, bucket, prefix, lifecycle status, and names of `EVOLVE_STORAGE_*`
-environment variables. Access-key and secret-key values remain in external server secrets and are never
+rows contain endpoint, region, bucket, prefix, lifecycle status, and names of `EVOLVE_STORAGE_*` or `EVOLVE_S3_*`
+secret references. Access-key and secret-key values remain in external server secrets and are never
 stored in PostgreSQL, serializers, audit events, logs, or browser state. Rotating an external secret
-value does not modify Document rows.
+value does not modify Document rows. The dashboard supports environment references, HashiCorp Vault,
+and AWS Secrets Manager. Vault and AWS references use `path#key`, such as
+`secret/data/evolve/storage#access_key` and `secret/data/evolve/storage#secret_key` for Vault KV v2,
+or matching JSON keys in an AWS Secrets Manager secret. Vault uses `EVOLVE_VAULT_ADDR` and
+`EVOLVE_VAULT_TOKEN`; AWS uses the standard SDK credential chain and `AWS_REGION`.
 
 Uploads require one active default provider with both referenced secrets present. There is no fallback
 to a public directory or local web-served filesystem. Production remains deliberately unconfigured

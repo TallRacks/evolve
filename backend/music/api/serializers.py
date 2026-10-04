@@ -9,10 +9,20 @@ class ArtistSummarySerializer(serializers.Serializer):
     stage_name = serializers.CharField()
 
 
+def audio_preview_path(track):
+    if track.audio_document_id:
+        return f"/api/documents/{track.audio_document_id}/preview/?organization={track.organization_id}"
+    return track.audio_preview_url
+
+
 class TrackSummarySerializer(serializers.ModelSerializer):
+    audio_preview_url = serializers.SerializerMethodField()
     artist = serializers.CharField(source="primary_artist.stage_name")
     artist_id = serializers.UUIDField(source="primary_artist_id")
     releases_count = serializers.IntegerField(read_only=True)
+
+    def get_audio_preview_url(self, track):
+        return audio_preview_path(track)
 
     class Meta:
         model = Track
@@ -28,8 +38,11 @@ class TrackSummarySerializer(serializers.ModelSerializer):
             "duration_seconds",
             "explicit_content",
             "artwork_url",
+            "audio_preview_url",
             "release_year",
+            "language",
             "genre",
+            "subgenre",
             "releases_count",
         )
 
@@ -169,6 +182,7 @@ class ReleaseDetailSerializer(serializers.ModelSerializer):
 
 
 class TrackDetailSerializer(serializers.ModelSerializer):
+    audio_preview_url = serializers.SerializerMethodField()
     artist = serializers.CharField(source="primary_artist.stage_name")
     artist_id = serializers.UUIDField(source="primary_artist_id")
     organization = serializers.SerializerMethodField()
@@ -180,6 +194,9 @@ class TrackDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Track
         fields = "__all__"
+
+    def get_audio_preview_url(self, track):
+        return audio_preview_path(track)
 
     def get_organization(self, track):
         return {"id": track.organization_id, "name": track.organization.name}

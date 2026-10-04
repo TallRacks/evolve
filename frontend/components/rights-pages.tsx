@@ -31,7 +31,7 @@ type Work = {
   iswc: string;
   publishing_total: string;
   track_links: { id: string; track_title: string; relationship_type: string }[];
-  contributors: { id: string; party_name: string; role: string }[];
+  contributors: { id: string; party_name: string; role: string; share_percentage: string }[];
   publishing_rights: {
     id: string;
     party_name: string;
@@ -105,6 +105,7 @@ export function RightsOverviewPage({
       <PageHeader
         eyebrow={platform ? "Platform" : "Rights & royalties"}
         title="Rights overview"
+        description="A control surface for credits, ownership splits, and statement attribution. Rights data is separate from earnings and payment records."
         actions={
           !platform && canManage ? (
             <Link className={buttonClass} href="/workspace/rights/works/new">
@@ -337,15 +338,15 @@ export function WorkDetailPage({ platform = false }: { platform?: boolean }) {
               <button className={secondaryButtonClass}>Link recording</button>
             </form>
           )}
-          <h2 className="mt-8 font-semibold">Contributors</h2>
+          <h2 className="mt-8 font-semibold">Split sheet contributors</h2><p className="mt-1 text-sm text-neutral-500">Contributor shares must total no more than 100%.</p>
           {d.contributors.map((x) => (
-            <p className="mt-3" key={x.id}>
-              {x.party_name} / {x.role}
+            <p className="mt-3 grid grid-cols-3 border-t border-neutral-800 pt-3 text-sm" key={x.id}>
+              <span>{x.party_name}</span><span>{x.role}</span><span>{x.share_percentage}%</span>
             </p>
           ))}
           {!platform && (
             <form
-              className="mt-4 grid gap-3 sm:grid-cols-3"
+              className="mt-4 grid gap-3 sm:grid-cols-4"
               onSubmit={(e) =>
                 void add("/api/rights/works/" + id + "/contributors/", e)
               }
@@ -358,16 +359,11 @@ export function WorkDetailPage({ platform = false }: { platform?: boolean }) {
                 ))}
               </select>
               <select className={fieldClass} name="role">
-                {[
-                  "songwriter",
-                  "composer",
-                  "lyricist",
-                  "arranger",
-                  "other",
-                ].map((x) => (
+                {["songwriter", "composer", "lyricist", "arranger", "other"].map((x) => (
                   <option key={x}>{x}</option>
                 ))}
               </select>
+              <input className={fieldClass} name="share_percentage" type="number" min="0" max="100" step="0.0001" placeholder="Share %" required />
               <button className={secondaryButtonClass}>Add contributor</button>
             </form>
           )}
@@ -611,6 +607,19 @@ export function StatementListPage({
 export function NewStatementPage() {
   const organization = useAuth().activeOrganizationId;
   const r = useRouter();
+  const [sources, setSources] = useState<{ id: string; name: string; source_type: string }[]>([]);
+  const [documents, setDocuments] = useState<{ id: string; title: string; document_type: string }[]>([]);
+  const [sourceId, setSourceId] = useState("");
+  useEffect(() => {
+    if (!organization) return;
+    void Promise.all([
+      apiRequest<{ id: string; name: string; source_type: string }[]>(`/api/royalties/sources/?organization_id=${organization}`),
+      apiRequest<{ id: string; title: string; document_type: string }[]>(`/api/documents/?organization=${organization}`),
+    ]).then(([sourceRows, documentRows]) => {
+      setSources(sourceRows);
+      setDocuments(documentRows);
+    });
+  }, [organization]);
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const element = e.currentTarget;
@@ -618,6 +627,24 @@ export function NewStatementPage() {
       ...Object.fromEntries(new FormData(element)),
       organization,
     };
+    const sourceFile = d.source_file instanceof File && d.source_file.size > 0 ? d.source_file : null;
+    delete d.source_file;
+    if (sourceFile && organization) {
+      const upload = new FormData();
+      upload.set("organization", organization);
+      upload.set("title", `${String(d.source_name || "Royalty statement")} · ${String(d.period_end || "source document")}`);
+      upload.set("document_type", "other");
+      upload.set("visibility", "restricted");
+      upload.set("file", sourceFile);
+      const document = await apiRequest<{ id: string }>("/api/documents/upload/", { method: "POST", body: upload });
+      d.source_document = document.id;
+    }
+    const selectedSource = sources.find((item) => item.id === sourceId);
+    if (selectedSource) {
+      d.source = selectedSource.id;
+      d.source_name = selectedSource.name;
+      d.source_type = selectedSource.source_type;
+    }
     if (!d.declared_total) d.declared_total = null;
     const x = await apiRequest<Statement>("/api/royalties/statements/", {
       method: "POST",
@@ -636,7 +663,17 @@ export function NewStatementPage() {
         className="mt-7 grid max-w-2xl gap-4 sm:grid-cols-2"
         onSubmit={save}
       >
-        <input className={fieldClass} name="source_name" placeholder="Source" />
+        <select className={fieldClass} name="source" value={sourceId} onChange={(e) => setSourceId(e.target.value)}>
+          <option value="">Select configured source</option>
+          {sources.map((source) => <option key={source.id} value={source.id}>{source.name} · {source.source_type}</option>)}
+        </select>
+        <input className={fieldClass} name="source_name" placeholder="Source name (or add one in Royalty Hub)" />
+        <select className={fieldClass} name="source_type" defaultValue="distributor">
+          <option value="distributor">Distributor</option>
+          <option value="label">Label</option>
+          <option value="publisher">Publisher</option>
+          <option value="society">Collection society</option>
+        </select>
         <input className={fieldClass} name="currency" defaultValue="ZAR" />
         <input className={fieldClass} name="period_start" type="date" />
         <input className={fieldClass} name="period_end" type="date" />
@@ -647,6 +684,15 @@ export function NewStatementPage() {
           step="0.01"
           placeholder="Declared total"
         />
+        <select className={fieldClass} name="source_document">
+          <option value="">Attach source statement (optional)</option>
+          {documents.map((document) => <option key={document.id} value={document.id}>{document.title} · {document.document_type}</option>)}
+        </select>
+        <label className="text-sm text-[var(--text-secondary)] sm:col-span-2">Or upload the source statement privately
+          <input className={`mt-2 ${fieldClass}`} name="source_file" type="file" accept=".pdf,.csv,.xlsx" />
+          <span className="mt-1 block text-xs text-[var(--text-muted)]">The file is stored in private document storage and linked to this statement.</span>
+        </label>
+        <textarea className="min-h-24 rounded-md border border-[var(--border)] bg-[var(--surface)] p-3 sm:col-span-2" name="internal_notes" placeholder="Internal notes" />
         <button className={buttonClass}>Create draft</button>
       </form>
     </W>
@@ -662,6 +708,7 @@ export function StatementDetailPage({
   const [d, setD] = useState<Statement | null>(null);
   const [parties, setParties] = useState<Party[]>([]);
   const [tracks, setTracks] = useState<Track[]>([]);
+  const [importMessage, setImportMessage] = useState("");
   const load = useCallback(
     () =>
       apiRequest<Statement>("/api/royalties/statements/" + id + "/").then(setD),
@@ -688,6 +735,18 @@ export function StatementDetailPage({
       ),
     });
     await load();
+  }
+  async function importCsv(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    try {
+      const result = await apiRequest<{ imported: number; skipped: number; errors: string[] }>(`/api/royalties/statements/${id}/import/`, { method: "POST", body: form });
+      setImportMessage(`Imported ${result.imported} lines; skipped ${result.skipped} duplicates.${result.errors.length ? ` ${result.errors.length} rows need review.` : ""}`);
+      event.currentTarget.reset();
+      await load();
+    } catch (error) {
+      setImportMessage(error instanceof Error ? error.message : "Unable to import royalty statement.");
+    }
   }
   const b = (
     <>
@@ -744,6 +803,16 @@ export function StatementDetailPage({
             />
           </div>
           <h2 className="mt-8 font-semibold">Lines and allocations</h2>
+          {!platform && d.status === "draft" && (
+            <form className="mt-4 flex flex-wrap items-end gap-3 rounded-lg border border-[var(--border)] bg-[var(--surface-raised)] p-4" onSubmit={(event) => void importCsv(event)}>
+              <label className="text-sm text-[var(--text-secondary)]">Import CSV or XLSX statement
+                <input className={`mt-2 ${fieldClass}`} name="file" type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
+              </label>
+              <button className={secondaryButtonClass}>Import lines</button>
+              <span className="text-xs text-[var(--text-muted)]">Use headers such as ISRC, UPC, Track, Gross, Deductions, Platform, and Rights Basis.</span>
+            </form>
+          )}
+          {importMessage && <p className="mt-3 text-sm text-[var(--accent-strong)]" role="status">{importMessage}</p>}
           {!platform && d.status === "draft" && (
             <form
               className="mt-4 grid gap-3 sm:grid-cols-4"

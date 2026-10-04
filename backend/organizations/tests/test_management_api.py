@@ -349,3 +349,60 @@ def test_membership_uniqueness_remains_enforced(user, organization):
     Membership.objects.create(user=user, organization=organization)
     with pytest.raises(IntegrityError):
         Membership.objects.create(user=user, organization=organization)
+
+
+def test_owner_can_add_existing_platform_user_with_role(client, owner, organization):
+    new_user = User.objects.create_user(
+        email="new-team-member@example.com", password="Correct-Horse-123"
+    )
+    client.force_login(owner)
+    response = client.post(
+        reverse("organizations_api:member-list", kwargs={"organization_id": organization.id}),
+        {"user_id": str(new_user.id), "role": "manager"},
+        content_type="application/json",
+    )
+    assert response.status_code == 201
+    membership = Membership.objects.get(user=new_user, organization=organization)
+    assert membership.role == Membership.Role.MANAGER
+    assert response.json()["user"]["email"] == new_user.email
+
+
+def test_platform_superuser_can_add_owner_membership(client, superuser, organization):
+    new_user = User.objects.create_user(
+        email="new-owner@example.com", password="Correct-Horse-123"
+    )
+    client.force_login(superuser)
+    response = client.post(
+        reverse(
+            "organizations_api:platform-organization-member-list",
+            kwargs={"organization_id": organization.id},
+        ),
+        {"user_id": str(new_user.id), "role": "owner"},
+        content_type="application/json",
+    )
+    assert response.status_code == 201
+    assert Membership.objects.get(user=new_user, organization=organization).role == Membership.Role.OWNER
+
+
+def test_membership_creation_rejects_duplicate_and_owner_overrides(client, owner, member, organization):
+    client.force_login(owner)
+    url = reverse("organizations_api:member-list", kwargs={"organization_id": organization.id})
+    duplicate = client.post(
+        url,
+        {"user_id": str(member.id), "role": "member"},
+        content_type="application/json",
+    )
+    assert duplicate.status_code == 400
+    invalid_owner = User.objects.create_user(
+        email="invalid-owner@example.com", password="Correct-Horse-123"
+    )
+    response = client.post(
+        url,
+        {
+            "user_id": str(invalid_owner.id),
+            "role": "owner",
+            "permission_overrides": {"grant": ["booking.view"]},
+        },
+        content_type="application/json",
+    )
+    assert response.status_code == 400

@@ -1,6 +1,10 @@
 from django.urls import path
 
-from documents.api.generator_api import BookingOfficeGeneratorView, ReleaseOfficeGeneratorView
+from documents.api.generator_api import (
+    BookingOfficeGeneratorView,
+    OfficeRefreshView,
+    ReleaseOfficeGeneratorView,
+)
 from documents.api.office_api import (
     OfficeAccessView,
     OfficeActivityView,
@@ -14,6 +18,8 @@ from documents.api.office_api import (
     OfficeRevisionView,
     OfficeSharingView,
     OfficeSheetExportView,
+    OfficeSheetSavedViewDetailView,
+    OfficeSheetSavedViewsView,
     OfficeSheetView,
     OfficeTaskView,
 )
@@ -21,8 +27,11 @@ from documents.template_api import (
     TemplateActionView,
     TemplateDetailView,
     TemplateGenerateView,
+    TemplateBootstrapView,
     TemplateListView,
     TemplatePreviewView,
+    TemplateLogoUploadView,
+    TemplateLogoPreviewView,
     TemplateSectionDetailView,
     TemplateSectionView,
 )
@@ -31,9 +40,12 @@ from .views import (
     ArchiveView,
     DeveloperDocumentsView,
     DocumentDetailView,
+    DocumentDuplicateView,
     DocumentDownloadView,
     DocumentListView,
     DocumentPreviewView,
+    DocumentDOCXView,
+    DocumentPDFView,
     DocumentUploadView,
     LinkDetailView,
     LinkView,
@@ -56,6 +68,7 @@ urlpatterns = [
         "music/releases/<uuid:release_id>/office/<slug:generator>/",
         ReleaseOfficeGeneratorView.as_view(),
     ),
+    path("documents/<uuid:document_id>/office-refresh/", OfficeRefreshView.as_view()),
     path("office/documents/", OfficeDocumentCollectionView.as_view()),
     path("office/documents/list/", OfficeDocumentListView.as_view()),
     path("documents/<uuid:document_id>/office-content/", OfficeContentView.as_view()),
@@ -79,6 +92,11 @@ urlpatterns = [
     ),
     path("documents/<uuid:document_id>/office-task/", OfficeTaskView.as_view()),
     path("documents/<uuid:document_id>/office-sheet/", OfficeSheetView.as_view()),
+    path("documents/<uuid:document_id>/office-sheet-views/", OfficeSheetSavedViewsView.as_view()),
+    path(
+        "documents/<uuid:document_id>/office-sheet-views/<uuid:view_id>/",
+        OfficeSheetSavedViewDetailView.as_view(),
+    ),
     path("documents/<uuid:document_id>/office-sheet/export/", OfficeSheetExportView.as_view()),
     path(
         "documents/<uuid:document_id>/office-revisions/<int:revision_number>/restore/",
@@ -88,6 +106,7 @@ urlpatterns = [
     path("documents/upload/", DocumentUploadView.as_view()),
     path("documents/storage-status/", StorageStatusView.as_view()),
     path("document-templates/", TemplateListView.as_view()),
+    path("document-templates/bootstrap/", TemplateBootstrapView.as_view()),
     path("document-templates/<uuid:template_id>/", TemplateDetailView.as_view()),
     path("document-templates/<uuid:template_id>/sections/", TemplateSectionView.as_view()),
     path(
@@ -95,17 +114,22 @@ urlpatterns = [
         TemplateSectionDetailView.as_view(),
     ),
     path("document-templates/<uuid:template_id>/preview/", TemplatePreviewView.as_view()),
+    path("document-templates/<uuid:template_id>/branding/logo/preview/", TemplateLogoPreviewView.as_view()),
+    path("document-templates/<uuid:template_id>/branding/logo/", TemplateLogoUploadView.as_view()),
     path("document-templates/<uuid:template_id>/generate/", TemplateGenerateView.as_view()),
     path("document-templates/<uuid:template_id>/<slug:action>/", TemplateActionView.as_view()),
     path("documents/<uuid:document_id>/", DocumentDetailView.as_view()),
     path("documents/<uuid:document_id>/archive/", ArchiveView.as_view()),
     path("documents/<uuid:document_id>/restore/", RestoreView.as_view()),
     path("documents/<uuid:document_id>/office-duplicate/", OfficeDuplicateView.as_view()),
+    path("documents/<uuid:document_id>/duplicate/", DocumentDuplicateView.as_view()),
     path("documents/<uuid:document_id>/office-move/", OfficeMoveView.as_view()),
     path("documents/<uuid:document_id>/versions/", VersionView.as_view()),
     path("documents/<uuid:document_id>/versions/upload/", VersionUploadView.as_view()),
     path("documents/<uuid:document_id>/download/", DocumentDownloadView.as_view()),
     path("documents/<uuid:document_id>/preview/", DocumentPreviewView.as_view()),
+    path("documents/<uuid:document_id>/pdf/", DocumentPDFView.as_view()),
+    path("documents/<uuid:document_id>/docx/", DocumentDOCXView.as_view()),
     path("documents/<uuid:document_id>/links/", LinkView.as_view()),
     path("documents/<uuid:document_id>/links/<uuid:link_id>/", LinkDetailView.as_view()),
     path("artist-portal/documents/", PortalDocumentsView.as_view()),

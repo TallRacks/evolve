@@ -22,7 +22,7 @@ scope.
 | Calendar / Tasks | PRESENT | PRESENT | PRESENT | PRESENT | complete/status | assignments, checklist, context | PRESENT | PRESENT | PRESENT | PRESENT |
 | Notifications / Activity | PRESENT | n/a | PRESENT | read/archive | archive/read | deep links, Inbox projection | PRESENT | PRESENT | PRESENT | PRESENT |
 | Documents / Contracts | PRESENT | PRESENT | PRESENT | PRESENT | archive/approve/reject | links, templates, print | PRESENT | PRESENT | PRESENT | READ/OPERATE |
-| Office | PARTIAL | PRESENT | PRESENT | PRESENT | archive/restore | shared, recent, starred, revisions | PRESENT | PRESENT | PRESENT | READ ONLY |
+| Office | PRESENT | PRESENT | PRESENT | PRESENT | archive/restore | shared, recent, starred, revisions, templates, generators | PRESENT | PRESENT | PRESENT | READ ONLY |
 | Finance / Invoices / Payments | PRESENT | PRESENT | PRESENT | PRESENT | issue/void/allocation | booking and contract context | PRESENT | PRESENT | PRESENT | READ ONLY |
 | Rights / Royalties | PRESENT | PRESENT | PRESENT | limited | finalize/immutable | music context | PRESENT | PRESENT | PRESENT | READ ONLY |
 | Reports | PRESENT | n/a | PRESENT | filters/views | n/a | CSV export, saved views | PRESENT | PRESENT | PRESENT | WEB FIRST |
@@ -40,5 +40,6 @@ The existing shell exposes permission-aware navigation and global Create
 commands. Booking creation is being simplified to a four-to-six-field first
 step with optional operational setup. Music has real catalog list/create/detail
 flows; additional metadata/distribution/pitching screens remain explicitly
-backend-contract work rather than fake UI. No production schema migration is
-required for the web UX changes in this phase.
+backend-contract work rather than fake UI. Office saved Sheet views and template
+categories use tracked Django migration 0012; no other production schema
+migration is required for the remaining web UX changes in this phase.

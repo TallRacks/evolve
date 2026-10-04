@@ -13,11 +13,12 @@ class Document(TimestampedModel):
     class Type(models.TextChoices):
         CONTRACT = "contract", "Contract"
         CALL_SHEET = "call_sheet", "Call sheet"
+        INVOICE = "invoice", "Invoice"
+        PERFORMANCE_AGREEMENT = "performance_agreement", "Performance agreement"
         RIDER = "rider", "Rider"
         PRESS = "press", "Press"
         ARTWORK = "artwork", "Artwork"
         MUSIC = "music", "Music"
-        INVOICE = "invoice", "Invoice"
         RECEIPT = "receipt", "Receipt"
         TRAVEL = "travel", "Travel"
         OTHER = "other", "Other"
@@ -76,6 +77,7 @@ class Document(TimestampedModel):
     file_size = models.PositiveBigIntegerField(null=True, blank=True)
     checksum_sha256 = models.CharField(max_length=64, blank=True, editable=False)
     rendered_content = models.TextField(blank=True, editable=False)
+    rendered_branding = models.JSONField(default=dict, blank=True, editable=False)
     template = models.ForeignKey(
         "DocumentTemplate",
         null=True,
@@ -189,12 +191,25 @@ class DocumentTemplate(TimestampedModel):
         INVOICE_COVER = "invoice_cover", "Invoice cover"
         TRAVEL_ITINERARY = "travel_itinerary", "Travel itinerary"
         PRODUCTION_ADVANCE = "production_advance", "Production advance"
+        BOOKING_BRIEF = "booking_brief", "Booking brief"
+        CALL_SHEET = "call_sheet", "Call sheet"
+        INVOICE = "invoice", "Invoice"
+        PERFORMANCE_AGREEMENT = "performance_agreement", "Performance agreement"
         GENERAL = "general", "General"
 
     class Status(models.TextChoices):
         DRAFT = "draft", "Draft"
         ACTIVE = "active", "Active"
         INACTIVE = "inactive", "Inactive"
+
+    class Category(models.TextChoices):
+        GENERAL = "general", "General"
+        MANAGEMENT = "management", "Management"
+        BOOKINGS = "bookings", "Bookings"
+        LIVE = "live", "Live"
+        MUSIC = "music", "Music"
+        CAMPAIGN = "campaign", "Campaign"
+        TRAVEL = "travel", "Travel"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     organization = models.ForeignKey(
@@ -205,10 +220,13 @@ class DocumentTemplate(TimestampedModel):
         related_name="document_templates",
     )
     name = models.CharField(max_length=220)
+    category = models.CharField(max_length=20, choices=Category.choices, default=Category.GENERAL)
     key = models.SlugField(max_length=120)
     document_type = models.CharField(max_length=32, choices=Type.choices)
     description = models.TextField(blank=True, max_length=2000)
+    branding = models.JSONField(default=dict, blank=True)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT)
+    is_default = models.BooleanField(default=False)
     version = models.PositiveIntegerField(default=1)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -568,6 +586,7 @@ class OfficeDocumentContent(TimestampedModel):
         NOTE = "note", "Note"
         CHECKLIST = "checklist", "Checklist"
         SHEET = "sheet", "Sheet"
+        PRESENTATION = "presentation", "Presentation"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     document = models.OneToOneField(
@@ -720,3 +739,24 @@ class DocumentRecentAccess(models.Model):
 
     def __str__(self):
         return f"{self.user_id}:{self.document_id}"
+
+
+class OfficeSavedSheetView(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    document = models.ForeignKey(
+        Document, on_delete=models.CASCADE, related_name="saved_sheet_views"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="saved_sheet_views"
+    )
+    name = models.CharField(max_length=120)
+    config = models.JSONField(default=dict)
+    is_default = models.BooleanField(default=False)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("document", "user", "name"), name="unique_saved_sheet_view_name"
+            ),
+        ]
+        ordering = ("name",)

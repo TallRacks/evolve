@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
@@ -34,7 +35,7 @@ def scoped_task(user, task_id):
     return get_object_or_404(
         tasks_for_user(user)
         .select_related("organization", "assigned_membership__user")
-        .prefetch_related("checklist_items"),
+        .prefetch_related("checklist_items", "additional_assignees__user"),
         pk=task_id,
     )
 
@@ -44,12 +45,12 @@ class TaskListView(TaskAPIView):
         queryset = (
             tasks_for_user(request.user)
             .select_related("assigned_membership__user")
-            .prefetch_related("checklist_items")
+            .prefetch_related("checklist_items", "additional_assignees__user")
         )
         if request.query_params.get("organization_id"):
             queryset = queryset.filter(organization_id=request.query_params["organization_id"])
         if request.query_params.get("mine") == "true":
-            queryset = queryset.filter(assigned_membership__user=request.user)
+            queryset = queryset.filter(Q(assigned_membership__user=request.user) | Q(additional_assignees__user=request.user))
         if request.query_params.get("workspace_id"):
             queryset = queryset.filter(
                 source_document__workspace_id=request.query_params["workspace_id"]

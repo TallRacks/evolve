@@ -1,4 +1,4 @@
-const CACHE = "evolve-shell-v1";
+const CACHE = "evolve-shell-v4";
 const SHELL = ["/offline"];
 
 self.addEventListener("install", (event) => {
@@ -15,6 +15,28 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
+});
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try { data = event.data ? event.data.json() : {}; } catch (_) { data = {}; }
+  event.waitUntil(self.registration.showNotification(data.title || "Evolve", {
+    body: data.body || "You have a new Evolve update.",
+    icon: "/icon",
+    badge: "/icon",
+    data: { url: data.url || "/workspace/notifications" },
+    tag: "evolve-notification",
+  }));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = event.notification.data?.url || "/workspace/notifications";
+  event.waitUntil(clients.matchAll({ type: "window", includeUncontrolled: true }).then((windows) => {
+    const existing = windows.find((client) => "focus" in client);
+    if (existing) { existing.navigate(target); return existing.focus(); }
+    return clients.openWindow(target);
+  }));
 });
 
 self.addEventListener("fetch", (event) => {

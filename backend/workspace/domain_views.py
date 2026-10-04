@@ -94,7 +94,7 @@ class BoardView(APIView):
                     "title": row.title,
                     "status": row.status,
                     "priority": row.priority,
-                    "assignee": row.assigned_membership.user.get_full_name()
+                    "assignee": f"{assigned_membership.user.first_name} {assigned_membership.user.last_name}".strip()
                     if row.assigned_membership
                     else None,
                     "due_at": row.due_at,

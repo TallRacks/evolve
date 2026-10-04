@@ -79,6 +79,9 @@ class OrganizationBranding(TimestampedModel):
     text_muted_color = models.CharField(
         max_length=7, default="#A3A3A3", validators=[validate_hex_color]
     )
+    seo_title = models.CharField(max_length=160, blank=True)
+    seo_description = models.CharField(max_length=320, blank=True)
+    og_image_url = models.URLField(max_length=500, blank=True)
     support_email = models.EmailField(blank=True)
     support_url = models.URLField(max_length=500, blank=True)
 
@@ -99,6 +102,72 @@ class OrganizationBranding(TimestampedModel):
 
     def __str__(self):
         return self.display_name or self.organization.name
+
+
+class GlobalBranding(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    override_organizations = models.BooleanField(default=True)
+    display_name = models.CharField(max_length=120, blank=True)
+    application_title = models.CharField(max_length=120, blank=True)
+    logo_url = models.URLField(max_length=500, blank=True)
+    favicon_url = models.URLField(max_length=500, blank=True)
+    mobile_icon_url = models.URLField(max_length=500, blank=True)
+    primary_color = models.CharField(max_length=7, blank=True, validators=[validate_hex_color])
+    secondary_color = models.CharField(max_length=7, blank=True, validators=[validate_hex_color])
+    accent_color = models.CharField(max_length=7, blank=True, validators=[validate_hex_color])
+    background_color = models.CharField(max_length=7, blank=True, validators=[validate_hex_color])
+    surface_color = models.CharField(max_length=7, blank=True, validators=[validate_hex_color])
+    text_color = models.CharField(max_length=7, blank=True, validators=[validate_hex_color])
+    text_muted_color = models.CharField(max_length=7, blank=True, validators=[validate_hex_color])
+    seo_title = models.CharField(max_length=160, blank=True)
+    seo_description = models.CharField(max_length=320, blank=True)
+    og_image_url = models.URLField(max_length=500, blank=True)
+    support_email = models.EmailField(blank=True)
+    support_url = models.URLField(max_length=500, blank=True)
+
+    class Meta:
+        ordering = ("-updated_at",)
+
+    def clean(self):
+        colors = {name: getattr(self, name) for name in ("primary_color", "accent_color", "background_color", "surface_color", "text_color", "text_muted_color")}
+        if all(colors.values()):
+            validate_theme_contrast(colors)
+
+    def __str__(self):
+        return self.display_name or "Global branding"
+
+
+class GlobalBrandingAsset(TimestampedModel):
+    class AssetType(models.TextChoices):
+        LOGO = "logo", "Logo"
+        DARK_LOGO = "dark_logo", "Dark-mode logo"
+        FAVICON = "favicon", "Favicon"
+        MOBILE_ICON = "mobile_icon", "Mobile/home-screen icon"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    branding = models.ForeignKey(
+        GlobalBranding, on_delete=models.CASCADE, related_name="assets"
+    )
+    asset_type = models.CharField(max_length=20, choices=AssetType.choices)
+    storage_provider = models.ForeignKey(
+        "integrations.StorageProvider", on_delete=models.PROTECT, related_name="global_branding_assets"
+    )
+    storage_key = models.CharField(max_length=512)
+    original_filename = models.CharField(max_length=180)
+    content_type = models.CharField(max_length=120)
+    file_size = models.PositiveBigIntegerField()
+    checksum_sha256 = models.CharField(max_length=64)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("branding", "asset_type"), name="one_global_branding_asset_per_type"
+            )
+        ]
+        ordering = ("asset_type",)
+
+    def __str__(self):
+        return f"{self.branding} {self.get_asset_type_display()}"
 
 
 class OrganizationDomain(TimestampedModel):

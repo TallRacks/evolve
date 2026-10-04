@@ -1,14 +1,22 @@
+from datetime import date
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from artists.models import Artist
 from contacts.models import Contact
+from documents.file_validation import validate_upload
+from documents.models import Document
+from documents.services import upload_document
+from music.export_services import PUBLISHING_HEADERS, csv_response, pdf_response, publishing_rows
+from music.import_services import import_release_workbook
 from music.models import MusicCredit, Release, ReleaseLink, ReleaseTrack, Track
 from music.selectors import (
     music_activity,
@@ -82,7 +90,7 @@ def release_queryset():
 
 
 def track_queryset():
-    return Track.objects.select_related("organization", "primary_artist").annotate(
+    return Track.objects.select_related("organization", "primary_artist", "audio_document").annotate(
         releases_count=Count("release_placements")
     )
 
@@ -121,6 +129,74 @@ def release_detail(release):
 def track_detail(track):
     track.activity = activity(track)
     return TrackDetailSerializer(track).data
+
+
+def _release_metadata_rows(release):
+    placements = release.track_placements.select_related("track").order_by(
+        "sequence", "disc_number", "track_number"
+    )
+    for placement in placements:
+        track = placement.track
+        yield [
+            release.title,
+            release.primary_artist.stage_name,
+            release.planned_release_date,
+            release.upc_ean,
+            release.catalog_number,
+            release.label_name,
+            release.distributor_name,
+            placement.disc_number,
+            placement.track_number,
+            track.title,
+            track.version_title,
+            track.isrc,
+            track.duration_seconds,
+            track.release_year,
+            track.language,
+            track.genre,
+            track.subgenre,
+            track.explicit_content,
+            track.artwork_url,
+            track.audio_preview_url,
+        ]
+
+
+METADATA_HEADERS = (
+    "Release title", "Primary artist", "Release date", "UPC / EAN", "Catalog number",
+    "Label", "Distributor", "Disc number", "Track number", "Track title",
+    "Version title", "ISRC", "Duration seconds", "Release year", "Language",
+    "Genre", "Subgenre", "Explicit", "Artwork URL", "Audio preview URL",
+)
+
+
+class ReleaseMetadataExportView(APIView):
+    def get(self, request, release_id):
+        release = scoped_release(request.user, release_id)
+        require_music_permission(request.user, release.organization, "music.view")
+        return csv_response(
+            f"{release.slug}-metadata.csv", METADATA_HEADERS, list(_release_metadata_rows(release))
+        )
+
+
+class TrackPublishingSplitExportView(APIView):
+    def get(self, request, track_id):
+        track = scoped_track(request.user, track_id)
+        require_music_permission(request.user, track.organization, "music.view")
+        rows = publishing_rows(track)
+        if request.query_params.get("format") == "pdf" or request.path.endswith(".pdf"):
+            lines = [
+                f"Artist: {track.primary_artist.stage_name}",
+                f"Track: {track.title}",
+                f"ISRC: {track.isrc or 'Not set'}",
+                "",
+            ]
+            lines.extend(" | ".join(str(value or "") for value in row) for row in rows)
+            return pdf_response(
+                f"{track.slug}-publishing-split.pdf",
+                f"Publishing split sheet - {track.title}",
+                lines,
+            )
+        return csv_response(f"{track.slug}-publishing-split.csv", PUBLISHING_HEADERS, rows)
 
 
 def filters(queryset, request, track=False):
@@ -348,6 +424,42 @@ class TrackDetailView(APIView):
         return Response(track_detail(track))
 
 
+class TrackAudioUploadView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request, track_id):
+        track = scoped_track(request.user, track_id)
+        require_music_permission(request.user, track.organization, "music.track.manage")
+        file = request.FILES.get("file")
+        if not file:
+            raise ValidationError({"file": "Choose an audio file to upload."})
+        try:
+            metadata = validate_upload(file, document_type=Document.Type.MUSIC)
+            if not metadata["detected_content_type"].startswith("audio/"):
+                raise ValidationError({"file": "Only audio files can be attached to a track."})
+            document = upload_document(
+                actor=request.user,
+                organization=track.organization,
+                file=file,
+                request=request,
+                title=f"{track.title} audio",
+                document_type=Document.Type.MUSIC,
+                visibility=Document.Visibility.PRIVATE,
+            )
+            track = validated(
+                lambda: update_track(
+                    actor=request.user,
+                    track=track,
+                    data={"audio_document": document, "audio_preview_url": ""},
+                    request=request,
+                )
+            )
+        except (DjangoValidationError, PermissionError) as error:
+            detail = getattr(error, "message_dict", None) or getattr(error, "messages", None) or str(error)
+            raise ValidationError(detail) from error
+        return Response(track_detail(track), status=status.HTTP_201_CREATED)
+
+
 class ReleaseTracksView(APIView):
     def post(self, request, release_id):
         release = scoped_release(request.user, release_id)
@@ -572,3 +684,35 @@ class DeveloperMusicView(APIView):
             "primary_artist"
         )
         return Response(DeveloperTrackSerializer(queryset, many=True).data)
+
+
+class ReleaseWorkbookImportView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request):
+        organization = scoped_organization(request.user, request.data.get("organization_id"))
+        require_music_permission(request.user, organization, "music.release.manage")
+        artist = get_object_or_404(
+            Artist, pk=request.data.get("primary_artist_id"), organization=organization
+        )
+        upload = request.FILES.get("workbook")
+        if not upload:
+            raise ValidationError({"workbook": "Upload the XLSX workbook."})
+        title = (request.data.get("title") or "Ts & Cs Apply").strip()
+        raw_date = (request.data.get("release_date") or "2026-09-01").strip()
+        try:
+            release_date = date.fromisoformat(raw_date)
+        except ValueError as error:
+            raise ValidationError({"release_date": "Use YYYY-MM-DD."}) from error
+        try:
+            release, imported = import_release_workbook(
+                actor=request.user, organization=organization, artist=artist,
+                upload=upload, title=title, release_date=release_date, request=request,
+            )
+        except DjangoValidationError as error:
+            detail = error.message_dict if hasattr(error, "message_dict") else error.messages
+            raise ValidationError(detail) from error
+        return Response(
+            {"release": release_detail(release), "tracks_imported": imported},
+            status=status.HTTP_201_CREATED,
+        )

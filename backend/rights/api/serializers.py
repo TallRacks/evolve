@@ -9,6 +9,8 @@ from rights.models import (
     RightsParty,
     RoyaltyAllocation,
     RoyaltyStatement,
+    RoyaltySource,
+    RoyaltyAdvance,
     RoyaltyStatementLine,
     TrackWork,
     Work,
@@ -42,7 +44,7 @@ class ContributorSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = WorkContributor
-        fields = ("id", "party", "party_name", "role", "sequence", "notes")
+        fields = ("id", "party", "party_name", "role", "share_percentage", "sequence", "notes")
 
 
 class TrackWorkSerializer(serializers.ModelSerializer):
@@ -149,6 +151,9 @@ class LineSerializer(serializers.ModelSerializer):
             "release",
             "artist",
             "external_track_reference",
+            "release_title",
+            "upc_ean",
+            "isrc",
             "territory_code",
             "platform",
             "usage_type",
@@ -166,6 +171,13 @@ class LineSerializer(serializers.ModelSerializer):
         read_only_fields = ("id", "net_amount", "created_at")
 
 
+class RoyaltySourceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RoyaltySource
+        fields = ("id", "organization", "name", "source_type", "is_active", "notes", "created_at", "updated_at")
+        read_only_fields = ("id", "organization", "created_at", "updated_at")
+
+
 class StatementSerializer(serializers.ModelSerializer):
     lines = LineSerializer(many=True, read_only=True)
     calculated_total = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
@@ -180,6 +192,8 @@ class StatementSerializer(serializers.ModelSerializer):
             "organization",
             "statement_reference",
             "source_name",
+            "source_type",
+            "source",
             "status",
             "period_start",
             "period_end",
@@ -265,3 +279,12 @@ class DeveloperTrackRightsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Track
         fields = ("id", "title", "isrc", "master_ownership", "works")
+
+
+class RoyaltyAdvanceSerializer(serializers.ModelSerializer):
+    outstanding_amount = serializers.DecimalField(max_digits=16, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = RoyaltyAdvance
+        fields = ("id", "organization", "source_name", "source_type", "reference", "currency", "amount", "recouped_amount", "outstanding_amount", "received_on", "notes", "created_at", "updated_at")
+        read_only_fields = ("id", "organization", "outstanding_amount", "created_at", "updated_at")

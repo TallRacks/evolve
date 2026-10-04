@@ -48,6 +48,18 @@ class Artist(TimestampedModel):
         return self.stage_name
 
 
+class ArtistToolkit(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    artist = models.OneToOneField(Artist, on_delete=models.CASCADE, related_name="toolkit")
+    short_bio = models.TextField(blank=True, max_length=1500)
+    long_bio = models.TextField(blank=True, max_length=6000)
+    rate_card = models.TextField(blank=True, max_length=6000)
+    stats_summary = models.TextField(blank=True, max_length=4000)
+
+    def __str__(self):
+        return f"{self.artist} toolkit"
+
+
 class ArtistTeamAssignment(TimestampedModel):
     class Responsibility(models.TextChoices):
         MANAGER = "manager", "Manager"

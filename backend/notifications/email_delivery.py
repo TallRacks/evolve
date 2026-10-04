@@ -17,6 +17,7 @@ from organizations.permissions import (
     user_has_organization_permission,
 )
 from white_label.models import OrganizationDomain
+from white_label.services import effective_branding
 
 from .email_policy import CATEGORY_POLICIES, EMAIL_NOTIFICATION_TYPES
 from .models import EmailDeliveryAttempt, Notification, NotificationPreference
@@ -44,12 +45,14 @@ def _origin(organization=None):
 
 
 def _branding(organization):
-    branding = getattr(organization, "branding", None) if organization else None
+    values = effective_branding(organization) if organization else {}
+    logo = str(values.get("logo_url", ""))
+    if logo.startswith("/"):
+        logo = _origin(organization) + logo
     return {
-        "name": (branding.display_name if branding and branding.display_name else None)
-        or (organization.name if organization else "Evolve"),
-        "logo": branding.logo_url if branding and branding.logo_url.startswith("https://") else "",
-        "color": branding.primary_color if branding else "#D6A84B",
+        "name": values.get("brand_name") or "Evolve",
+        "logo": logo if logo.startswith("https://") else "",
+        "color": values.get("primary") or "#D6A84B",
     }
 
 
@@ -83,12 +86,16 @@ def render_notification_email(notification):
         "task_reassigned": "A task was reassigned to you",
         "contract_approval_requested": "Contract approval requested",
         "call_sheet_published": "A Call Sheet was published",
+        "invoice_issued": "An invoice was issued",
+        "invoice_paid": "An invoice was paid",
     }
     labels = {
         "task_assigned": "Open task",
         "task_reassigned": "Open task",
         "contract_approval_requested": "Open contract",
         "call_sheet_published": "Open Call Sheet",
+        "invoice_issued": "Open invoice",
+        "invoice_paid": "Open invoice",
     }
     url = _origin(notification.organization) + notification.action_url
     text, html = _shell(
@@ -121,7 +128,7 @@ def render_invitation_email(invitation, token):
 
 
 def resolve_connector():
-    connector = EmailConnector.objects.filter(is_active=True, is_default=True).first()
+    connector = (EmailConnector.objects.filter(is_active=True).order_by("-is_default", "-updated_at").first())
     return connector if connector and connector.secret_configured else None
 
 

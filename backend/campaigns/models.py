@@ -52,6 +52,7 @@ class Campaign(TimestampedModel):
         "music.Release", null=True, blank=True, on_delete=models.PROTECT, related_name="campaigns"
     )
     name = models.CharField(max_length=220)
+    brand_name = models.CharField(max_length=220, blank=True)
     slug = models.SlugField(max_length=140)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
     start_date = models.DateField(null=True, blank=True)
@@ -198,6 +199,44 @@ class CampaignChannel(models.Model):
 
     def __str__(self):
         return f"{self.campaign}: {self.channel}"
+
+
+class CampaignAsset(TimestampedModel):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        PENDING_REVIEW = "pending_review", "Pending review"
+        APPROVED = "approved", "Approved"
+        FLIGHTING = "flighting", "Flighting"
+        COMPLETED = "completed", "Completed"
+        REJECTED = "rejected", "Rejected"
+        ARCHIVED = "archived", "Archived"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    campaign = models.ForeignKey(Campaign, on_delete=models.PROTECT, related_name="assets")
+    title = models.CharField(max_length=220)
+    channel = models.CharField(max_length=30, choices=CampaignChannel.Channel.choices)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+    flight_start = models.DateField(null=True, blank=True)
+    flight_end = models.DateField(null=True, blank=True)
+    notes = models.TextField(max_length=5000, blank=True)
+    document = models.ForeignKey("documents.Document", null=True, blank=True, on_delete=models.PROTECT, related_name="campaign_assets")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="campaign_assets_created")
+
+    class Meta:
+        ordering = ("flight_start", "title")
+
+    def clean(self):
+        if self.document_id and self.document.organization_id != self.campaign.organization_id:
+            raise ValidationError("Campaign asset document must belong to the campaign organization.")
+        if self.flight_start and self.flight_end and self.flight_start > self.flight_end:
+            raise ValidationError({"flight_end": "Flight end cannot precede flight start."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValidationError("Campaign assets must be archived instead of deleted.")
 
 
 class Rollout(TimestampedModel):

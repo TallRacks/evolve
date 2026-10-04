@@ -18,6 +18,7 @@ from documents.models import (
     DocumentRevision,
     OfficeDocumentAttachment,
     OfficeDocumentContent,
+    OfficeSavedSheetView,
 )
 from documents.office_services import (
     create_office_document,
@@ -82,19 +83,25 @@ def content_response(document):
 class OfficeActivityView(APIView):
     def get(self, request, document_id):
         document = document_for(request, document_id)
-        rows = (
-            AuditEvent.objects.filter(
-                organization=document.organization,
-                resource_type="Document",
-                resource_id=str(document.pk),
-            )
-            .select_related("actor")[:100]
+        rows = AuditEvent.objects.filter(
+            organization=document.organization,
+            resource_type="Document",
+            resource_id=str(document.pk),
+        ).select_related("actor")[:100]
+        return Response(
+            [
+                {
+                    "id": str(row.id),
+                    "action": row.action,
+                    "actor": (row.actor.get_full_name() or row.actor.email)
+                    if row.actor
+                    else "System",
+                    "description": row.description,
+                    "created_at": row.created_at,
+                }
+                for row in rows
+            ]
         )
-        return Response([{
-            "id": str(row.id), "action": row.action,
-            "actor": (row.actor.get_full_name() or row.actor.email) if row.actor else "System",
-            "description": row.description, "created_at": row.created_at,
-        } for row in rows])
 
 
 class OfficeDocumentCollectionView(APIView):
@@ -136,6 +143,13 @@ class OfficeContentView(APIView):
     def patch(self, request, document_id):
         document = document_for(request, document_id)
         try:
+            title = request.data.get("title")
+            if title is not None:
+                title = str(title).strip()
+                if not title or len(title) > 220:
+                    raise DjangoValidationError(
+                        "Office titles must be non-empty and 220 characters or fewer."
+                    )
             save_content(
                 actor=request.user,
                 document=document,
@@ -144,6 +158,17 @@ class OfficeContentView(APIView):
                 change_summary=str(request.data.get("change_summary", "")),
                 request=request,
             )
+            if title is not None and title != document.title:
+                document.title = title
+                document.save(update_fields=("title", "updated_at"))
+                record_event(
+                    actor=request.user,
+                    organization=document.organization,
+                    action="document.renamed",
+                    resource=document,
+                    description="Renamed Office document.",
+                    request=request,
+                )
         except PermissionError as exc:
             raise PermissionDenied(str(exc)) from exc
         except DjangoValidationError as exc:
@@ -512,6 +537,115 @@ class OfficeTaskView(APIView):
             {"id": str(task.id), "title": task.title, "source_document": str(document.id)},
             status=201,
         )
+
+
+class OfficeSheetSavedViewsView(APIView):
+    def get(self, request, document_id):
+        document = document_for(request, document_id)
+        if document.office_content.format != OfficeDocumentContent.Format.SHEET:
+            raise ValidationError("Saved views require a Sheet.")
+        return Response(
+            [
+                {
+                    "id": str(view.id),
+                    "name": view.name,
+                    "config": view.config,
+                    "is_default": view.is_default,
+                    "updated_at": view.updated_at,
+                }
+                for view in document.saved_sheet_views.filter(user=request.user)
+            ]
+        )
+
+    def post(self, request, document_id):
+        document = document_for(request, document_id)
+        if document.office_content.format != OfficeDocumentContent.Format.SHEET:
+            raise ValidationError("Saved views require a Sheet.")
+        name = str(request.data.get("name", "")).strip()
+        config = request.data.get("config", {})
+        if not name or len(name) > 120 or not isinstance(config, dict):
+            raise ValidationError("A view name and structured configuration are required.")
+        if request.data.get("is_default"):
+            document.saved_sheet_views.filter(user=request.user).update(is_default=False)
+        view = OfficeSavedSheetView.objects.create(
+            document=document,
+            user=request.user,
+            name=name,
+            config=config,
+            is_default=bool(request.data.get("is_default")),
+        )
+        record_event(
+            actor=request.user,
+            organization=document.organization,
+            action="office.sheet_view.created",
+            resource=document,
+            description="Created a saved Sheet view.",
+            request=request,
+        )
+        return Response(
+            {
+                "id": str(view.id),
+                "name": view.name,
+                "config": view.config,
+                "is_default": view.is_default,
+            },
+            status=201,
+        )
+
+
+class OfficeSheetSavedViewDetailView(APIView):
+    def get_object(self, request, document_id, view_id):
+        document = document_for(request, document_id)
+        return get_object_or_404(
+            OfficeSavedSheetView, pk=view_id, document=document, user=request.user
+        )
+
+    def patch(self, request, document_id, view_id):
+        view = self.get_object(request, document_id, view_id)
+        if "name" in request.data:
+            name = str(request.data["name"]).strip()
+            if not name or len(name) > 120:
+                raise ValidationError("A valid view name is required.")
+            view.name = name
+        if "config" in request.data:
+            if not isinstance(request.data["config"], dict):
+                raise ValidationError("View configuration must be an object.")
+            view.config = request.data["config"]
+        if request.data.get("is_default"):
+            view.document.saved_sheet_views.filter(user=request.user).exclude(pk=view.pk).update(
+                is_default=False
+            )
+            view.is_default = True
+        view.save()
+        record_event(
+            actor=request.user,
+            organization=view.document.organization,
+            action="office.sheet_view.updated",
+            resource=view.document,
+            description="Updated a saved Sheet view.",
+            request=request,
+        )
+        return Response(
+            {
+                "id": str(view.id),
+                "name": view.name,
+                "config": view.config,
+                "is_default": view.is_default,
+            }
+        )
+
+    def delete(self, request, document_id, view_id):
+        view = self.get_object(request, document_id, view_id)
+        view.delete()
+        record_event(
+            actor=request.user,
+            organization=view.document.organization,
+            action="office.sheet_view.deleted",
+            resource=view.document,
+            description="Deleted a saved Sheet view.",
+            request=request,
+        )
+        return Response(status=204)
 
 
 class OfficeSheetView(APIView):

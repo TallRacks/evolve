@@ -1,9 +1,10 @@
 "use client";
 
 import { hasOrganizationPermission } from "@/lib/auth/access";
-import { AlertTriangle, ArrowUpRight, CalendarClock, CheckSquare2, Plus } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, BriefcaseBusiness, CheckSquare2, ListTodo, Plus, Sparkles, UsersRound } from "lucide-react";
 import Link from "next/link";
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { RouteGuard } from "@/components/auth/route-guard";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -56,6 +57,8 @@ interface Member {
   organization: { id: string; name: string; slug: string };
   role: string;
   is_active: boolean;
+  permission_overrides?: { grant: string[]; deny: string[] };
+  permissions?: string[];
   created_at: string;
 }
 interface Invitation {
@@ -167,6 +170,7 @@ function PlatformFrame({ children }: { children: React.ReactNode }) {
 
 export function DashboardPage() {
   const { session, activeOrganizationId } = useAuth();
+  const [dashboardNow] = useState(() => Date.now());
   const [myTasks, setMyTasks] = useState<
     { id: string; title: string; status: string; due_at: string | null; is_overdue: boolean }[]
   >([]);
@@ -221,6 +225,9 @@ export function DashboardPage() {
     }[];
   };
   const { data, error } = useResource<Dashboard>(path);
+  const router = useRouter();
+  const [createOpen, setCreateOpen] = useState(false);
+  const canCreate = (permission: string) => Boolean(session?.user.is_superuser) || hasOrganizationPermission(session, activeOrganizationId, permission);
   const quickActions = [
     ["New Booking", "/workspace/bookings/new", "booking.manage"],
     ["New Artist", "/workspace/artists/new", "artist.manage"],
@@ -232,9 +239,7 @@ export function DashboardPage() {
     ["New Campaign", "/workspace/campaigns/new", "campaign.manage"],
     ["New Document", "/workspace/documents/new", "document.manage"],
     ["New Contract", "/workspace/contracts/new", "contract.manage"],
-  ].filter(([, , permission]) =>
-    hasOrganizationPermission(session, activeOrganizationId, permission),
-  );
+  ].filter(([, , permission]) => canCreate(permission));
   if (membership?.role === "artist") {
     return (
       <RouteGuard portal="dashboard">
@@ -249,174 +254,37 @@ export function DashboardPage() {
   }
   const kpis = [
     ["Upcoming bookings", data?.counts.upcoming_bookings, "/workspace/bookings"],
-    ["Active artists", data?.counts.active_artists, "/workspace/artists"],
+    ["Active Clients", data?.counts.active_artists, "/workspace/artists"],
     ["Open tasks", data?.counts.open_tasks, "/workspace/tasks"],
     ["Needs attention", data?.counts.needs_attention, "#needs-attention"],
   ].filter(([, value]) => value !== undefined) as [string, number, string][];
+  const todayLabel = new Intl.DateTimeFormat(undefined, { weekday: "long", day: "numeric", month: "long" }).format(new Date());
+  const kpiIcons = [BriefcaseBusiness, UsersRound, ListTodo, AlertTriangle];
   return (
     <RouteGuard portal="dashboard">
       <AppShell organizationScoped={!!activeOrganizationId}>
-        <PageHeader
-          eyebrow={data?.mode === "platform" ? "Platform" : "Command centre"}
-          title={data?.organization?.name ?? "Dashboard"}
-          description={new Intl.DateTimeFormat(undefined, {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-          }).format(new Date())}
-          actions={
-            quickActions.length ? (
-              <details className="relative">
-                <summary className={`${buttonClass} cursor-pointer list-none`}>
-                  <Plus size={16} /> Create
-                </summary>
-                <div className="absolute right-0 z-20 mt-2 grid min-w-64 gap-1 rounded-md border border-neutral-700 bg-neutral-950 p-2 shadow-2xl">
-                  {quickActions.map(([label, href]) => (
-                    <Link
-                      className="rounded px-3 py-2 text-sm hover:bg-neutral-800 focus:bg-neutral-800"
-                      href={href}
-                      key={href}
-                    >
-                      {label}
-                    </Link>
-                  ))}
-                </div>
-              </details>
-            ) : undefined
-          }
-        />
-        <Notice message={error} error />
-        {!data ? (
-          <div aria-label="Loading dashboard" className="mt-7 grid animate-pulse gap-6">
-            <div className="grid gap-px overflow-hidden rounded-md border border-neutral-800 bg-neutral-800 sm:grid-cols-2 xl:grid-cols-4">
-              {[1, 2, 3, 4].map((item) => (
-                <div className="h-24 bg-neutral-900 p-5" key={item} />
-              ))}
+        <section className="evolve-dashboard-hero overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] p-6 sm:p-8">
+          <div className="relative z-10 flex flex-wrap items-end justify-between gap-6">
+            <div className="max-w-2xl">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent-strong)]"><Sparkles size={14} /> Command Center · Nasty C</div>
+              <h1 className="evolve-display mt-4 text-4xl font-semibold tracking-[-0.05em] sm:text-6xl">{data?.organization?.name ?? "Evolve"}</h1>
+              <p className="mt-4 max-w-xl text-sm leading-6 text-[var(--text-secondary)]">{todayLabel}</p>
             </div>
-            <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-              <div className="h-80 rounded-md bg-neutral-900" />
-              <div className="h-80 rounded-md bg-neutral-900" />
-            </div>
+            {quickActions.length > 0 && <div className="relative"><button aria-expanded={createOpen} className={buttonClass} onClick={() => setCreateOpen((open) => !open)} type="button"><Plus size={16} /> Create something</button>{createOpen && <><button aria-label="Close create menu" className="fixed inset-0 z-10 cursor-default" onClick={() => setCreateOpen(false)} type="button" /><div className="absolute right-0 z-20 mt-2 grid min-w-64 gap-1 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-2 shadow-2xl">{quickActions.map(([label, href]) => <Link className="rounded-[var(--radius)] px-3 py-2.5 text-left text-sm hover:bg-[var(--surface-hover)]" href={href} key={href} onClick={() => setCreateOpen(false)}>{label}</Link>)}</div></>}</div>}
           </div>
-        ) : (
-          <>
-            <div className="mt-7 grid gap-px overflow-hidden rounded-md border border-neutral-800 bg-neutral-800 sm:grid-cols-2 xl:grid-cols-4">
-              {kpis.map(([label, value, href]) => (
-                <Link className="group bg-neutral-950 p-5 hover:bg-neutral-900" href={href} key={label}>
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-xs font-semibold uppercase text-neutral-500">{label}</p>
-                    <ArrowUpRight className="text-neutral-600 group-hover:text-amber-300" size={16} />
-                  </div>
-                  <p className="mt-3 text-3xl font-semibold tabular-nums">{value}</p>
-                </Link>
-              ))}
-            </div>
-            {data.configuration ? (
-              <section className="mt-8">
-                <h2 className="font-semibold">System configuration</h2>
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  {Object.entries(data.configuration).map(([key, value]) => (
-                    <StatCard key={key} label={key} value={value.replaceAll("_", " ")} />
-                  ))}
-                </div>
-              </section>
-            ) : (
-              <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(20rem,0.8fr)]">
-                <section id="needs-attention" className="rounded-md border border-neutral-800 bg-neutral-950">
-                  <div className="flex items-center justify-between border-b border-neutral-800 px-5 py-4">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="text-amber-300" size={18} />
-                      <h2 className="font-semibold">Needs attention</h2>
-                    </div>
-                    <span className="text-xs text-neutral-500">Prioritized by Evolve</span>
-                  </div>
-                  <div className="divide-y divide-neutral-800">
-                    {data.attention.map((item, index) => (
-                      <Link
-                        className="grid gap-3 px-5 py-4 hover:bg-neutral-900 sm:grid-cols-[5rem_minmax(0,1fr)_auto] sm:items-center"
-                        href={item.destination}
-                        key={`${item.domain}-${item.title}-${index}`}
-                      >
-                        <span className={`text-xs font-semibold uppercase ${item.severity === "critical" ? "text-red-300" : "text-amber-300"}`}>
-                          {item.severity}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate font-medium">{item.title}</span>
-                          <span className="block text-sm text-neutral-400">{item.domain} / {item.reason}</span>
-                        </span>
-                        <span className="text-xs text-neutral-500">
-                          {item.due ? new Date(item.due).toLocaleDateString() : "Open"}
-                        </span>
-                      </Link>
-                    ))}
-                    {!data.attention.length && (
-                      <div className="px-5 py-10 text-center">
-                        <CheckSquare2 className="mx-auto text-emerald-300" size={24} />
-                        <p className="mt-3 font-medium">Nothing needs immediate attention</p>
-                        <p className="mt-1 text-sm text-neutral-500">Current operational checks are clear.</p>
-                      </div>
-                    )}
-                  </div>
-                </section>
-                <section className="rounded-md border border-neutral-800 bg-neutral-950">
-                  <div className="flex items-center gap-2 border-b border-neutral-800 px-5 py-4">
-                    <CalendarClock className="text-neutral-400" size={18} />
-                    <h2 className="font-semibold">Today</h2>
-                  </div>
-                  <div className="divide-y divide-neutral-800">
-                    {data.today.map((item) => (
-                      <Link className="block px-5 py-4 hover:bg-neutral-900" href={item.destination} key={`${item.domain}-${item.title}`}>
-                        <p className="font-medium">{item.title}</p>
-                        <p className="mt-1 text-xs uppercase text-neutral-500">{item.domain}{item.time ? ` / ${new Date(item.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}</p>
-                      </Link>
-                    ))}
-                    {!data.today.length && <p className="px-5 py-8 text-sm text-neutral-500">No operational events due today.</p>}
-                  </div>
-                </section>
-              </div>
-            )}
-            {activeOrganizationId && (
-              <div className="mt-8 grid gap-6 lg:grid-cols-2">
-                <section>
-                  <div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">My work</h2><Link className="text-sm text-neutral-400" href="/workspace/tasks">View all</Link></div>
-                  <div className="divide-y divide-neutral-800 rounded-md border border-neutral-800">
-                    {myTasks.filter((item) => !["done", "cancelled"].includes(item.status)).slice(0, 5).map((item) => (
-                      <Link className="flex items-center justify-between gap-3 p-4 hover:bg-neutral-900" href={`/workspace/tasks/${item.id}`} key={item.id}>
-                        <span>{item.title}</span><span className={item.is_overdue ? "text-sm text-red-300" : "text-sm text-neutral-500"}>{item.is_overdue ? "Overdue" : item.status.replaceAll("_", " ")}</span>
-                      </Link>
-                    ))}
-                    {!myTasks.length && <p className="p-5 text-sm text-neutral-500">No assigned tasks.</p>}
-                  </div>
-                </section>
-                <section>
-                  <div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">Recent activity</h2><Link className="text-sm text-neutral-400" href="/workspace/activity">View all</Link></div>
-                  <div className="divide-y divide-neutral-800 rounded-md border border-neutral-800">
-                    {recentActivity.map((item) => item.destination ? (
-                      <Link className="block p-4 hover:bg-neutral-900" href={item.destination} key={item.id}><span>{item.description}</span><time className="mt-1 block text-xs text-neutral-500">{new Date(item.created_at).toLocaleString()}</time></Link>
-                    ) : (
-                      <div className="p-4" key={item.id}><span>{item.description}</span><time className="mt-1 block text-xs text-neutral-500">{new Date(item.created_at).toLocaleString()}</time></div>
-                    ))}
-                    {!recentActivity.length && <p className="p-5 text-sm text-neutral-500">No recent activity.</p>}
-                  </div>
-                </section>
-              </div>
-            )}
-            {!!data.upcoming_bookings.length && (
-              <section className="mt-8">
-                <div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">Upcoming bookings</h2><Link className="text-sm text-neutral-400" href="/workspace/bookings">View all</Link></div>
-                <div className="divide-y divide-neutral-800 rounded-md border border-neutral-800">
-                  {data.upcoming_bookings.map((item) => (
-                    <Link className="grid gap-2 p-4 hover:bg-neutral-900 sm:grid-cols-[1fr_auto_auto]" href={`/workspace/bookings/${item.id}`} key={item.id}>
-                      <span><strong>{item.artist}</strong><span className="ml-2 text-xs text-neutral-500">{item.reference}</span></span>
-                      <span className="text-sm text-neutral-400">{item.venue || "Venue TBC"}</span>
-                      <span className="text-sm tabular-nums">{item.days_out === 0 ? "Today" : `${item.days_out} days`} / {item.status}</span>
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            )}
-          </>
-        )}
+          <div className="relative z-10 mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{kpis.map(([label, value, href], index) => { const Icon = kpiIcons[index] ?? Sparkles; return <Link className="group rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)]/80 p-4 transition hover:-translate-y-0.5 hover:border-[var(--accent)]" href={href} key={label}><div className="flex items-center justify-between"><span className="grid size-9 place-items-center rounded-[var(--radius)] bg-[var(--surface-raised)] text-[var(--accent)]"><Icon size={17} /></span><ArrowUpRight className="text-[var(--text-muted)] transition group-hover:text-[var(--accent-strong)]" size={16} /></div><p className="mt-5 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">{label}</p><p className="mt-1 text-3xl font-semibold tabular-nums">{value}</p></Link>; })}</div>
+        </section>
+        <Notice message={error} error />
+        {!data ? <div aria-label="Loading dashboard" className="mt-7 grid animate-pulse gap-6"><div className="h-64 rounded-[var(--radius-lg)] bg-[var(--surface-raised)]" /><div className="grid gap-6 lg:grid-cols-2"><div className="h-80 rounded-[var(--radius-lg)] bg-[var(--surface-raised)]" /><div className="h-80 rounded-[var(--radius-lg)] bg-[var(--surface-raised)]" /></div></div> : data.configuration ? <section className="mt-8"><div className="mb-4 flex items-end justify-between"><div><p className="evolve-eyebrow text-xs font-semibold uppercase">Platform health</p><h2 className="mt-2 text-2xl font-semibold">System configuration</h2></div></div><div className="grid gap-4 sm:grid-cols-2">{Object.entries(data.configuration).map(([key, value]) => <StatCard key={key} label={key} value={value.replaceAll("_", " ")} />)}</div></section> : <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.8fr)]">
+          <section className="hidden evolve-panel overflow-hidden"><div className="flex flex-wrap items-center justify-between gap-4 border-b border-[var(--border)] px-5 py-4"><div><p className="evolve-eyebrow text-xs font-semibold uppercase">Workspace assistant</p><h2 className="mt-1 text-lg font-semibold">Turn questions into momentum</h2><p className="mt-1 text-sm text-[var(--text-muted)]">Summarize work, surface overdue tasks, or prepare a controlled task action.</p></div><Link className={secondaryButtonClass} href="/copilot">Open assistant <ArrowUpRight size={15} /></Link></div><div className="grid gap-3 p-5 sm:grid-cols-3"><div className="rounded-[var(--radius)] bg-[var(--surface-raised)] p-4"><p className="text-sm font-medium">Workspace answers</p><p className="mt-1 text-xs text-[var(--text-muted)]">Today, attention, and overdue work.</p></div><div className="rounded-[var(--radius)] bg-[var(--surface-raised)] p-4"><p className="text-sm font-medium">Task allocation</p><p className="mt-1 text-xs text-[var(--text-muted)]">Prepare actions for confirmation.</p></div><div className="rounded-[var(--radius)] bg-[var(--surface-raised)] p-4"><p className="text-sm font-medium">Mail context</p><p className="mt-1 text-xs text-[var(--text-muted)]">Available through approved connectors.</p></div></div></section>
+          <section id="needs-attention" className="evolve-panel overflow-hidden"><div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4"><div><p className="evolve-eyebrow text-xs font-semibold uppercase">Priority queue</p><h2 className="mt-1 text-lg font-semibold">Needs attention</h2></div><span className="text-xs text-[var(--text-muted)]">{data.attention.filter((item) => item.due && new Date(item.due).getTime() <= dashboardNow).length ? `${data.attention.filter((item) => item.due && new Date(item.due).getTime() <= dashboardNow).length} open` : "All clear"}</span></div><div className="divide-y divide-[var(--border)]">{data.attention.filter((item) => item.due && new Date(item.due).getTime() <= dashboardNow).map((item, index) => <Link className="grid gap-3 px-5 py-4 transition hover:bg-[var(--surface-hover)] sm:grid-cols-[5.5rem_minmax(0,1fr)_auto] sm:items-center" href={item.destination} key={`${item.domain}-${item.title}-${index}`}><span className={`text-xs font-semibold uppercase ${item.severity === "critical" ? "text-red-600" : "text-[var(--accent-strong)]"}`}>{item.severity}</span><span className="min-w-0"><span className="block truncate font-medium">{item.title}</span><span className="mt-1 block text-sm text-[var(--text-muted)]">{item.domain} / {item.reason}</span></span><span className="text-xs text-[var(--text-muted)]">{item.due ? new Date(item.due).toLocaleDateString() : "Open"}</span></Link>)}{!data.attention.filter((item) => item.due && new Date(item.due).getTime() <= dashboardNow).length && <div className="px-5 py-12 text-center"><CheckSquare2 className="mx-auto text-[var(--success)]" size={24} /><p className="mt-3 font-medium">Nothing needs immediate attention</p><p className="mt-1 text-sm text-[var(--text-muted)]">Current operational checks are clear.</p></div>}</div></section>
+          <section className="evolve-panel overflow-hidden"><div className="border-b border-[var(--border)] px-5 py-4"><p className="evolve-eyebrow text-xs font-semibold uppercase">Live view</p><h2 className="mt-1 text-lg font-semibold">Today</h2></div><div className="divide-y divide-[var(--border)]">{data.today.map((item) => <Link className="block px-5 py-4 transition hover:bg-[var(--surface-hover)]" href={item.destination} key={`${item.domain}-${item.title}`}><p className="font-medium">{item.title}</p><p className="mt-1 text-xs uppercase tracking-[0.1em] text-[var(--text-muted)]">{item.domain}{item.time ? ` / ${new Date(item.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : ""}</p></Link>)}{!data.today.length && <p className="px-5 py-10 text-sm text-[var(--text-muted)]">No operational events due today.</p>}</div></section>
+        </div>}
+        {activeOrganizationId && <div className="mt-8 grid gap-6 xl:grid-cols-[1fr_1fr_0.9fr]">
+          <section className="evolve-panel overflow-hidden"><div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4"><div><p className="evolve-eyebrow text-xs font-semibold uppercase">Personal queue</p><h2 className="mt-1 text-lg font-semibold">My work</h2></div><Link className="text-sm font-medium text-[var(--accent-strong)]" href="/workspace/tasks">View all</Link></div><div className="divide-y divide-[var(--border)]">{myTasks.filter((item) => !["done", "cancelled"].includes(item.status) && item.due_at && new Date(item.due_at).getTime() <= dashboardNow).slice(0, 5).map((item) => <Link className="flex items-center justify-between gap-3 px-5 py-4 transition hover:bg-[var(--surface-hover)]" href={`/workspace/tasks/${item.id}`} key={item.id}><span className="min-w-0 truncate">{item.title}</span><span className={item.is_overdue ? "shrink-0 text-xs font-semibold text-red-600" : "shrink-0 text-xs text-[var(--text-muted)]"}>{item.is_overdue ? "Overdue" : item.status.replaceAll("_", " ")}</span></Link>)}{!myTasks.length && <p className="p-5 text-sm text-[var(--text-muted)]">No assigned tasks.</p>}</div></section>
+          <section className="evolve-panel overflow-hidden"><div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4"><div><p className="evolve-eyebrow text-xs font-semibold uppercase">Pipeline</p><h2 className="mt-1 text-lg font-semibold">Upcoming bookings</h2></div><Link className="text-sm font-medium text-[var(--accent-strong)]" href="/workspace/bookings">View all</Link></div><div className="divide-y divide-[var(--border)]">{(data?.upcoming_bookings ?? []).slice(0, 5).map((item) => <Link className="grid gap-1 px-5 py-4 transition hover:bg-[var(--surface-hover)]" href={`/workspace/bookings/${item.id}`} key={item.id}><div className="flex items-center justify-between gap-3"><span className="font-medium">{item.artist}</span><span className="text-xs text-[var(--text-muted)]">{item.days_out === 0 ? "Today" : `${item.days_out}d`}</span></div><span className="text-sm text-[var(--text-muted)]">{item.venue || "Venue TBC"} · {item.status}</span></Link>)}{!data?.upcoming_bookings?.length && <p className="p-5 text-sm text-[var(--text-muted)]">No upcoming bookings.</p>}</div></section>
+          <section className="evolve-panel overflow-hidden"><div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4"><div><p className="evolve-eyebrow text-xs font-semibold uppercase">Workspace pulse</p><h2 className="mt-1 text-lg font-semibold">Recent activity</h2></div><Link className="text-sm font-medium text-[var(--accent-strong)]" href="/workspace/activity">View all</Link></div><div className="divide-y divide-[var(--border)]">{recentActivity.slice(0, 5).map((item) => item.destination ? <Link className="block px-5 py-4 transition hover:bg-[var(--surface-hover)]" href={item.destination} key={item.id}><span className="block text-sm">{item.description}</span><time className="mt-1 block text-xs text-[var(--text-muted)]">{new Date(item.created_at).toLocaleString()}</time></Link> : <div className="px-5 py-4" key={item.id}><span className="block text-sm">{item.description}</span><time className="mt-1 block text-xs text-[var(--text-muted)]">{new Date(item.created_at).toLocaleString()}</time></div>)}{!recentActivity.length && <p className="p-5 text-sm text-[var(--text-muted)]">No recent activity.</p>}</div></section>
+        </div>}
       </AppShell>
     </RouteGuard>
   );
@@ -474,10 +342,10 @@ export function WorkspaceOverviewPage() {
       <div className="mt-5 flex flex-wrap gap-3">{hasOrganizationPermission(session, activeOrganizationId, "organization.manage") && <><button className={secondaryButtonClass} type="button" onClick={() => void updateWorkspace(!data.workspace.archived)}>{data.workspace.archived ? "Restore Workspace" : "Archive Workspace"}</button><form className="flex flex-wrap gap-2" onSubmit={(event) => void updateWorkspaceDetails(event)}><input className={fieldClass + " max-w-48"} name="name" defaultValue={data.workspace.name} aria-label="Workspace name" required /><input className={fieldClass + " max-w-56"} name="description" defaultValue={data.workspace.description} aria-label="Workspace description" /><button className={secondaryButtonClass}>Edit Workspace</button></form><form className="flex flex-wrap gap-2" onSubmit={(event) => void createWorkspace(event)}><input className={fieldClass + " max-w-48"} name="name" placeholder="New Workspace name" required /><input className={fieldClass + " max-w-40"} name="slug" placeholder="workspace-slug" required /><button className={secondaryButtonClass}>Create Workspace</button></form></>}</div>
       <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><StatCard label="Open tasks" value={data.open_tasks} /><StatCard label="Overdue tasks" value={data.overdue_tasks} /><StatCard label="Boards" value={data.boards.length} /><StatCard label="Documents" value={data.documents.length} /></div>
       <div className="mt-7 flex flex-wrap gap-3">{canBoard && !data.workspace.archived && <Link className={buttonClass} href="/workspace/boards">New Board</Link>}{canTask && !data.workspace.archived && <Link className={secondaryButtonClass} href="/workspace/tasks/new">New Task</Link>}{canManage && !data.workspace.archived && <><Link className={secondaryButtonClass} href="/workspace/office/new">New Document</Link><Link className={secondaryButtonClass} href="/workspace/office/new?format=sheet">New Sheet</Link></>}</div>
-      <div className="mt-8 grid gap-6 lg:grid-cols-2"><section className="rounded-md border border-neutral-800 bg-neutral-900 p-5"><div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Boards</h2><Link className="text-sm text-neutral-400" href="/workspace/boards">View all</Link></div>{data.boards.length ? <div className="mt-3 space-y-2">{data.boards.map(item => <div className="border-t border-neutral-800 pt-3" key={item.id}><p className="font-medium">{item.name}</p><p className="text-sm text-neutral-500">{item.source}</p></div>)}</div> : <EmptyState title="No boards yet" detail={canBoard ? "Create a Board to organize this Workspace." : "Ask a Workspace manager to create a Board."} />}</section>
-      <section className="rounded-md border border-neutral-800 bg-neutral-900 p-5"><div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Tasks</h2><Link className="text-sm text-neutral-400" href="/workspace/tasks">View all</Link></div>{data.tasks.length ? <div className="mt-3 space-y-2">{data.tasks.map(item => <Link className="block border-t border-neutral-800 pt-3" href={`/workspace/tasks/${item.id}`} key={item.id}><p className="font-medium">{item.title}</p><p className="text-sm text-neutral-500">{item.status}{item.due_at ? ` · due ${new Date(item.due_at).toLocaleDateString()}` : ""}</p></Link>)}</div> : <EmptyState title="No tasks yet" detail={canTask ? "Create a task for this Workspace." : "No Workspace-linked tasks are assigned to you."} />}</section>
-      <section className="rounded-md border border-neutral-800 bg-neutral-900 p-5"><div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Office and Documents</h2><Link className="text-sm text-neutral-400" href="/workspace/office">View Office</Link></div>{data.documents.length ? <div className="mt-3 space-y-2">{data.documents.map(item => <Link className="block border-t border-neutral-800 pt-3" href={`/workspace/office/${item.id}`} key={item.id}><p className="font-medium">{item.title}</p><p className="text-sm text-neutral-500">{item.format || "Document"}</p></Link>)}</div> : <EmptyState title="No documents yet" detail={canManage ? "Create a Workspace document or Sheet." : "No Workspace documents are available."} />}</section>
-      <section className="rounded-md border border-neutral-800 bg-neutral-900 p-5"><h2 className="font-semibold">Recent activity</h2>{data.recent_activity.length ? <div className="mt-3 space-y-2">{data.recent_activity.map(item => <div className="border-t border-neutral-800 pt-3" key={item.id}><p className="text-sm">{item.description}</p><p className="mt-1 text-xs text-neutral-500">{item.action} · {new Date(item.created_at).toLocaleString()}</p></div>)}</div> : <p className="mt-3 text-sm text-neutral-500">No recent Workspace activity.</p>}</section></div>
+      <div className="mt-8 grid gap-6 lg:grid-cols-2"><section className="evolve-panel p-5"><div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Boards</h2><Link className="text-sm text-neutral-400" href="/workspace/boards">View all</Link></div>{data.boards.length ? <div className="mt-3 space-y-2">{data.boards.map(item => <div className="border-t border-neutral-800 pt-3" key={item.id}><p className="font-medium">{item.name}</p><p className="text-sm text-neutral-500">{item.source}</p></div>)}</div> : <EmptyState title="No boards yet" detail={canBoard ? "Create a Board to organize this Workspace." : "Ask a Workspace manager to create a Board."} />}</section>
+      <section className="evolve-panel p-5"><div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Tasks</h2><Link className="text-sm text-neutral-400" href="/workspace/tasks">View all</Link></div>{data.tasks.length ? <div className="mt-3 space-y-2">{data.tasks.map(item => <Link className="block border-t border-neutral-800 pt-3" href={`/workspace/tasks/${item.id}`} key={item.id}><p className="font-medium">{item.title}</p><p className="text-sm text-neutral-500">{item.status}{item.due_at ? ` · due ${new Date(item.due_at).toLocaleDateString()}` : ""}</p></Link>)}</div> : <EmptyState title="No tasks yet" detail={canTask ? "Create a task for this Workspace." : "No Workspace-linked tasks are assigned to you."} />}</section>
+      <section className="evolve-panel p-5"><div className="flex items-center justify-between gap-3"><h2 className="font-semibold">Office and Documents</h2><Link className="text-sm text-neutral-400" href="/workspace/office">View Office</Link></div>{data.documents.length ? <div className="mt-3 space-y-2">{data.documents.map(item => <Link className="block border-t border-neutral-800 pt-3" href={`/workspace/office/${item.id}`} key={item.id}><p className="font-medium">{item.title}</p><p className="text-sm text-neutral-500">{item.format || "Document"}</p></Link>)}</div> : <EmptyState title="No documents yet" detail={canManage ? "Create a Workspace document or Sheet." : "No Workspace documents are available."} />}</section>
+      <section className="evolve-panel p-5"><h2 className="font-semibold">Recent activity</h2>{data.recent_activity.length ? <div className="mt-3 space-y-2">{data.recent_activity.map(item => <div className="border-t border-neutral-800 pt-3" key={item.id}><p className="text-sm">{item.description}</p><p className="mt-1 text-xs text-neutral-500">{item.action} · {new Date(item.created_at).toLocaleString()}</p></div>)}</div> : <p className="mt-3 text-sm text-neutral-500">No recent Workspace activity.</p>}</section></div>
       {!data.upcoming_bookings.length && !data.upcoming_releases.length && <p className="mt-6 text-sm text-neutral-500">Upcoming bookings and releases remain organization-wide because no explicit Workspace relationship exists yet.</p>}
     </> : <Loading />}</WorkspaceFrame>;
 }
@@ -491,7 +359,10 @@ export function TeamPage() {
   const [role, setRole] = useState("");
   const [status, setStatus] = useState("");
   const [message, setMessage] = useState("");
+  const [permissionMember, setPermissionMember] = useState<Member | null>(null);
+  const [rolePermissions, setRolePermissions] = useState<{ value: string; label: string; permissions: string[] }[]>([]);
   const canManage = hasOrganizationPermission(session, activeOrganizationId, "membership.manage");
+  useEffect(() => { if (canManage) void apiRequest<typeof rolePermissions>("/api/roles/").then(setRolePermissions); }, [canManage]);
   const filtered = useMemo(
     () =>
       (data ?? []).filter(
@@ -543,8 +414,8 @@ export function TeamPage() {
           onChange={(e) => setRole(e.target.value)}
         >
           <option value="">All roles</option>
-          {["owner", "admin", "manager", "member", "artist"].map((value) => (
-            <option key={value}>{value}</option>
+          {["owner", "admin", "manager", "member", "artist", "artist_manager", "artist_assistant", "artist_viewer"].map((value) => (
+            <option key={value} title={INVITATION_ROLE_INFO[value]}>{value}</option>
           ))}
         </select>
         <select
@@ -604,7 +475,7 @@ export function TeamPage() {
                           void update(item, { role: e.target.value })
                         }
                       >
-                        {["owner", "admin", "manager", "member", "artist"].map(
+                        {["owner", "admin", "manager", "member", "artist", "artist_manager", "artist_assistant", "artist_viewer"].map(
                           (value) => (
                             <option key={value}>{value}</option>
                           ),
@@ -622,14 +493,15 @@ export function TeamPage() {
                   <td>{new Date(item.created_at).toLocaleDateString()}</td>
                   <td className="p-4">
                     {canManage && (
-                      <button
-                        className={secondaryButtonClass}
-                        onClick={() =>
-                          void update(item, { is_active: !item.is_active })
-                        }
-                      >
-                        {item.is_active ? "Deactivate" : "Activate"}
-                      </button>
+                      <div className="flex flex-wrap gap-2">
+                        <button className={secondaryButtonClass} onClick={() => setPermissionMember(item)}>Permissions</button>
+                        <button
+                          className={secondaryButtonClass}
+                          onClick={() => void update(item, { is_active: !item.is_active })}
+                        >
+                          {item.is_active ? "Deactivate" : "Activate"}
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -638,9 +510,21 @@ export function TeamPage() {
           </table>
         </div>
       )}
+      {permissionMember && canManage && <PermissionEditor member={permissionMember} catalog={rolePermissions} onClose={() => setPermissionMember(null)} onSave={async (overrides) => { await update(permissionMember, { permission_overrides: overrides } as Partial<Member>); setPermissionMember(null); }} />}
     </WorkspaceFrame>
   );
 }
+
+function PermissionEditor({ member, catalog, onClose, onSave }: { member: Member; catalog: { value: string; label: string; permissions: string[] }[]; onClose: () => void; onSave: (overrides: { grant: string[]; deny: string[] }) => Promise<void> }) {
+  const role = catalog.find((item) => item.value === member.role);
+  const base = role?.permissions ?? [];
+  const [selected, setSelected] = useState<string[]>(member.permissions ?? base);
+  if (member.role === "owner") return <div className="mt-5 rounded-md border border-amber-700 bg-amber-50 p-4 text-sm text-amber-900">Owner access is always unrestricted. <button className="ml-3 underline" onClick={onClose}>Close</button></div>;
+  const toggle = (permission: string) => setSelected((current) => current.includes(permission) ? current.filter((item) => item !== permission) : [...current, permission]);
+  return <section className="mt-5 evolve-panel p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-semibold">Access restrictions for {member.user.email}</h2><p className="mt-1 text-sm text-[var(--text-muted)]">Role: {member.role}. Changes affect server authorization and sidebar visibility.</p></div><button className={secondaryButtonClass} onClick={onClose}>Close</button></div><div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{catalog.flatMap((item) => item.permissions).filter((permission, index, all) => all.indexOf(permission) === index).map((permission) => <label className="flex items-center gap-2 text-sm" key={permission}><input checked={selected.includes(permission)} onChange={() => toggle(permission)} type="checkbox"/>{permission}</label>)}</div><button className={`mt-5 ${buttonClass}`} onClick={() => void onSave({ grant: selected.filter((item) => !base.includes(item)), deny: base.filter((item) => !selected.includes(item)) })}>Save restrictions</button></section>;
+}
+
+const INVITATION_ROLE_INFO: Record<string, string> = { owner: "Full organization access, including membership, finance, contracts, settings, and all operational records.", admin: "Organization administration, team management, branding, integrations, and broad operational access.", manager: "Day-to-day bookings, artists, venues, production, tasks, calendars, and documents; no owner controls.", member: "Standard assigned-work access to permitted bookings, tasks, calendar, documents, and team tools.", artist: "Artist-facing access to explicitly linked artist records and approved operational information.", artist_manager: "Artist team access for assigned artist records, bookings, production, and approved documents.", artist_assistant: "Limited artist support access to assigned operational work and documents.", artist_viewer: "Read-only access to explicitly linked artist information." };
 
 export function InvitationsPage() {
   const { activeOrganizationId, session } = useAuth();
@@ -652,6 +536,7 @@ export function InvitationsPage() {
   const [role, setRole] = useState("member");
   const [message, setMessage] = useState("");
   const [token, setToken] = useState("");
+  const [inviteLink, setInviteLink] = useState("");
     const canManage = hasOrganizationPermission(session, activeOrganizationId, "membership.manage");
   async function create(event: FormEvent) {
     event.preventDefault();
@@ -663,6 +548,7 @@ export function InvitationsPage() {
         body: JSON.stringify({ email, role }),
       });
       setToken(created.token ?? "");
+      setInviteLink(created.token ? `${window.location.origin}/invite/${created.token}` : "");
       setEmail("");
       const deliveryStatus = (created.email_delivery_status || "pending").replaceAll("_", " ");
       setMessage(
@@ -704,7 +590,7 @@ export function InvitationsPage() {
       />
       {canManage && (
         <form
-          className="mt-7 grid gap-3 rounded-md border border-neutral-800 bg-neutral-900 p-5 sm:grid-cols-[1fr_12rem_auto]"
+          className="mt-7 grid gap-3 evolve-panel p-5 sm:grid-cols-[1fr_12rem_auto]"
           onSubmit={create}
         >
           <label className="text-sm text-neutral-400">
@@ -718,13 +604,13 @@ export function InvitationsPage() {
             />
           </label>
           <label className="text-sm text-neutral-400">
-            Role
+            <span className="flex items-center gap-2">Role {session?.user.is_superuser && <span className="group relative inline-flex size-5 cursor-help items-center justify-center rounded-full border border-[var(--border)] text-xs text-[var(--text-muted)]" aria-label="Role access information">i<span className="pointer-events-none absolute bottom-full left-0 z-40 mb-2 hidden w-72 rounded-md border border-[var(--border)] bg-[var(--surface)] p-3 text-left text-xs leading-5 text-[var(--text-primary)] shadow-xl group-hover:block">{INVITATION_ROLE_INFO[role]} Permission restrictions can be adjusted after the invitation is accepted.</span></span>}</span>
             <select
               className={`mt-2 ${fieldClass}`}
               value={role}
               onChange={(e) => setRole(e.target.value)}
             >
-              {["owner", "admin", "manager", "member", "artist"].map(
+              {["owner", "admin", "manager", "member", "artist", "artist_manager", "artist_assistant", "artist_viewer"].map(
                 (value) => (
                   <option key={value}>{value}</option>
                 ),
@@ -737,9 +623,12 @@ export function InvitationsPage() {
       <div className="mt-4">
         <Notice message={error || message} error={!!error} />
         {token && (
-          <code className="mt-3 block break-all rounded-md border border-amber-800 bg-neutral-900 p-4 text-sm text-amber-300">
-            {token}
-          </code>
+          <div className="mt-3 grid gap-2 rounded-md border border-[var(--border)] bg-[var(--surface-raised)] p-4 text-sm">
+            <span className="font-medium">Shareable invitation link</span>
+            <code className="block break-all text-[var(--accent-strong)]">{inviteLink}</code>
+            <button className={`justify-self-start ${secondaryButtonClass}`} onClick={() => void navigator.clipboard?.writeText(inviteLink)} type="button">Copy link</button>
+            <span className="text-xs text-[var(--text-muted)]">The link expires with the invitation. Email delivery remains available when configured.</span>
+          </div>
         )}
       </div>
       {!data ? (
@@ -755,7 +644,7 @@ export function InvitationsPage() {
         <div className="mt-7 grid gap-3">
           {data.map((item) => (
             <div
-              className="grid gap-3 rounded-md border border-neutral-800 bg-neutral-900 p-4 sm:grid-cols-[1fr_auto_auto] sm:items-center"
+              className="grid gap-3 evolve-panel p-4 sm:grid-cols-[1fr_auto_auto] sm:items-center"
               key={item.id}
             >
               <div>
@@ -827,7 +716,7 @@ export function OrganizationPage() {
         {data ? (
           <form
             key={data.updated_at}
-            className="mt-4 grid gap-5 rounded-md border border-neutral-800 bg-neutral-900 p-6"
+            className="mt-4 grid gap-5 evolve-panel p-6"
             onSubmit={save}
           >
             <label className="text-sm text-neutral-400">
@@ -869,9 +758,17 @@ export function ProfilePage() {
     email: string;
     first_name: string;
     last_name: string;
+    username: string | null;
+    profile_image_url: string;
     memberships: Member[];
   }>("/api/profile/");
   const [message, setMessage] = useState("");
+  async function uploadProfileImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]; if (!file) return;
+    const form = new FormData(); form.set("file", file);
+    try { await apiRequest("/api/profile/image/", { method: "POST", body: form }); setMessage("Profile picture uploaded securely."); await load(); await refresh(); }
+    catch (caught) { setMessage(caught instanceof Error ? caught.message : "Unable to upload profile picture."); }
+  }
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const element = event.currentTarget; const form = new FormData(element);
@@ -881,6 +778,8 @@ export function ProfilePage() {
         body: JSON.stringify({
           first_name: form.get("first_name"),
           last_name: form.get("last_name"),
+          username: form.get("username"),
+          profile_image_url: form.get("profile_image_url"),
         }),
       });
       setMessage("Profile updated.");
@@ -903,8 +802,8 @@ export function ProfilePage() {
         <div className="mt-7 grid gap-6 lg:grid-cols-2">
           {data ? (
             <form
-              key={`${data.first_name}-${data.last_name}`}
-              className="grid gap-5 rounded-md border border-neutral-800 bg-neutral-900 p-6"
+              key={`${data.first_name}-${data.last_name}-${data.username ?? ""}-${data.profile_image_url}`}
+              className="grid gap-5 evolve-panel p-6"
               onSubmit={save}
             >
               <Notice message={error || message} error={!!error} />
@@ -932,12 +831,23 @@ export function ProfilePage() {
                   defaultValue={data.last_name}
                 />
               </label>
+              <label className="text-sm text-neutral-400">
+                Username
+                <input name="username" className={`mt-2 ${fieldClass}`} defaultValue={data.username ?? ""} placeholder="your-handle" pattern="[A-Za-z0-9_.-]{3,80}" />
+              </label>
+              <div className="rounded-md border border-[var(--border)] bg-[var(--surface-raised)] p-4">
+                <p className="text-sm font-medium text-[var(--text-primary)]">Profile picture</p>
+                <p className="mt-1 text-xs text-[var(--text-muted)]">PNG, JPEG, or WebP. The file is private and stored in the configured S3 bucket.</p>
+                <input className={`mt-3 ${fieldClass}`} name="profile_image_file" type="file" accept=".png,.jpg,.jpeg,.webp" onChange={uploadProfileImage} />
+                {data.profile_image_url && <img alt="Profile preview" className="mt-4 size-16 rounded-full object-cover" src={data.profile_image_url + (data.profile_image_url.includes("?") ? "&" : "?") + "v=" + encodeURIComponent(data.profile_image_url)} />}
+              </div>
+              <label className="text-sm text-neutral-400">Fallback profile picture URL<input name="profile_image_url" type="url" className={`mt-2 ${fieldClass}`} defaultValue={data.profile_image_url.startsWith("/api/") ? "" : data.profile_image_url} placeholder="https://..." /></label>
               <button className={buttonClass}>Save profile</button>
             </form>
           ) : (
             <Loading />
           )}
-          <div className="rounded-md border border-neutral-800 bg-neutral-900 p-6">
+          <div className="evolve-panel p-6">
             <h2 className="font-semibold">Memberships</h2>
             <div className="mt-4 grid gap-3">
               {data?.memberships.length ? (
@@ -1029,7 +939,7 @@ export function PlatformOrganizationsPage() {
         <div className="mt-7 grid gap-3">
           {filtered.map((item) => (
             <Link
-              className="grid gap-2 rounded-md border border-neutral-800 bg-neutral-900 p-5 hover:border-neutral-600 sm:grid-cols-[1fr_auto_auto]"
+              className="grid gap-2 evolve-panel p-5 hover:border-neutral-600 sm:grid-cols-[1fr_auto_auto]"
               href={`/platform/organizations/${item.id}`}
               key={item.id}
             >
@@ -1142,7 +1052,7 @@ export function PlatformUsersPage() {
         <div className="mt-7 grid gap-3">
           {filtered.map((item) => (
             <Link
-              className="grid gap-2 rounded-md border border-neutral-800 bg-neutral-900 p-5 hover:border-neutral-600 sm:grid-cols-[1fr_auto_auto]"
+              className="grid gap-2 evolve-panel p-5 hover:border-neutral-600 sm:grid-cols-[1fr_auto_auto]"
               href={`/platform/users/${item.id}`}
               key={item.id}
             >
@@ -1249,7 +1159,7 @@ export function PlatformAuditPage() {
         <div className="mt-7 grid gap-3">
           {data.map((item) => (
             <div
-              className="rounded-md border border-neutral-800 bg-neutral-900 p-4"
+              className="evolve-panel p-4"
               key={item.id}
             >
               <div className="flex flex-wrap justify-between gap-2">
@@ -1274,58 +1184,24 @@ export function PlatformAuditPage() {
 }
 
 export function InvitePage({ token }: { token: string }) {
-  const { session } = useAuth();
+  const { session, login } = useAuth();
+  const router = useRouter();
   const [message, setMessage] = useState("");
   async function accept() {
     try {
-      const membership = await apiRequest<Member>("/api/invitations/accept/", {
-        method: "POST",
-        body: JSON.stringify({ token }),
-      });
+      const membership = await apiRequest<Member>("/api/invitations/accept/", { method: "POST", body: JSON.stringify({ token }) });
       setMessage(`Invitation accepted for ${membership.organization.name}.`);
-    } catch (caught) {
-      setMessage(
-        caught instanceof Error
-          ? caught.message
-          : "Unable to accept invitation.",
-      );
-    }
+      router.push("/dashboard");
+    } catch (caught) { setMessage(caught instanceof Error ? caught.message : "Unable to accept invitation."); }
   }
-  return (
-    <main className="grid min-h-screen place-items-center bg-neutral-950 p-5 text-neutral-100">
-      <section className="w-full max-w-lg rounded-md border border-neutral-800 bg-neutral-900 p-7">
-        <p className="text-xs font-semibold uppercase text-amber-400">
-          Evolve invitation
-        </p>
-        <h1 className="mt-3 text-3xl font-semibold">Join organization</h1>
-        <p className="mt-3 text-sm leading-6 text-neutral-400">
-          Sign in with the invited email address, then accept this invitation.
-        </p>
-        <div className="mt-6">
-          <Notice
-            message={message}
-            error={
-              message.toLowerCase().includes("invalid") ||
-              message.toLowerCase().includes("expired")
-            }
-          />
-        </div>
-        {session ? (
-          <button
-            className={`mt-6 ${buttonClass}`}
-            onClick={() => void accept()}
-          >
-            Accept invitation
-          </button>
-        ) : (
-          <Link
-            className={`mt-6 ${buttonClass}`}
-            href={`/login?next=/invite/${encodeURIComponent(token)}`}
-          >
-            Sign in to continue
-          </Link>
-        )}
-      </section>
-    </main>
-  );
+  async function signup(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); const form = new FormData(event.currentTarget);
+    if (form.get("password") !== form.get("password_confirmation")) { setMessage("Passwords do not match."); return; }
+    try {
+      const result = await apiRequest<{email:string}>("/api/invitations/signup/", { method: "POST", body: JSON.stringify({ token, full_name: form.get("full_name"), password: form.get("password") }) });
+      await login(result.email, String(form.get("password")));
+      router.push("/dashboard");
+    } catch (caught) { setMessage(caught instanceof Error ? caught.message : "Unable to complete signup."); }
+  }
+  return <main className="grid min-h-screen place-items-center bg-[var(--background)] p-5 text-[var(--text-primary)]"><section className="w-full max-w-lg evolve-panel p-7"><p className="evolve-eyebrow text-xs font-semibold uppercase">Evolve invitation</p><h1 className="mt-3 text-3xl font-semibold">Join organization</h1><p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">Create your account with the invited email, then access your workspace immediately.</p>{message&&<p className="mt-5 text-sm text-[var(--accent-strong)]" role="status">{message}</p>}{session?<button className={`mt-6 ${buttonClass}`} onClick={()=>void accept()}>Accept invitation</button>:<form className="mt-6 grid gap-4" onSubmit={signup}><label className="text-sm">Invited email<input className={`mt-2 ${fieldClass}`} name="email" type="email" placeholder="you@example.com" required /></label><label className="text-sm">Full name<input className={`mt-2 ${fieldClass}`} name="full_name" placeholder="First and last name" required /></label><label className="text-sm">Create password<input className={`mt-2 ${fieldClass}`} name="password" type="password" minLength={12} required /></label><label className="text-sm">Confirm password<input className={`mt-2 ${fieldClass}`} name="password_confirmation" type="password" minLength={12} required /></label><button className={buttonClass}>Create account and join</button><Link className="text-center text-sm text-[var(--accent-strong)]" href={`/login?next=/invite/${encodeURIComponent(token)}`}>Already have an account? Sign in</Link></form>}</section></main>;
 }

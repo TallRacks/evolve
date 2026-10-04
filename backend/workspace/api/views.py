@@ -1,6 +1,7 @@
 from datetime import date
 
 from django.db import IntegrityError
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from audit.services import record_event
 from organizations.permissions import user_has_organization_permission
@@ -19,6 +20,7 @@ from ..models import ActionRequest, AIProviderConfig, Automation, Board, Workspa
 from ..domain_views import BOARD_FIELD_REGISTRY
 from ..summary_services import booking_summary, daily_summary, release_summary, workspace_summary
 from ..services import execute_action, propose_action
+from ..ai_services import answer_with_model
 
 
 def organization_for(request):
@@ -120,10 +122,8 @@ class CopilotView(APIView):
             data = list(
                 tasks_for_user(request.user)
                 .filter(organization=organization)
-                .exclude(
-                    status__in=[Task.Status.DONE, Task.Status.CANCELLED],
-                    due_at__lt=__import__("django.utils.timezone", fromlist=["now"]).now(),
-                )
+                .filter(due_at__lt=__import__("django.utils.timezone", fromlist=["now"]).now())
+                .exclude(status__in=[Task.Status.DONE, Task.Status.CANCELLED])
                 .values("id", "title", "due_at")[:50]
             )
             return Response(
@@ -153,6 +153,19 @@ class CopilotView(APIView):
                     },
                 }
             )
+        model_answer = answer_with_model(
+            prompt=prompt,
+            organization=organization,
+            user=request.user,
+        )
+        if model_answer:
+            return Response(
+                {
+                    "status": "answered",
+                    "message": model_answer,
+                    "data": {"provider": "qwen3", "mode": "read_only"},
+                }
+            )
         return Response(
             {
                 "status": "not_configured",
@@ -163,9 +176,18 @@ class CopilotView(APIView):
 
 class MyWorkView(APIView):
     def get(self, request):
+        organization = get_object_or_404(
+            organizations_for_user(request.user),
+            pk=request.query_params.get("organization_id"),
+        )
         qs = (
             tasks_for_user(request.user)
-            .filter(assigned_membership__user=request.user)
+            .filter(organization=organization)
+            .filter(
+                Q(assigned_membership__user=request.user)
+                | Q(additional_assignees__user=request.user)
+            )
+            .distinct()
             .exclude(status=Task.Status.CANCELLED)
         )
         return Response(

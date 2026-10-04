@@ -15,6 +15,12 @@ class User(AbstractBaseUser, PermissionsMixin, TimestampedModel):
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=150, blank=True)
     last_name = models.CharField(max_length=150, blank=True)
+    username = models.CharField(max_length=80, unique=True, null=True, blank=True)
+    profile_image_url = models.URLField(max_length=500, blank=True)
+    profile_image_document = models.ForeignKey(
+        "documents.Document", null=True, blank=True, on_delete=models.PROTECT,
+        related_name="profile_image_users",
+    )
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)

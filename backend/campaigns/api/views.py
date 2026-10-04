@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 from artists.models import Artist
 from campaigns.models import (
     Campaign,
+    CampaignAsset,
     CampaignChannel,
     CampaignResponsibility,
     Rollout,
@@ -50,6 +51,7 @@ from .serializers import (
     CampaignDetailSerializer,
     CampaignResponsibilitySerializer,
     CampaignResponsibilityWriteSerializer,
+    CampaignAssetSerializer,
     CampaignSummarySerializer,
     CampaignWriteSerializer,
     ChannelSerializer,
@@ -286,6 +288,25 @@ class ChannelDetailView(APIView):
         ch = get_object_or_404(CampaignChannel, pk=channel_id, campaign=obj)
         valid(lambda: remove_channel(actor=r.user, channel=ch, request=r))
         return Response(status=204)
+
+
+class CampaignAssetView(APIView):
+    def get(self, r, campaign_id):
+        campaign = scoped_campaign(r.user, campaign_id)
+        require(r.user, campaign.organization, "campaign.view")
+        return Response(CampaignAssetSerializer(campaign.assets.all(), many=True).data)
+
+    def post(self, r, campaign_id):
+        campaign = scoped_campaign(r.user, campaign_id)
+        require(r.user, campaign.organization, "campaign.manage")
+        serializer = CampaignAssetSerializer(data=r.data)
+        serializer.is_valid(raise_exception=True)
+        document = serializer.validated_data.get("document")
+        if document and document.organization_id != campaign.organization_id:
+            raise ValidationError({"document": "The asset document must belong to this organization."})
+        asset = valid(lambda: serializer.save(campaign=campaign, created_by=r.user))
+        record_event(actor=r.user, organization=campaign.organization, action="campaign.asset_created", resource=asset, description=f"Campaign asset created for {campaign.name}.", request=r)
+        return Response(CampaignAssetSerializer(asset).data, status=201)
 
 
 class CampaignResponsibilityView(APIView):

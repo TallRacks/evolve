@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, LockKeyhole } from "lucide-react";
+import { ArrowRight, LockKeyhole, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -13,6 +13,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [brand, setBrand] = useState<{ brand_name?: string; logo_url?: string } | null>(null);
+
+  useEffect(() => {
+    void fetch("/api/branding/public-assets/logo/", { credentials: "same-origin" }).then((response) => response.ok ? setBrand({ logo_url: "/api/branding/public-assets/logo/" }) : undefined).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (!loading && session) {
@@ -37,24 +42,21 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-screen bg-neutral-950 px-5 py-10 text-neutral-100 sm:place-items-center">
-      <section className="w-full max-w-md">
-        <div className="mb-10 flex items-center gap-3 text-amber-400">
-          <span className="grid size-10 place-items-center border border-amber-400">
-            <LockKeyhole aria-hidden="true" size={19} />
-          </span>
-          <span className="text-lg font-semibold">Evolve v2</span>
+    <main className="grid min-h-screen bg-[var(--background)] px-5 py-10 text-[var(--text-primary)] sm:place-items-center">
+      <section className="evolve-panel w-full max-w-md p-7 shadow-sm sm:p-10">
+        <div className="mb-10 flex items-center gap-3 text-[var(--accent-strong)]">
+          {brand?.logo_url ? <img alt={brand.brand_name || "Evolve"} className="max-h-10 max-w-48 object-contain" src={brand.logo_url} /> : <><span className="grid size-10 place-items-center rounded-xl bg-[var(--accent-soft)]"><LockKeyhole aria-hidden="true" size={19} /></span><span className="text-lg font-semibold">{brand?.brand_name || "Evolve"}</span></>}
         </div>
-        <p className="text-sm font-semibold uppercase text-amber-400">Private operations</p>
-        <h1 className="mt-3 text-4xl font-semibold">Sign in</h1>
-        <p className="mt-4 text-neutral-400">Use your Evolve account to continue.</p>
+        <p className="evolve-eyebrow text-xs font-semibold uppercase">Private operations</p>
+        <h1 className="evolve-display mt-3 text-4xl font-semibold">Sign in</h1>
+        <p className="mt-4 text-[var(--text-muted)]">Use your Evolve account to continue.</p>
         <form className="mt-10 grid gap-5" onSubmit={handleSubmit}>
-          <label className="grid gap-2 text-sm text-neutral-300">
+          <label className="grid gap-2 text-sm text-[var(--text-secondary)]">
             Email address
             <input
               autoComplete="email"
               autoFocus
-              className="h-12 border border-neutral-700 bg-neutral-900 px-4 text-neutral-100 outline-none focus:border-amber-400"
+              className="min-h-12 rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--background-soft)] px-4 text-[var(--text-primary)] outline-none focus:border-[var(--accent-strong)]"
               disabled={submitting}
               onChange={(event) => setEmail(event.target.value)}
               required
@@ -62,11 +64,11 @@ export default function LoginPage() {
               value={email}
             />
           </label>
-          <label className="grid gap-2 text-sm text-neutral-300">
+          <label className="grid gap-2 text-sm text-[var(--text-secondary)]">
             Password
             <input
               autoComplete="current-password"
-              className="h-12 border border-neutral-700 bg-neutral-900 px-4 text-neutral-100 outline-none focus:border-amber-400"
+              className="min-h-12 rounded-[var(--radius)] border border-[var(--border-strong)] bg-[var(--background-soft)] px-4 text-[var(--text-primary)] outline-none focus:border-[var(--accent-strong)]"
               disabled={submitting}
               onChange={(event) => setPassword(event.target.value)}
               required
@@ -80,7 +82,7 @@ export default function LoginPage() {
             </p>
           )}
           <button
-            className="mt-2 flex h-12 items-center justify-center gap-2 bg-amber-400 px-5 font-semibold text-neutral-950 hover:bg-amber-300 disabled:cursor-wait disabled:opacity-60"
+            className="mt-2 flex min-h-12 items-center justify-center gap-2 rounded-[var(--radius)] bg-[var(--accent)] px-5 font-semibold text-[var(--accent-ink)] hover:bg-[var(--accent-strong)] disabled:cursor-wait disabled:opacity-60"
             disabled={submitting || loading}
             type="submit"
           >
@@ -88,6 +90,7 @@ export default function LoginPage() {
             {!submitting && <ArrowRight aria-hidden="true" size={18} />}
           </button>
         </form>
+        <div className="mt-8 flex items-start gap-3 border-t border-[var(--border)] pt-5 text-xs leading-5 text-[var(--text-muted)]"><ShieldCheck className="mt-0.5 shrink-0 text-[var(--accent-strong)]" size={16} /> Your session is protected by Evolve secure workspace access controls.</div>
       </section>
     </main>
   );

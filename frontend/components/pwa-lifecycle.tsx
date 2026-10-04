@@ -71,6 +71,7 @@ export function PwaLifecycle() {
 
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
       void navigator.serviceWorker.register("/sw.js").then((registration) => {
+        void registration.update();
         if (registration.waiting) setUpdateReady(registration.waiting);
         registration.addEventListener("updatefound", () => {
           const worker = registration.installing;

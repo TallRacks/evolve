@@ -37,7 +37,7 @@ class MembershipAdmin(PlatformSuperuserAdminMixin, ModelAdmin):
     ordering = ("organization", "user__email")
     list_per_page = 50
     fieldsets = (
-        ("Membership", {"fields": ("id", "organization", "user", "role")}),
+        ("Membership", {"fields": ("id", "organization", "user", "role", "permission_overrides")}),
         ("Status", {"fields": ("is_active",)}),
         ("Metadata", {"fields": ("created_at", "updated_at")}),
     )

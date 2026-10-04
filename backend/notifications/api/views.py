@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from audit.services import record_event
 from notifications.email_delivery import retry_delivery
 from notifications.email_policy import CATEGORY_POLICIES
-from notifications.models import EmailDeliveryAttempt, Notification
+from notifications.models import DevicePushSubscription, EmailDeliveryAttempt, Notification
 from notifications.selectors import inbox, unread_count
 from notifications.services import (
     archive,
@@ -53,6 +53,38 @@ class ListView(APIView):
 class UnreadCountView(APIView):
     def get(self, request):
         return Response({"count": unread_count(request.user)})
+
+
+class PushSubscriptionView(APIView):
+    def get(self, request):
+        import os
+
+        return Response({
+            "enabled": bool(os.environ.get("EVOLVE_WEB_PUSH_PUBLIC_KEY")),
+            "public_key": os.environ.get("EVOLVE_WEB_PUSH_PUBLIC_KEY", ""),
+        })
+
+    def post(self, request):
+        endpoint = request.data.get("endpoint")
+        keys = request.data.get("keys") or {}
+        if not endpoint or not keys.get("p256dh") or not keys.get("auth"):
+            raise ValidationError("A valid Web Push subscription is required.")
+        subscription, _ = DevicePushSubscription.objects.update_or_create(
+            endpoint=endpoint,
+            defaults={
+                "user": request.user,
+                "p256dh": keys["p256dh"],
+                "auth": keys["auth"],
+                "user_agent": request.META.get("HTTP_USER_AGENT", "")[:500],
+                "is_active": True,
+            },
+        )
+        return Response({"id": subscription.id, "active": True})
+
+    def delete(self, request):
+        endpoint = request.data.get("endpoint")
+        DevicePushSubscription.objects.filter(endpoint=endpoint, user=request.user).update(is_active=False)
+        return Response(status=204)
 
 
 class ReadView(APIView):

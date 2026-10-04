@@ -1,9 +1,12 @@
+from django import forms
 from django.contrib import admin
+from django.core.exceptions import ValidationError
 from unfold.admin import ModelAdmin
 
 from core.admin import PlatformSuperuserAdminMixin
 
-from .models import APIClient, APIKey, OrganizationBranding, OrganizationDomain
+from .models import APIClient, APIKey, GlobalBranding, GlobalBrandingAsset, OrganizationBranding, OrganizationDomain
+from .services import upload_global_branding_asset
 
 
 @admin.register(OrganizationBranding)
@@ -102,6 +105,57 @@ class APIKeyAdmin(PlatformSuperuserAdminMixin, ModelAdmin):
         "revoked_at",
     )
     exclude = ("secret_digest",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+class GlobalBrandingAdminForm(forms.ModelForm):
+    logo_file = forms.FileField(required=False, widget=forms.ClearableFileInput(attrs={"accept": ".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"}), help_text="PNG, JPEG, or WebP. Uploading replaces the current stored logo.")
+    dark_logo_file = forms.FileField(required=False, widget=forms.ClearableFileInput(attrs={"accept": ".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"}), help_text="Logo used on dark mode.")
+    favicon_file = forms.FileField(required=False, widget=forms.ClearableFileInput(attrs={"accept": ".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp"}), help_text="PNG, JPEG, or WebP. Uploading replaces the current stored favicon.")
+
+    class Meta:
+        model = GlobalBranding
+        fields = "__all__"
+
+
+@admin.register(GlobalBranding)
+class GlobalBrandingAdmin(PlatformSuperuserAdminMixin, ModelAdmin):
+    form = GlobalBrandingAdminForm
+    list_display = ("display_name", "override_organizations", "updated_at")
+    readonly_fields = ("id", "created_at", "updated_at")
+    fieldsets = (("Global identity", {"fields": ("id", "override_organizations", "display_name", "logo_url", "favicon_url")}), ("Upload assets", {"fields": ("logo_file", "dark_logo_file", "favicon_file")}), ("Theme", {"fields": ("primary_color", "secondary_color", "accent_color", "background_color", "surface_color", "text_color", "text_muted_color")}), ("SEO and support", {"fields": ("seo_title", "seo_description", "og_image_url", "support_email", "support_url")}), ("Metadata", {"fields": ("created_at", "updated_at")}))
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        for asset_type, field_name in ((GlobalBrandingAsset.AssetType.LOGO, "logo_file"), (GlobalBrandingAsset.AssetType.DARK_LOGO, "dark_logo_file"), (GlobalBrandingAsset.AssetType.FAVICON, "favicon_file")):
+            uploaded = form.cleaned_data.get(field_name)
+            if uploaded:
+                try:
+                    upload_global_branding_asset(
+                        actor=request.user, branding=obj, asset_type=asset_type,
+                        file=uploaded, request=request,
+                    )
+                except (ValidationError, ValueError) as error:
+                    raise ValidationError({field_name: str(error)}) from error
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(GlobalBrandingAsset)
+class GlobalBrandingAssetAdmin(PlatformSuperuserAdminMixin, ModelAdmin):
+    list_display = ("asset_type", "branding", "original_filename", "file_size", "created_at")
+    list_filter = ("asset_type", "content_type")
+    search_fields = ("original_filename", "checksum_sha256")
+    readonly_fields = ("id", "branding", "asset_type", "storage_provider", "storage_key", "original_filename", "content_type", "file_size", "checksum_sha256", "created_at", "updated_at")
 
     def has_add_permission(self, request):
         return False

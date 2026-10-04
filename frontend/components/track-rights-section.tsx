@@ -48,7 +48,7 @@ export function TrackRightsSection({
   }, [trackId, organizationId]);
   const total = masters.reduce((n, x) => n + Number(x.ownership_percentage), 0);
   return (
-    <section className="rounded-md border border-neutral-800 bg-neutral-900 p-5">
+    <section className="evolve-panel p-5">
       <h2 className="font-semibold">Rights</h2>
       <p className="mt-2 text-sm text-neutral-500">
         Master allocated {total}% / unallocated {Math.max(0, 100 - total)}%.

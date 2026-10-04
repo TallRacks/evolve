@@ -1,12 +1,14 @@
 import pytest
 from rest_framework.test import APIClient
 
+from audit.models import AuditEvent
 from documents.models import (
     Document,
     DocumentCollaborator,
     DocumentFavorite,
     DocumentRecentAccess,
     OfficeDocumentContent,
+    OfficeSavedSheetView,
 )
 from documents.office_services import create_office_document
 from documents.services import (
@@ -61,6 +63,7 @@ def test_sharing_roles_control_editing_and_cross_org_isolation():
         ).status_code
         == 200
     )
+    assert AuditEvent.objects.filter(organization=organization, action="document.created").exists()
     payload = {
         "organization_id": organization.pk,
         "content_json": {
@@ -163,3 +166,57 @@ def test_document_comment_can_resolve_and_reopen():
         f"/api/workspace/comments/{comment.pk}/", {"action": "reopen"}, format="json"
     )
     assert reopened.status_code == 200 and reopened.json()["resolved_at"] is None
+
+
+def test_saved_sheet_views_are_user_scoped_and_manageable():
+    owner, member, organization, document = make_fixture()
+    document.office_content.format = OfficeDocumentContent.Format.SHEET
+    document.office_content.content_json = {"type": "sheet", "columns": [], "rows": []}
+    document.office_content.save(update_fields=("format", "content_json"))
+    owner_client, member_client = APIClient(), APIClient()
+    owner_client.force_authenticate(owner)
+    member_client.force_authenticate(member)
+    created = owner_client.post(
+        f"/api/documents/{document.pk}/office-sheet-views/",
+        {
+            "organization_id": organization.pk,
+            "name": "Open tasks",
+            "config": {
+                "filters": [{"id": "status", "operator": "equals", "value": "open"}],
+                "hidden_columns": ["notes"],
+                "column_widths": {"status": 180},
+                "frozen_column": "status",
+            },
+        },
+        format="json",
+    )
+    assert created.status_code == 201
+    assert OfficeSavedSheetView.objects.filter(user=owner, document=document).exists()
+    assert AuditEvent.objects.filter(
+        organization=organization, action="office.sheet_view.created"
+    ).exists()
+    view_id = created.json()["id"]
+    renamed = owner_client.patch(
+        f"/api/documents/{document.pk}/office-sheet-views/{view_id}/",
+        {"organization_id": organization.pk, "name": "Open work"},
+        format="json",
+    )
+    assert renamed.status_code == 200 and renamed.json()["name"] == "Open work"
+    assert AuditEvent.objects.filter(
+        organization=organization, action="office.sheet_view.updated"
+    ).exists()
+    assert (
+        member_client.get(
+            f"/api/documents/{document.pk}/office-sheet-views/?organization_id={organization.pk}"
+        ).status_code
+        == 404
+    )
+    assert (
+        owner_client.delete(
+            f"/api/documents/{document.pk}/office-sheet-views/{view_id}/?organization_id={organization.pk}"
+        ).status_code
+        == 204
+    )
+    assert AuditEvent.objects.filter(
+        organization=organization, action="office.sheet_view.deleted"
+    ).exists()

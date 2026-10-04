@@ -1,6 +1,7 @@
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
 from django.shortcuts import get_object_or_404
+from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
@@ -70,6 +71,60 @@ class CalendarView(APIView):
             return Response(get_calendar_items(request.user, org, start, end, filters(request)))
         except ValueError as exc:
             raise ValidationError(str(exc)) from exc
+
+
+def _ics_text(value):
+    slash = chr(92)
+    return str(value or "").replace(slash, slash + slash).replace(";", slash + ";").replace(",", slash + ",").replace(chr(10), slash + "n").replace(chr(13), "")
+
+
+def _ics_datetime(value):
+    parsed = datetime.fromisoformat(value)
+    if timezone.is_naive(parsed):
+        parsed = timezone.make_aware(parsed)
+    return parsed.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+class CalendarExportView(APIView):
+    def get(self, request):
+        org = org_for(request.user, request)
+        if not user_has_organization_permission(request.user, org, "calendar.view"):
+            raise PermissionDenied()
+        try:
+            start, end = parse_range(request) if request.query_params.get("start") and request.query_params.get("end") else (
+                timezone.now(),
+                timezone.now() + timedelta(days=366),
+            )
+            items = get_calendar_items(request.user, org, start, end, filters(request))
+        except ValueError as exc:
+            raise ValidationError(str(exc)) from exc
+        lines = [
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "PRODID:-//Evolve//Operations Calendar//EN",
+            "CALSCALE:GREGORIAN",
+            "METHOD:PUBLISH",
+            "X-WR-CALNAME:Evolve Calendar",
+        ]
+        for item in items:
+            start_value = _ics_datetime(item["starts_at"])
+            end_value = _ics_datetime(item["ends_at"]) if item.get("ends_at") else start_value
+            url = item.get("url") or "/workspace/calendar"
+            lines.extend([
+                "BEGIN:VEVENT",
+                f"UID:{_ics_text(item['id'])}@evolve.nastycsa.com",
+                f"DTSTAMP:{timezone.now().astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
+                f"DTSTART:{start_value}",
+                f"DTEND:{end_value}",
+                f"SUMMARY:{_ics_text(item['title'])}",
+                f"DESCRIPTION:{_ics_text(item.get('source_type', '') + ' / ' + item.get('status', ''))}",
+                f"URL:https://evolve.nastycsa.com{url}",
+                "END:VEVENT",
+            ])
+        lines.append("END:VCALENDAR")
+        response = HttpResponse((chr(13) + chr(10)).join(lines) + chr(13) + chr(10), content_type="text/calendar; charset=utf-8")
+        response["Content-Disposition"] = 'attachment; filename="evolve-calendar.ics"'
+        return response
 
 
 class EventListView(APIView):

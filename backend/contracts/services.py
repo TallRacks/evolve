@@ -78,7 +78,7 @@ def create_from_booking(*, actor, booking, request=None):
         actor=actor,
         organization=booking.organization,
         data={
-            "title": f"{booking.reference} performance agreement",
+            "title": f"{booking.title} - {booking.reference} performance agreement",
             "contract_type": Contract.Type.PERFORMANCE,
             "booking": booking,
             "artist": booking.artist,

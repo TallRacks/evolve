@@ -24,6 +24,12 @@ services:
     restart: unless-stopped
     env_file:
       - ${EVOLVE_ENV_FILE:-/opt/evolve/secrets/evolve.env}
+    environment:
+      EVOLVE_AI_BASE_URL: http://ai:11434
+      EVOLVE_AI_MODEL: qwen3:8b
+      EVOLVE_VAULT_ADDR: ${EVOLVE_VAULT_ADDR:-}
+      EVOLVE_VAULT_TOKEN: ${EVOLVE_VAULT_TOKEN:-}
+      AWS_REGION: ${AWS_REGION:-}
     volumes:
       - static_data:/app/staticfiles
     depends_on:
@@ -40,6 +46,58 @@ services:
       proxy:
         aliases:
           - backend
+
+  ai:
+    image: ollama/ollama:0.12.6
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      proxy:
+        aliases:
+          - ai
+
+  opensign-mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    volumes:
+      - opensign_mongo_data:/data/db
+    networks:
+      - opensign_database
+
+  opensign-server:
+    image: opensign/opensignserver:main
+    restart: unless-stopped
+    env_file:
+      - ${EVOLVE_ENV_FILE:-/opt/evolve/secrets/evolve.env}
+    environment:
+      NODE_ENV: production
+      MONGODB_URI: mongodb://opensign-mongo:27017/OpenSignDB
+      PARSE_MOUNT: /app
+      SERVER_URL: https://sign.evolve.nastycsa.com/api/app
+      PUBLIC_URL: https://sign.evolve.nastycsa.com
+      APP_ID: opensign
+      USE_LOCAL: "true"
+    depends_on:
+      - opensign-mongo
+    networks:
+      - opensign_database
+      - proxy
+
+  opensign-client:
+    image: opensign/opensign:main
+    restart: unless-stopped
+    env_file:
+      - ${EVOLVE_ENV_FILE:-/opt/evolve/secrets/evolve.env}
+    environment:
+      NODE_ENV: production
+      PUBLIC_URL: https://sign.evolve.nastycsa.com
+      REACT_APP_SERVERURL: https://sign.evolve.nastycsa.com/api/app
+      REACT_APP_APPID: opensign
+    depends_on:
+      - opensign-server
+    networks:
+      - proxy
 
   frontend:
     build:
@@ -61,11 +119,15 @@ services:
           - frontend
 
 volumes:
+  ollama_data:
+    name: evolve_ollama_data
   postgres_data:
     name: evolve_postgres_data
     external: true
   static_data:
     name: evolve_static_data
+  opensign_mongo_data:
+    name: evolve_opensign_mongo_data
 
 networks:
   database:
@@ -74,3 +136,6 @@ networks:
   proxy:
     name: evolve_proxy
     external: true
+  opensign_database:
+    name: evolve_opensign_database
+    internal: true

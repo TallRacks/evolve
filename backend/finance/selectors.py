@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.utils import timezone
+from django.db.models import Q
 
 from organizations.permissions import user_has_organization_permission
 
@@ -10,12 +11,24 @@ from .models import Invoice, Payment
 def invoices_for_user(user):
     if user.is_active and user.is_superuser:
         return Invoice.objects.all()
-    organization_ids = [
-        m.organization_id
-        for m in user.memberships.active()
+    view_memberships = [
+        m for m in user.memberships.active()
         if user_has_organization_permission(user, m.organization, "finance.view")
     ]
-    return Invoice.objects.filter(organization_id__in=organization_ids)
+    view_ids = [m.organization_id for m in view_memberships]
+    manage_ids = [
+        m.organization_id for m in view_memberships
+        if user_has_organization_permission(user, m.organization, "finance.manage")
+    ]
+    booking_ids = [
+        m.organization_id for m in view_memberships
+        if user_has_organization_permission(user, m.organization, "booking.view")
+    ]
+    return Invoice.objects.filter(
+        Q(organization_id__in=manage_ids)
+        | Q(organization_id__in=booking_ids, booking__isnull=False)
+        | Q(organization_id__in=view_ids, booking__isnull=True, created_by=user)
+    )
 
 
 def payments_for_user(user):

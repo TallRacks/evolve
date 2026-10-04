@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from bookings.models import (
     Booking,
+    BookingOption,
     BookingContactAssignment,
     BookingStatusHistory,
     BookingTeamAssignment,
@@ -30,6 +31,8 @@ class BookingListSerializer(serializers.ModelSerializer):
             "venue",
             "status",
             "priority",
+            "performance_type",
+            "event_type",
             "event_date",
             "event_start_datetime",
             "event_end_datetime",
@@ -183,6 +186,7 @@ class BookingDetailSerializer(BookingListSerializer):
     class Meta(BookingListSerializer.Meta):
         fields = BookingListSerializer.Meta.fields + (
             "internal_notes",
+            "custom_fields",
             "contacts",
             "team",
             "status_history",
@@ -255,6 +259,8 @@ class BookingWriteSerializer(serializers.ModelSerializer):
             "promoter_id",
             "venue_id",
             "priority",
+            "performance_type",
+            "event_type",
             "event_date",
             "event_start_datetime",
             "event_end_datetime",
@@ -266,6 +272,7 @@ class BookingWriteSerializer(serializers.ModelSerializer):
             "deposit_due_date",
             "balance_due_date",
             "internal_notes",
+            "custom_fields",
         )
 
 
@@ -402,3 +409,10 @@ class DeveloperBookingSerializer(serializers.ModelSerializer):
             "country",
             "updated_at",
         )
+
+
+class BookingOptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BookingOption
+        fields = ("id", "organization", "category", "name", "is_active", "created_at", "updated_at")
+        read_only_fields = ("id", "organization", "created_at", "updated_at")

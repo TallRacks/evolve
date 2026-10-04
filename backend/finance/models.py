@@ -225,6 +225,10 @@ class Payment(TimestampedModel):
     external_reference = models.CharField(max_length=180, blank=True)
     payer_name = models.CharField(max_length=220, blank=True)
     notes = models.TextField(blank=True, max_length=3000)
+    proof_document = models.ForeignKey(
+        "documents.Document", null=True, blank=True, on_delete=models.PROTECT,
+        related_name="payment_proofs",
+    )
     recorded_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -310,3 +314,75 @@ class PaymentAllocation(models.Model):
 
     def delete(self, *args, **kwargs):
         raise ValidationError("Payment allocations cannot be deleted in this milestone.")
+
+
+class FinanceProfile(TimestampedModel):
+    organization = models.OneToOneField("organizations.Organization", on_delete=models.PROTECT, related_name="finance_profile")
+    legal_name = models.CharField(max_length=220, blank=True)
+    registration_number = models.CharField(max_length=120, blank=True)
+    tax_number = models.CharField(max_length=120, blank=True)
+    billing_email = models.EmailField(blank=True)
+    billing_address = models.TextField(blank=True, max_length=2000)
+    payment_terms = models.CharField(max_length=120, default="Due within 30 days")
+    invoice_prefix = models.CharField(max_length=12, default="INV")
+    quote_prefix = models.CharField(max_length=12, default="QUO")
+    next_invoice_number = models.PositiveIntegerField(default=1)
+    next_quote_number = models.PositiveIntegerField(default=1)
+    default_currency = models.CharField(max_length=3, default="ZAR", validators=[CURRENCY_VALIDATOR])
+
+class Quote(TimestampedModel):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        SENT = "sent", "Sent"
+        ACCEPTED = "accepted", "Accepted"
+        DECLINED = "declined", "Declined"
+        EXPIRED = "expired", "Expired"
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    organization = models.ForeignKey("organizations.Organization", on_delete=models.PROTECT, related_name="quotes")
+    quote_number = models.CharField(max_length=32, unique=True)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT)
+    billed_to_name = models.CharField(max_length=220)
+    billed_to_email = models.EmailField(blank=True)
+    currency = models.CharField(max_length=3, validators=[CURRENCY_VALIDATOR])
+    valid_until = models.DateField(null=True, blank=True)
+    tax_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0, validators=[MinValueValidator(0)])
+    notes = models.TextField(blank=True, max_length=5000)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL)
+    @property
+    def subtotal(self):
+        return self.line_items.aggregate(total=Sum("line_total"))["total"] or Decimal("0.00")
+    @property
+    def total_amount(self):
+        return self.subtotal + self.tax_amount
+
+class QuoteLineItem(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    quote = models.ForeignKey(Quote, on_delete=models.PROTECT, related_name="line_items")
+    description = models.CharField(max_length=500)
+    quantity = models.DecimalField(max_digits=12, decimal_places=3, validators=[MinValueValidator(Decimal("0.001"))])
+    unit_amount = models.DecimalField(max_digits=14, decimal_places=2, validators=[MinValueValidator(0)])
+    line_total = models.DecimalField(max_digits=16, decimal_places=2, editable=False)
+    sequence = models.PositiveIntegerField(default=1)
+    def save(self,*args,**kwargs):
+        self.line_total=(Decimal(str(self.quantity))*Decimal(str(self.unit_amount))).quantize(Decimal("0.01"))
+        self.full_clean()
+        super().save(*args,**kwargs)
+
+class EmployeeInvoiceSubmission(TimestampedModel):
+    class Status(models.TextChoices):
+        SUBMITTED="submitted","Submitted"
+        REVIEW="review","Under review"
+        APPROVED="approved","Approved"
+        SETTLED="settled","Settled"
+        REJECTED="rejected","Rejected"
+    id=models.UUIDField(primary_key=True,default=uuid.uuid4,editable=False)
+    organization=models.ForeignKey("organizations.Organization",on_delete=models.PROTECT,related_name="employee_invoice_submissions")
+    employee=models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.PROTECT,related_name="invoice_submissions")
+    submission_number=models.CharField(max_length=32,unique=True)
+    status=models.CharField(max_length=16,choices=Status.choices,default=Status.SUBMITTED)
+    invoice_date=models.DateField()
+    currency=models.CharField(max_length=3,validators=[CURRENCY_VALIDATOR])
+    line_items=models.JSONField(default=list)
+    total_amount=models.DecimalField(max_digits=16,decimal_places=2,default=0)
+    notes=models.TextField(blank=True,max_length=5000)
+    settled_invoice=models.ForeignKey(Invoice,null=True,blank=True,on_delete=models.PROTECT,related_name="employee_submissions")

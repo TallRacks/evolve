@@ -11,9 +11,11 @@ export function hasOrganizationPermission(
   if (session.user.is_superuser) {
     return session.organizations.some((organization) => organization.id === organizationId);
   }
-  return !!session.memberships
-    .find((membership) => membership.organization.id === organizationId)
-    ?.permissions.includes(permission);
+  const membership = session.memberships.find(
+    (candidate) => candidate.organization.id === organizationId,
+  );
+  const permissions = membership?.permissions ?? [];
+  return permissions.includes("*") || permissions.includes(permission);
 }
 
 export function landingPath(session: SessionBootstrap): string {

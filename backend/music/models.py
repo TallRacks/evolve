@@ -8,6 +8,7 @@ from django.db import models
 from django.db.models import Q
 
 from core.models import TimestampedModel
+from documents.models import Document
 
 ISRC_PATTERN = re.compile(r"^[A-Z]{2}[A-Z0-9]{3}\d{7}$")
 UPC_PATTERN = re.compile(r"^\d{8,14}$")
@@ -123,6 +124,13 @@ class Track(TimestampedModel):
     explicit_content = models.BooleanField(default=False)
     artwork_url = models.URLField(max_length=500, blank=True)
     audio_preview_url = models.URLField(max_length=500, blank=True)
+    audio_document = models.ForeignKey(
+        Document,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="audio_tracks",
+    )
     release_year = models.PositiveSmallIntegerField(
         null=True,
         blank=True,
@@ -157,6 +165,13 @@ class Track(TimestampedModel):
             raise ValidationError("Track and primary artist must belong to the same organization.")
         if self.isrc and not ISRC_PATTERN.fullmatch(self.isrc):
             raise ValidationError({"isrc": "ISRC must use the 12-character CCXXXYYNNNNN format."})
+        if self.audio_document_id:
+            if self.audio_document.organization_id != self.organization_id:
+                raise ValidationError("Track audio must belong to the same organization as the track.")
+            if self.audio_document.document_type != Document.Type.MUSIC:
+                raise ValidationError("Track audio must be stored as a music document.")
+            if self.audio_document.source_type != Document.SourceType.STORED:
+                raise ValidationError("Track audio must reference a stored document.")
 
     def save(self, *args, **kwargs):
         self.isrc = self.isrc.replace("-", "").replace(" ", "").upper()

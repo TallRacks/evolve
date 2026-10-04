@@ -6,6 +6,7 @@ from django.utils.dateparse import parse_date
 from rest_framework.exceptions import AuthenticationFailed, PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.parsers import FormParser, MultiPartParser
 
 from bookings.models import Booking
 from contracts.models import (
@@ -17,6 +18,10 @@ from contracts.models import (
     ContractTerm,
 )
 from contracts.selectors import artist_contracts_for_user, contract_activity, contracts_for_user
+from documents.file_validation import validate_upload
+from documents.models import Document
+from documents.services import upload_document
+from documents.storage import DocumentStorageUnavailable
 from contracts.services import (
     create_child,
     create_contract,
@@ -319,6 +324,29 @@ class DocumentListView(APIView):
             )
         )
         return Response({"id": link.id}, status=201)
+
+
+class ContractDocumentUploadView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request, contract_id):
+        row = scoped_contract(request.user, contract_id)
+        upload = request.FILES.get("file")
+        if not upload:
+            raise ValidationError({"file": "Select an executed contract file."})
+        if not upload.name.lower().endswith((".pdf", ".doc", ".docx")):
+            raise ValidationError({"file": "Executed contracts must be PDF, DOC, or DOCX files."})
+        try:
+            validate_upload(upload)
+            document = upload_document(
+                actor=request.user, organization=row.organization, file=upload, request=request,
+                title=str(request.data.get("title") or f"{row.title} - executed"),
+                document_type=Document.Type.CONTRACT, visibility=Document.Visibility.ORGANIZATION,
+            )
+            link = link_document(row, actor=request.user, request=request, document=document)
+        except (DjangoValidationError, DocumentStorageUnavailable) as error:
+            raise ValidationError(str(error)) from error
+        return Response({"id": str(link.id), "document_id": str(document.id), "title": document.title}, status=201)
 
 
 class DocumentDetailView(APIView):

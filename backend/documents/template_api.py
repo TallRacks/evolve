@@ -1,27 +1,42 @@
+import secrets
+from pathlib import PurePath
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db.models import Q
+from django.http import StreamingHttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from bookings.selectors import bookings_for_user
+from documents.file_validation import validate_upload
 from documents.models import DocumentTemplate, DocumentTemplateSection
+from documents.storage import (
+    DocumentStorageUnavailable,
+    default_storage_provider,
+    ensure_storage_key,
+    get_storage_backend,
+)
 from documents.template_services import (
     add_template_section,
     booking_context,
+    bootstrap_templates,
     create_template,
     duplicate_template,
     generate_booking_document,
     render_template,
     require_template_permission,
+    set_template_default,
     set_template_status,
     update_template,
     update_template_section,
 )
 from documents.template_validation import ALLOWED_VARIABLES, validate_template_text
 from organizations.selectors import organizations_for_user
+from white_label.services import effective_branding
 
 
 class SectionSerializer(serializers.ModelSerializer):
@@ -49,6 +64,8 @@ class TemplateSerializer(serializers.ModelSerializer):
             "key",
             "document_type",
             "description",
+            "branding",
+            "category",
             "status",
             "version",
             "sections",
@@ -180,6 +197,52 @@ class TemplateSectionDetailView(TemplateAPIView):
         return Response(SectionSerializer(section).data)
 
 
+class TemplateLogoUploadView(TemplateAPIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def post(self, request, template_id):
+        organization = organization_for_request(request)
+        template = get_object_or_404(available_templates(request.user, organization), pk=template_id, organization=organization)
+        require_template_permission(request.user, organization, "document_template.manage")
+        file = request.FILES.get("file")
+        if not file:
+            raise ValidationError("Choose a logo image.")
+        metadata = validate_upload(file)
+        if metadata["content_type"] not in {"image/png", "image/jpeg", "image/webp"}:
+            raise ValidationError("Template logos must be PNG, JPEG, or WebP images.")
+        provider = default_storage_provider()
+        suffix = PurePath(metadata["original_filename"]).suffix.lower()
+        key = f"templates/{organization.pk}/{template.pk}/logo/{secrets.token_urlsafe(18)}{suffix}"
+        ensure_storage_key(key)
+        get_storage_backend(provider).put(key, file, metadata["content_type"], {"asset": "template_logo", "template": str(template.pk)})
+        branding = dict(template.branding or {})
+        branding.update({"logo_url": f"/api/document-templates/{template.pk}/branding/logo/preview/", "logo_storage_key": key, "logo_storage_provider_id": str(provider.pk), "logo_content_type": metadata["content_type"]})
+        template.branding = branding
+        template.version += 1
+        template.save(update_fields=("branding", "version", "updated_at"))
+        return Response(TemplateSerializer(template).data)
+
+
+class TemplateLogoPreviewView(TemplateAPIView):
+    def get(self, request, template_id):
+        organization = organization_for_request(request)
+        template = get_object_or_404(available_templates(request.user, organization), pk=template_id)
+        branding = template.branding or {}
+        key = branding.get("logo_storage_key")
+        provider_id = branding.get("logo_storage_provider_id")
+        if not key or not provider_id:
+            raise PermissionDenied("This template has no uploaded logo.")
+        from integrations.models import StorageProvider
+        provider = get_object_or_404(StorageProvider, pk=provider_id)
+        try:
+            stored = get_storage_backend(provider).open_stream(key)
+        except DocumentStorageUnavailable as error:
+            raise PermissionDenied(str(error)) from error
+        response = StreamingHttpResponse(stored.body, content_type=branding.get("logo_content_type", stored.content_type))
+        response["Cache-Control"] = "private, max-age=300"
+        return response
+
+
 class TemplateActionView(TemplateAPIView):
     def post(self, request, template_id, action):
         organization = organization_for_request(request)
@@ -194,15 +257,33 @@ class TemplateActionView(TemplateAPIView):
                 key=request.data.get("key", f"{template.key}-copy"),
                 request=request,
             )
-        elif action in {"active", "inactive"}:
+        elif action == "set-default":
+            template = set_template_default(actor=request.user, template=template, request=request)
+        elif action in {"active", "inactive", "archive", "restore"}:
             if template.organization_id is None:
                 raise PermissionDenied("Platform defaults cannot be changed from a workspace.")
             template = set_template_status(
-                actor=request.user, template=template, status=action, request=request
+                actor=request.user,
+                template=template,
+                status=(
+                    "inactive"
+                    if action == "archive"
+                    else "active"
+                    if action == "restore"
+                    else action
+                ),
+                request=request,
             )
         else:
             return Response(status=404)
         return Response(TemplateSerializer(template).data)
+
+
+class TemplateBootstrapView(TemplateAPIView):
+    def post(self, request):
+        organization = organization_for_request(request)
+        templates = bootstrap_templates(actor=request.user, organization=organization, request=request)
+        return Response(TemplateSerializer(templates, many=True).data, status=201)
 
 
 class TemplatePreviewView(TemplateAPIView):
@@ -217,7 +298,27 @@ class TemplatePreviewView(TemplateAPIView):
             organization=organization,
         )
         content, missing = render_template(template, booking_context(booking))
-        return Response({"content": content, "missing_variables": missing})
+        branding = {**effective_branding(organization), **(template.branding or {})}
+        branding["primary"] = branding.get("primary") or branding.get("primary_color", "")
+        branding["accent"] = branding.get("accent") or branding.get("accent_color", "")
+        return Response(
+            {
+                "content": content,
+                "missing_variables": missing,
+                "branding": {
+                    key: branding.get(key, "")
+                    for key in (
+                        "brand_name",
+                        "logo_url",
+                        "primary",
+                        "accent",
+                        "text_primary",
+                        "header_text",
+                        "footer_text",
+                    )
+                },
+            }
+        )
 
 
 class TemplateGenerateView(TemplateAPIView):

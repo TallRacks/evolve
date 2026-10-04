@@ -474,6 +474,11 @@ def dashboard(user, organization_id=None):
             Booking.objects.filter(organization=organization, event_date__gte=today)
             .exclude(status__in=(Booking.Status.CANCELLED, Booking.Status.DECLINED))
             .select_related("artist", "venue")
+            .filter(
+                Q(team_assignments__membership__user=user, team_assignments__is_active=True)
+                | Q(team_assignments__isnull=True)
+            )
+            .distinct()
         )
         counts["upcoming_bookings"] = booking_qs.count()
         upcoming = [
@@ -522,9 +527,9 @@ def dashboard(user, organization_id=None):
             )
 
     if user_has_organization_permission(user, organization, "task.view"):
-        open_tasks = Task.objects.filter(organization=organization).exclude(
-            status__in=(Task.Status.DONE, Task.Status.CANCELLED)
-        )
+        open_tasks = Task.objects.filter(organization=organization).filter(
+            Q(assigned_membership__user=user) | Q(additional_assignees__user=user)
+        ).exclude(status__in=(Task.Status.DONE, Task.Status.CANCELLED)).distinct()
         counts["open_tasks"] = open_tasks.count()
         for task in open_tasks.filter(due_at__lt=now).select_related("assigned_membership__user")[
             :5
@@ -568,6 +573,8 @@ def dashboard(user, organization_id=None):
             status="blocked",
             priority="critical",
         ).select_related("advance")
+        if not user.is_superuser:
+            blocked = blocked.filter(assigned_membership__user=user)
         counts["blocked_critical_requirements"] = blocked.count()
         counts["overdue_production_checklist"] = AdvanceChecklistItem.objects.filter(
             advance__organization=organization,
@@ -588,6 +595,10 @@ def dashboard(user, organization_id=None):
         active_travel = TravelItinerary.objects.filter(organization=organization).exclude(
             status__in=(TravelItinerary.Status.CANCELLED, TravelItinerary.Status.ARCHIVED)
         )
+        if not user.is_superuser:
+            active_travel = active_travel.filter(
+                Q(created_by=user) | Q(travellers__membership__user=user)
+            ).distinct()
         counts["upcoming_travel"] = active_travel.filter(
             status__in=(TravelItinerary.Status.CONFIRMED, TravelItinerary.Status.IN_PROGRESS)
         ).count()
@@ -607,6 +618,11 @@ def dashboard(user, organization_id=None):
 
     if user_has_organization_permission(user, organization, "contract.view"):
         contracts = Contract.objects.filter(organization=organization)
+        if not user.is_superuser:
+            contracts = contracts.filter(
+                Q(created_by=user)
+                | Q(approvals__membership__user=user, approvals__status="pending")
+            ).distinct()
         counts["contracts_needing_review"] = contracts.filter(
             status=Contract.Status.IN_REVIEW
         ).count()

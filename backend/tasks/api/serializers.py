@@ -19,6 +19,13 @@ class TaskSerializer(serializers.ModelSerializer):
         allow_null=True,
     )
     assignee = serializers.SerializerMethodField()
+    assignees = serializers.SerializerMethodField()
+    assignee_ids = serializers.PrimaryKeyRelatedField(
+        source="additional_assignees",
+        many=True,
+        queryset=Membership.objects.all(),
+        required=False,
+    )
     progress = serializers.ReadOnlyField()
     is_overdue = serializers.ReadOnlyField()
     checklist_items = ChecklistSerializer(many=True, read_only=True)
@@ -35,6 +42,8 @@ class TaskSerializer(serializers.ModelSerializer):
             "priority",
             "assigned_membership_id",
             "assignee",
+            "assignees",
+            "assignee_ids",
             "due_at",
             "completed_at",
             "sequence",
@@ -63,6 +72,42 @@ class TaskSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         )
+
+    def validate(self, attrs):
+        context_fields = (
+            "artist",
+            "booking",
+            "release",
+            "campaign",
+            "rollout",
+            "production_advance",
+            "travel_itinerary",
+            "contract",
+        )
+        selected = [field for field in context_fields if attrs.get(field) is not None]
+        if self.instance is None and len(selected) != 1:
+            raise serializers.ValidationError(
+                {
+                    "context": (
+                        "Link a new task to exactly one booking, release, campaign, "
+                        "artist, production, travel, or contract record."
+                    )
+                }
+            )
+        if len(selected) > 1:
+            raise serializers.ValidationError(
+                {"context": "A task may have only one linked operational record."}
+            )
+        return attrs
+
+    def get_assignees(self, task):
+        return [
+            {
+                "id": str(item.pk),
+                "name": item.user.get_full_name() or item.user.email,
+            }
+            for item in task.additional_assignees.select_related("user").all()
+        ]
 
     def get_assignee(self, task):
         if not task.assigned_membership:

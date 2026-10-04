@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from artists.models import Artist, ArtistPortalLink, ArtistTeamAssignment
+from artists.models import Artist, ArtistPortalLink, ArtistTeamAssignment, ArtistToolkit
 
 
 class ArtistSerializer(serializers.ModelSerializer):
@@ -87,6 +87,13 @@ class ArtistWriteSerializer(serializers.ModelSerializer):
             "booking_email",
             "profile_image_url",
         )
+
+
+class ArtistToolkitSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ArtistToolkit
+        exclude = ("artist",)
+        read_only_fields = ("id", "created_at", "updated_at")
 
 
 class TeamAssignmentSerializer(serializers.ModelSerializer):

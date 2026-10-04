@@ -5,10 +5,15 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from artists.models import Artist
+from documents.file_validation import validate_upload
+from documents.models import Document
+from documents.services import upload_document
+from documents.storage import DocumentStorageUnavailable
 from audit.models import AuditEvent
 from audit.services import record_event
 from bookings.models import Booking
@@ -19,22 +24,26 @@ from users.mobile_services import revoke_all_devices
 from users.models import User
 from venues.models import Venue
 
-from ..models import Invitation, Membership, Organization
+from ..models import FeatureSetting, Invitation, Membership, Organization, RoleProfile
 from ..ownership import validate_membership_owner_change, validate_user_deactivation
-from ..permissions import user_has_organization_permission
+from ..permissions import role_catalog, user_has_organization_permission
 from ..selectors import organizations_for_user
-from ..services import accept_invitation, create_invitation, revoke_invitation
+from ..services import accept_invitation, create_invitation, revoke_invitation, signup_invitation
 from .permissions import PlatformSuperuser
 from .serializers import (
     InvitationAcceptSerializer,
+    InvitationSignupSerializer,
     InvitationCreateSerializer,
     InvitationSerializer,
+    MembershipCreateSerializer,
     MembershipSerializer,
     MembershipUpdateSerializer,
     OrganizationSerializer,
     OrganizationUpdateSerializer,
     PlatformUserSerializer,
     ProfileSerializer,
+    FeatureSettingSerializer,
+    RoleProfileSerializer,
 )
 
 
@@ -77,7 +86,7 @@ def organization_queryset():
         ),
         priority_booking_count=Count(
             "bookings",
-            filter=Q(bookings__priority__in=("high", "urgent")),
+            filter=Q(bookings__priority__in=("high", "urgent"), bookings__event_date__gte=timezone.localdate()),
             distinct=True,
         ),
         call_sheet_count=Count("call_sheets", distinct=True),
@@ -118,6 +127,11 @@ def require_permission(user, organization, permission):
         raise PermissionDenied("You do not have permission for this organization.")
 
 
+class RoleCatalogView(APIView):
+    def get(self, request):
+        return Response(role_catalog())
+
+
 class OrganizationListView(APIView):
     def get(self, request):
         organizations = organization_queryset().filter(
@@ -151,7 +165,39 @@ class OrganizationDetailView(APIView):
         )
 
 
+def create_membership(*, actor, organization, data, request):
+    user = get_object_or_404(User, pk=data.pop("user_id"), is_active=True)
+    if Membership.objects.filter(user=user, organization=organization).exists():
+        raise ValidationError("This user already has a membership in the organization.")
+    membership = Membership.objects.create(user=user, organization=organization, **data)
+    record_event(
+        actor=actor,
+        organization=organization,
+        action="membership.created",
+        resource=membership,
+        description=f"Added {user.email} to the organization as {membership.role}.",
+        request=request,
+    )
+    return membership
+
+
 class OrganizationMemberListView(APIView):
+    @transaction.atomic
+    def post(self, request, organization_id, membership_id=None):
+        if membership_id is not None:
+            return Response({"detail": "Membership detail URLs do not accept POST."}, status=405)
+        organization = scoped_organization(request.user, organization_id)
+        require_permission(request.user, organization, "membership.manage")
+        serializer = MembershipCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        membership = create_membership(
+            actor=request.user,
+            organization=organization,
+            data=dict(serializer.validated_data),
+            request=request,
+        )
+        return Response(MembershipSerializer(membership).data, status=status.HTTP_201_CREATED)
+
     def get(self, request, organization_id, membership_id=None):
         organization = scoped_organization(request.user, organization_id)
         require_permission(request.user, organization, "membership.view")
@@ -267,9 +313,59 @@ class InvitationAcceptView(APIView):
         return Response(MembershipSerializer(membership).data)
 
 
+class InvitationSignupView(APIView):
+    permission_classes = ()
+
+    def post(self, request):
+        serializer = InvitationSignupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        from django.contrib.auth.password_validation import validate_password
+        try:
+            validate_password(serializer.validated_data["password"])
+            user, membership = signup_invitation(**serializer.validated_data)
+        except DjangoValidationError as error:
+            raise ValidationError(error.messages) from error
+        record_event(actor=user, organization=membership.organization, action="invitation.signup_completed", resource=membership, description="Completed invitation signup.", request=request)
+        return Response({"email": user.email, "organization": membership.organization.name}, status=status.HTTP_201_CREATED)
+
+
+class ProfileImageView(APIView):
+    parser_classes = (MultiPartParser, FormParser)
+
+    def get(self, request):
+        document = request.user.profile_image_document
+        if not document:
+            raise ValidationError("No profile image has been uploaded.")
+        from django.http import HttpResponseRedirect
+        return HttpResponseRedirect(f"/api/documents/{document.pk}/preview/?organization={document.organization_id}")
+
+    def post(self, request):
+        membership = request.user.memberships.active().select_related("organization").first()
+        if not membership:
+            raise PermissionDenied("An active organization membership is required.")
+        file = request.FILES.get("file")
+        if not file:
+            raise ValidationError({"file": "Choose an image to upload."})
+        try:
+            metadata = validate_upload(file, document_type=Document.Type.OTHER)
+            if not metadata["content_type"].startswith("image/"):
+                raise ValidationError({"file": "Profile pictures must be PNG, JPEG, or WebP images."})
+            document = upload_document(
+                actor=request.user, organization=membership.organization, file=file, request=request,
+                title="Profile picture", document_type=Document.Type.OTHER,
+                visibility=Document.Visibility.PRIVATE,
+            )
+        except DocumentStorageUnavailable as error:
+            raise ValidationError(str(error)) from error
+        request.user.profile_image_document = document
+        request.user.save(update_fields=("profile_image_document", "updated_at"))
+        record_event(actor=request.user, organization=membership.organization, action="user.profile_image_uploaded", resource=request.user, description="Uploaded a profile image.", request=request)
+        return Response(ProfileSerializer(request.user, context={"request": request}).data)
+
+
 class ProfileView(APIView):
     def get(self, request):
-        return Response(ProfileSerializer(request.user).data)
+        return Response(ProfileSerializer(request.user, context={"request": request}).data)
 
     def patch(self, request):
         serializer = ProfileSerializer(request.user, data=request.data, partial=True)
@@ -345,6 +441,23 @@ class PlatformOrganizationListView(APIView):
             OrganizationSerializer(organization_queryset().get(pk=organization.pk)).data,
             status=status.HTTP_201_CREATED,
         )
+
+
+class PlatformOrganizationMemberListView(APIView):
+    permission_classes = (PlatformSuperuser,)
+
+    @transaction.atomic
+    def post(self, request, organization_id):
+        organization = get_object_or_404(Organization, pk=organization_id, is_active=True)
+        serializer = MembershipCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        membership = create_membership(
+            actor=request.user,
+            organization=organization,
+            data=dict(serializer.validated_data),
+            request=request,
+        )
+        return Response(MembershipSerializer(membership).data, status=status.HTTP_201_CREATED)
 
 
 class PlatformOrganizationDetailView(APIView):
@@ -428,3 +541,83 @@ class PlatformUserDetailView(APIView):
             request=request,
         )
         return Response(serializer.data)
+
+
+FEATURE_CATALOG = (
+    ("activity", "Activity", "Organization activity stream."),
+    ("reports", "Reports", "Operational reporting surfaces."),
+    ("boards", "Boards", "Workspace boards."),
+    ("office", "Office Home", "Office documents and sheets."),
+    ("booking-tracker", "Booking Tracker", "Google Sheets booking tracker tools."),
+    ("booking-options", "Booking Options", "Booking option configuration."),
+    ("file-uploader", "File Uploader", "Shared document upload surface."),
+    ("mailroom", "Mailroom", "Mailbox workspace."),
+    ("signing", "Signing Workspace", "Document signing tools."),
+    ("template-editor", "Template Editor", "Template configuration tools."),
+)
+
+def ensure_feature_settings(organization):
+    existing = {item.key: item for item in organization.feature_settings.all()}
+    for key, label, description in FEATURE_CATALOG:
+        if key not in existing:
+            existing[key] = FeatureSetting.objects.create(organization=organization, key=key, label=label, description=description)
+    return list(sorted(existing.values(), key=lambda item: item.label.lower()))
+
+
+class FeatureSettingListView(APIView):
+    def get(self, request, organization_id):
+        organization = scoped_organization(request.user, organization_id)
+        require_permission(request.user, organization, "membership.view")
+        return Response(FeatureSettingSerializer(ensure_feature_settings(organization), many=True).data)
+
+    @transaction.atomic
+    def patch(self, request, organization_id, feature_id):
+        organization = scoped_organization(request.user, organization_id)
+        require_permission(request.user, organization, "membership.manage")
+        feature = get_object_or_404(FeatureSetting, pk=feature_id, organization=organization)
+        serializer = FeatureSettingSerializer(feature, data={"is_enabled": request.data.get("is_enabled")}, partial=True)
+        serializer.is_valid(raise_exception=True)
+        feature = serializer.save()
+        record_event(actor=request.user, organization=organization, action="feature.updated", resource=feature, description=f"Updated feature setting {feature.key}.", request=request)
+        return Response(FeatureSettingSerializer(feature).data)
+
+
+class MembershipScopePreviewView(APIView):
+    def get(self, request, organization_id, membership_id):
+        organization = scoped_organization(request.user, organization_id)
+        require_permission(request.user, organization, "membership.manage")
+        membership = get_object_or_404(Membership.objects.select_related("user", "role_profile"), pk=membership_id, organization=organization)
+        from ..permissions import all_permissions, user_has_organization_permission
+        permissions = [permission for permission in all_permissions() if user_has_organization_permission(membership.user, organization, permission)]
+        features = ensure_feature_settings(organization)
+        return Response({"membership_id": str(membership.id), "user": {"email": membership.user.email, "name": membership.user.get_full_name()}, "role": membership.role, "role_profile": membership.role_profile.name if membership.role_profile else None, "permissions": permissions, "features": FeatureSettingSerializer(features, many=True).data})
+
+
+class RoleProfileListCreateView(APIView):
+    def get(self, request, organization_id):
+        organization = scoped_organization(request.user, organization_id)
+        require_permission(request.user, organization, "membership.view")
+        return Response(RoleProfileSerializer(organization.role_profiles.all(), many=True).data)
+
+    @transaction.atomic
+    def post(self, request, organization_id):
+        organization = scoped_organization(request.user, organization_id)
+        require_permission(request.user, organization, "membership.manage")
+        serializer = RoleProfileSerializer(data={**request.data, "organization": organization.id})
+        serializer.is_valid(raise_exception=True)
+        profile = serializer.save()
+        record_event(actor=request.user, organization=organization, action="role_profile.created", resource=profile, description=f"Created role profile {profile.name}.", request=request)
+        return Response(RoleProfileSerializer(profile).data, status=status.HTTP_201_CREATED)
+
+
+class RoleProfileDetailView(APIView):
+    @transaction.atomic
+    def patch(self, request, organization_id, profile_id):
+        organization = scoped_organization(request.user, organization_id)
+        require_permission(request.user, organization, "membership.manage")
+        profile = get_object_or_404(RoleProfile, pk=profile_id, organization=organization)
+        serializer = RoleProfileSerializer(profile, data={**request.data, "organization": organization.id}, partial=True)
+        serializer.is_valid(raise_exception=True)
+        profile = serializer.save()
+        record_event(actor=request.user, organization=organization, action="role_profile.updated", resource=profile, description=f"Updated role profile {profile.name}.", request=request)
+        return Response(RoleProfileSerializer(profile).data)

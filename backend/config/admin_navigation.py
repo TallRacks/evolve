@@ -81,3 +81,7 @@ def storage_providers(request):
 
 def saved_reports(request):
     return _can_view(request, "reporting", "SavedReportView")
+
+
+def google_workspace(request):
+    return _can_view(request, "integrations", "GoogleWorkspaceConnector")
